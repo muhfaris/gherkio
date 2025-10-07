@@ -78,11 +78,22 @@ func runCall(args []string) error {
 			kind, path := splitKindPath(spec)
 			switch kind {
 			case "csv":
-				_ = csv.AppendSingle(path, req, resp)
+				_ = csv.AppendSingle(pathOrDefault(path, "reports/call.csv"), req, resp)
+			case "html":
+				h := report.NewHTML(pathOrDefault(path, "reports/call.html"))
+				h.Add(report.Result{
+					Feature:    "single",
+					Scenario:   req.APIKey,
+					Status:     statusLabel(resp.Status),
+					DurationMs: 0,
+				})
+				if err := h.Flush(); err != nil {
+					return err
+				}
 			case "pretty":
 				// already printed
 			default:
-				// TODO: html/junit/cucumber in run mode; call mode keeps CSV for now
+				fmt.Fprintf(os.Stderr, "unknown report kind %q\n", kind)
 			}
 		}
 	}

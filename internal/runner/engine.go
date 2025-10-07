@@ -6,10 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"text/template"
+	"time"
 
 	"github.com/Masterminds/sprig/v3"
 )
@@ -83,7 +86,7 @@ func render(tpl string, pathParams map[string]string, store map[string]any) (str
 	if tpl == "" {
 		return "", errors.New("empty path template")
 	}
-	t, err := template.New("p").Funcs(sprig.FuncMap()).Parse(tpl)
+	t, err := template.New("p").Funcs(templateFuncs()).Parse(tpl)
 	if err != nil {
 		return "", err
 	}
@@ -127,7 +130,7 @@ func applyAuth(ctx *Context, r *http.Request, profile string) {
 }
 
 func execTemplate(tpl string, ctxs ...map[string]any) (string, error) {
-	t, err := template.New("tpl").Funcs(sprig.FuncMap()).Parse(tpl)
+	t, err := template.New("tpl").Funcs(templateFuncs()).Parse(tpl)
 	if err != nil {
 		return "", err
 	}
@@ -142,4 +145,102 @@ func execTemplate(tpl string, ctxs ...map[string]any) (string, error) {
 		return "", err
 	}
 	return buf.String(), nil
+}
+
+var (
+	randSrc = rand.New(rand.NewSource(time.Now().UnixNano()))
+	randMu  sync.Mutex
+)
+
+func templateFuncs() template.FuncMap {
+	fns := sprig.FuncMap()
+	fns["randomInt"] = randomInt
+	fns["randomUnix"] = randomUnix
+	return fns
+}
+
+func randomInt(min, max int) (int, error) {
+	if max < min {
+		return 0, fmt.Errorf("randomInt: max (%d) must be >= min (%d)", max, min)
+	}
+	randMu.Lock()
+	defer randMu.Unlock()
+	if max == min {
+		return min, nil
+	}
+	rangeSize := max - min + 1
+	if rangeSize <= 0 {
+		return 0, fmt.Errorf("randomInt: invalid range [%d,%d]", min, max)
+	}
+	return randSrc.Intn(rangeSize) + min, nil
+}
+
+func randomUnix(args ...any) (int64, error) {
+	switch len(args) {
+	case 0:
+		return time.Now().UnixNano(), nil
+	case 2:
+		start, err := anyToString(args[0])
+		if err != nil {
+			return 0, fmt.Errorf("randomUnix: %w", err)
+		}
+		end, err := anyToString(args[1])
+		if err != nil {
+			return 0, fmt.Errorf("randomUnix: %w", err)
+		}
+		from, err := parseTimestamp(start)
+		if err != nil {
+			return 0, fmt.Errorf("randomUnix: %w", err)
+		}
+		to, err := parseTimestamp(end)
+		if err != nil {
+			return 0, fmt.Errorf("randomUnix: %w", err)
+		}
+		if to.Before(from) {
+			return 0, fmt.Errorf("randomUnix: end (%s) must be >= start (%s)", end, start)
+		}
+		randMu.Lock()
+		defer randMu.Unlock()
+		startUnix := from.Unix()
+		endUnix := to.Unix()
+		if startUnix == endUnix {
+			return startUnix, nil
+		}
+		rangeSize := endUnix - startUnix + 1
+		if rangeSize <= 0 {
+			return 0, fmt.Errorf("randomUnix: invalid range [%d,%d]", startUnix, endUnix)
+		}
+		return startUnix + randSrc.Int63n(rangeSize), nil
+	default:
+		return 0, fmt.Errorf("randomUnix: expected 0 or 2 arguments, got %d", len(args))
+	}
+}
+
+func parseTimestamp(v string) (time.Time, error) {
+	trimmed := strings.TrimSpace(v)
+	if trimmed == "" {
+		return time.Time{}, fmt.Errorf("empty timestamp")
+	}
+	layouts := []string{
+		time.RFC3339Nano,
+		time.RFC3339,
+		"2006-01-02 15:04:05",
+		"2006-01-02",
+	}
+	for _, layout := range layouts {
+		if ts, err := time.Parse(layout, trimmed); err == nil {
+			return ts, nil
+		}
+	}
+	return time.Time{}, fmt.Errorf("cannot parse %q as timestamp", v)
+}
+
+func anyToString(v any) (string, error) {
+	switch t := v.(type) {
+	case string:
+		return t, nil
+	case fmt.Stringer:
+		return t.String(), nil
+	}
+	return "", fmt.Errorf("cannot use %T as timestamp", v)
 }

@@ -8,8 +8,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -29,6 +31,12 @@ type world struct {
 	lastDurMs       int64
 	lastStepArg     *messages.PickleStepArgument
 	lastHTTPReq     *http.Request
+	currentFeature  string
+	currentScenario string
+	scenarioStarted time.Time
+	stepLogs        []StepLog
+	stepStart       time.Time
+	stepText        string
 }
 
 // helper to bind + register docs in catalog
@@ -45,13 +53,30 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		if sc != nil {
 			sc.StepContext().Before(func(ctx context.Context, st *godog.Step) (context.Context, error) {
 				w.lastStepArg = st.Argument
+				if st != nil {
+					w.stepText = st.Text
+				} else {
+					w.stepText = ""
+				}
+				w.stepStart = time.Now()
 				return ctx, nil
 			})
-			sc.StepContext().After(func(ctx context.Context, _ *godog.Step, _ godog.StepResultStatus, _ error) (context.Context, error) {
+			sc.StepContext().After(func(ctx context.Context, st *godog.Step, status godog.StepResultStatus, err error) (context.Context, error) {
 				w.lastStepArg = nil
+				dur := int64(0)
+				if !w.stepStart.IsZero() {
+					dur = time.Since(w.stepStart).Milliseconds()
+				}
+				text := w.stepText
+				if text == "" && st != nil {
+					text = st.Text
+				}
+				w.stepLogs = append(w.stepLogs, StepLog{Text: text, Status: mapStepStatus(status, err), DurationMs: dur, Error: errorText(err)})
+				w.stepStart = time.Time{}
+				w.stepText = ""
 				return ctx, nil
 			})
-			sc.Before(func(c context.Context, _ *godog.Scenario) (context.Context, error) {
+			sc.Before(func(c context.Context, s *godog.Scenario) (context.Context, error) {
 				// reset per-scenario
 				w.ctx = NewContext(env, cat)
 				w.lastReq = Request{}
@@ -64,15 +89,51 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 				for k, v := range w.ctx.Env.Headers {
 					w.savedEnvHeaders[k] = v
 				}
+				if s != nil {
+					w.currentScenario = s.Name
+					w.currentFeature = featureTitleFor(s.Uri)
+				} else {
+					w.currentScenario = ""
+					w.currentFeature = ""
+				}
+				w.scenarioStarted = time.Now()
 				return c, nil
 			})
 
-			sc.After(func(ctx context.Context, _ *godog.Scenario, _ error) (context.Context, error) {
+			sc.After(func(ctx context.Context, s *godog.Scenario, err error) (context.Context, error) {
 				// restore env headers
 				w.ctx.Env.Headers = map[string]string{}
 				for k, v := range w.savedEnvHeaders {
 					w.ctx.Env.Headers[k] = v
 				}
+				status := "PASSED"
+				if err != nil {
+					if errors.Is(err, godog.ErrPending) {
+						status = "PENDING"
+					} else {
+						status = "FAILED"
+					}
+				}
+				feature := w.currentFeature
+				if feature == "" && s != nil {
+					feature = featureTitleFor(s.Uri)
+				}
+				scenarioName := w.currentScenario
+				if scenarioName == "" && s != nil {
+					scenarioName = s.Name
+				}
+				dur := int64(0)
+				if !w.scenarioStarted.IsZero() {
+					dur = time.Since(w.scenarioStarted).Milliseconds()
+				}
+				logs := append([]StepLog(nil), w.stepLogs...)
+				recordScenario(feature, scenarioName, status, dur, logs)
+				w.stepLogs = w.stepLogs[:0]
+				w.stepStart = time.Time{}
+				w.stepText = ""
+				w.currentFeature = ""
+				w.currentScenario = ""
+				w.scenarioStarted = time.Time{}
 				return ctx, nil
 			})
 		}
@@ -232,6 +293,10 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 			if err != nil {
 				return err
 			}
+			body, err := execTemplate(string(b), map[string]any{"store": w.ctx.Store})
+			if err != nil {
+				return fmt.Errorf("render fixture %s: %w", fpath, err)
+			}
 			if w.lastReq.Headers == nil {
 				w.lastReq.Headers = map[string]string{}
 			}
@@ -240,7 +305,7 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 			}
 
 			w.lastReq.APIKey = key
-			w.lastReq.Body = b
+			w.lastReq.Body = []byte(body)
 			t0 := time.Now()
 			res, httpReq, err := Call(w.ctx, w.lastReq)
 			w.lastDurMs = time.Since(t0).Milliseconds()
@@ -333,6 +398,30 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 			return nil
 		})
 
+		bind(sc, `^save request json [\"']([^\"']+)[\"'] as [\"']([^\"']+)[\"']$`, "Save request JSONPath to store", "save request json '$.name' as 'room_name'", func(path, key string) error {
+			if len(w.lastReq.Body) == 0 {
+				return errors.New("last request body is empty")
+			}
+			v := getJSONPath(w.lastReq.Body, path)
+			if !v.Exists() {
+				return fmt.Errorf("request json path %q not found", path)
+			}
+			w.ctx.Store[key] = v.Value()
+			return nil
+		})
+
+		bind(sc, `^save request body as [\"']([^\"']+)[\"']$`, "Save full request body", "save request body as 'request_payload'", func(key string) error {
+			if len(w.lastReq.Body) == 0 {
+				return errors.New("last request body is empty")
+			}
+			var payload any
+			if err := json.Unmarshal(w.lastReq.Body, &payload); err != nil {
+				return fmt.Errorf("parse request body: %w", err)
+			}
+			w.ctx.Store[key] = payload
+			return nil
+		})
+
 		// json "<path>" should equal "<value>"
 		bind(sc, `^json [\"']([^\"']+)[\"'] should equal [\"']([^\"']+)[\"']$`, "Assert JSON value equals", "json '$.status' should equal 'success'", func(path, want string) error {
 			val := getJSONPath(w.lastRes.Body, path)
@@ -343,6 +432,55 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 				return fmt.Errorf("expect %s got %s", want, val.Raw)
 			}
 			return nil
+		})
+
+		bind(sc, `^json [\"']([^\"']+)[\"'] should equal store [\"']([^\"']+)[\"']$`, "Assert JSON equals stored value", "json '$.data.id' should equal store 'resource_id'", func(path, key string) error {
+			val := getJSONPath(w.lastRes.Body, path)
+			if !val.Exists() {
+				return fmt.Errorf("json path %q not found", path)
+			}
+			storeVal, ok := w.ctx.Store[key]
+			if !ok {
+				return fmt.Errorf("store key %q not found", key)
+			}
+			actual := val.Value()
+			if compareJSON(actual, storeVal, false) {
+				return nil
+			}
+			return fmt.Errorf("json %s=%s does not equal store[%s]=%s", path, val.Raw, key, formatAny(storeVal))
+		})
+
+		bind(sc, `^json [\"']([^\"']+)[\"'] should equal store [\"']([^\"']+)[\"'] ignoring order$`, "Assert JSON equals stored value (ignore order)", "json '$.data.tags' should equal store 'expected_tags' ignoring order", func(path, key string) error {
+			val := getJSONPath(w.lastRes.Body, path)
+			if !val.Exists() {
+				return fmt.Errorf("json path %q not found", path)
+			}
+			storeVal, ok := w.ctx.Store[key]
+			if !ok {
+				return fmt.Errorf("store key %q not found", key)
+			}
+			if compareJSON(val.Value(), storeVal, true) {
+				return nil
+			}
+			return fmt.Errorf("json %s=%s does not equal store[%s]=%s (ignoring order)", path, val.Raw, key, formatAny(storeVal))
+		})
+
+		bind(sc, `^json [\"']([^\"']+)[\"'] should match store request [\"']([^\"']+)[\"']$`, "Assert JSON equals stored request JSON", "json '$.data' should match store request 'meeting_room_payload'", func(path, key string) error {
+			actual := getJSONPath(w.lastRes.Body, path)
+			if !actual.Exists() {
+				return fmt.Errorf("json path %q not found", path)
+			}
+			src, ok := w.ctx.Store[key]
+			if !ok {
+				return fmt.Errorf("store key %q not found", key)
+			}
+			actualVal := actual.Value()
+			if compareJSON(actualVal, src, false) {
+				return nil
+			}
+			actualJSON, _ := json.Marshal(actualVal)
+			expectedJSON, _ := json.Marshal(src)
+			return fmt.Errorf("json %s does not match store[%s]\nexpected: %s\nactual:   %s", path, key, expectedJSON, actualJSON)
 		})
 
 		// json "<path>" should not be empty
@@ -755,6 +893,99 @@ func previewBody(body []byte) string {
 		return fmt.Sprintf("%q...", string(body[:max]))
 	}
 	return fmt.Sprintf("%q", string(body))
+}
+
+func formatAny(v any) string {
+	switch t := v.(type) {
+	case string:
+		return t
+	case fmt.Stringer:
+		return t.String()
+	case []byte:
+		return string(t)
+	default:
+		if b, err := json.Marshal(t); err == nil {
+			return string(b)
+		}
+		return fmt.Sprintf("%v", t)
+	}
+}
+
+func mapStepStatus(status godog.StepResultStatus, err error) string {
+	if err != nil {
+		return "FAILED"
+	}
+	s := strings.ToUpper(status.String())
+	if s == "UNKNOWN" {
+		if err != nil {
+			return "FAILED"
+		}
+		return "UNKNOWN"
+	}
+	return s
+}
+
+func errorText(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
+}
+
+func compareJSON(a, b any, ignoreOrder bool) bool {
+	normA := normalizeJSON(a, ignoreOrder)
+	normB := normalizeJSON(b, ignoreOrder)
+	return reflect.DeepEqual(normA, normB)
+}
+
+func normalizeJSON(v any, ignoreOrder bool) any {
+	switch val := v.(type) {
+	case map[string]any:
+		m := make(map[string]any, len(val))
+		for k, vv := range val {
+			m[k] = normalizeJSON(vv, ignoreOrder)
+		}
+		return m
+	case []any:
+		arr := make([]any, len(val))
+		for i, vv := range val {
+			arr[i] = normalizeJSON(vv, ignoreOrder)
+		}
+		if ignoreOrder {
+			sortSlice(arr)
+		}
+		return arr
+	}
+
+	rv := reflect.ValueOf(v)
+	switch rv.Kind() {
+	case reflect.Slice, reflect.Array:
+		arr := make([]any, rv.Len())
+		for i := 0; i < rv.Len(); i++ {
+			arr[i] = normalizeJSON(rv.Index(i).Interface(), ignoreOrder)
+		}
+		if ignoreOrder {
+			sortSlice(arr)
+		}
+		return arr
+	case reflect.Map:
+		m := map[string]any{}
+		iter := rv.MapRange()
+		for iter.Next() {
+			key := fmt.Sprint(iter.Key().Interface())
+			m[key] = normalizeJSON(iter.Value().Interface(), ignoreOrder)
+		}
+		return m
+	}
+	return v
+}
+
+func sortSlice(arr []any) {
+	sort.Slice(arr, func(i, j int) bool {
+		ai, _ := json.Marshal(arr[i])
+		aj, _ := json.Marshal(arr[j])
+		return string(ai) < string(aj)
+	})
 }
 
 func renderMap(in map[string]string, ctx map[string]any) map[string]string {

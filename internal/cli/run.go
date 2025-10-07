@@ -11,19 +11,20 @@ import (
 	"sync"
 
 	"github.com/muhfaris/gherkio/internal/loader"
+	"github.com/muhfaris/gherkio/internal/report"
 	"github.com/muhfaris/gherkio/internal/runner"
 
 	"github.com/cucumber/godog"
 )
 
-func runRun(args []string) error {
+func runRun(args []string) (err error) {
 	fs := flag.NewFlagSet("run", flag.ContinueOnError)
 	var envName, tags, nameRegex string
 	var parallel int
 	includes := multiString(fs, "feature")         // repeatable include filter
 	excludes := multiString(fs, "exclude-feature") // repeatable exclude filter
 
-	_ = multiString(fs, "report")
+	reports := multiString(fs, "report")
 	fs.StringVar(&envName, "env", "", "environment name")
 	fs.StringVar(&tags, "tags", "", "tag expression (e.g. \"@smoke and not @wip\")")
 	fs.StringVar(&nameRegex, "name", "", "filter Scenario name by regex (best-effort)")
@@ -86,25 +87,53 @@ func runRun(args []string) error {
 		return fmt.Errorf("no .feature matched filters")
 	}
 
-	opts := &godog.Options{
-		Format: "pretty",          // console output style
-		Paths:  []string{featDir}, // where your .feature files live
-		Tags:   tags,              // --tags filter from CLI
-	}
-	suite := godog.TestSuite{
-		Name:                "gherkio", // suite name (for logs/ID)
-		ScenarioInitializer: runner.InitializeScenario(env, cat, flows),
-		Options:             opts,
+	csvPaths, htmlPaths, unknownReports := classifyReports(*reports)
+	for _, unk := range unknownReports {
+		fmt.Fprintf(os.Stderr, "unknown report kind %q\n", unk)
 	}
 
-	status := suite.Run()
-	if status != 0 {
-		return fmt.Errorf("test failed with status %d", status)
+	var (
+		agg     *scenarioAggregator
+		restore func()
+	)
+	if len(csvPaths) > 0 || len(htmlPaths) > 0 {
+		agg = newScenarioAggregator(csvPaths, htmlPaths)
+		restore = runner.SetScenarioSink(agg)
+		defer restore()
+		defer func() {
+			if agg == nil {
+				return
+			}
+			if flushErr := agg.Flush(); flushErr != nil {
+				if err == nil {
+					err = flushErr
+				} else {
+					fmt.Fprintln(os.Stderr, "failed to write reports:", flushErr)
+				}
+			}
+		}()
 	}
 
 	if parallel < 1 {
 		parallel = 1
 	}
+	if parallel == 1 {
+		opts := &godog.Options{
+			Format: "pretty",
+			Paths:  features,
+			Tags:   tags,
+		}
+		suite := godog.TestSuite{
+			Name:                "gherkio",
+			ScenarioInitializer: runner.InitializeScenario(env, cat, flows),
+			Options:             opts,
+		}
+		if status := suite.Run(); status != 0 {
+			return fmt.Errorf("test failed with status %d", status)
+		}
+		return nil
+	}
+
 	shards := shard(features, parallel)
 	errCh := make(chan error, len(shards))
 	var wg sync.WaitGroup
@@ -134,7 +163,6 @@ func runRun(args []string) error {
 	wg.Wait()
 	close(errCh)
 	if len(errCh) > 0 {
-		// return first error
 		return <-errCh
 	}
 	return nil
@@ -205,4 +233,90 @@ func shard(paths []string, n int) [][]string {
 		out[i%n] = append(out[i%n], p)
 	}
 	return out
+}
+
+func classifyReports(specs []string) (csvPaths []string, htmlPaths []string, unknown []string) {
+	for _, spec := range specs {
+		if strings.TrimSpace(spec) == "" {
+			continue
+		}
+		kind, path := splitKindPath(spec)
+		switch kind {
+		case "", "pretty":
+			continue
+		case "csv":
+			csvPaths = append(csvPaths, pathOrDefault(path, "reports/run.csv"))
+		case "html":
+			htmlPaths = append(htmlPaths, pathOrDefault(path, "reports/run.html"))
+		default:
+			unknown = append(unknown, kind)
+		}
+	}
+	return
+}
+
+type scenarioAggregator struct {
+	csv      *report.CSV
+	csvPaths []string
+	htmls    []*report.HTML
+	mu       sync.Mutex
+	firstErr error
+}
+
+func newScenarioAggregator(csvPaths, htmlPaths []string) *scenarioAggregator {
+	htmls := make([]*report.HTML, 0, len(htmlPaths))
+	for _, p := range htmlPaths {
+		htmls = append(htmls, report.NewHTML(p))
+	}
+	return &scenarioAggregator{
+		csv:      report.NewCSV(),
+		csvPaths: csvPaths,
+		htmls:    htmls,
+	}
+}
+
+func (a *scenarioAggregator) RecordScenario(feature, scenario, status string, durMs int64, steps []runner.StepLog) {
+	stepDetails := make([]report.StepDetail, 0, len(steps))
+	for _, st := range steps {
+		stepDetails = append(stepDetails, report.StepDetail{
+			Text:       st.Text,
+			Status:     st.Status,
+			DurationMs: st.DurationMs,
+			Error:      st.Error,
+		})
+	}
+	res := report.Result{Feature: feature, Scenario: scenario, Status: status, DurationMs: durMs, Steps: stepDetails}
+	for _, h := range a.htmls {
+		h.Add(res)
+	}
+	if len(a.csvPaths) == 0 {
+		return
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.firstErr != nil {
+		return
+	}
+	for _, path := range a.csvPaths {
+		if err := a.csv.Append(path, feature, scenario, status, durMs); err != nil {
+			a.firstErr = err
+			break
+		}
+	}
+}
+
+func (a *scenarioAggregator) Flush() error {
+	var flushErr error
+	for _, h := range a.htmls {
+		if err := h.Flush(); err != nil && flushErr == nil {
+			flushErr = err
+		}
+	}
+	a.mu.Lock()
+	first := a.firstErr
+	a.mu.Unlock()
+	if first != nil {
+		return first
+	}
+	return flushErr
 }
