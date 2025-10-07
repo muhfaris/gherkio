@@ -2,7 +2,9 @@ package runner
 
 import (
 	"fmt"
+	"html"
 	"sort"
+	"strings"
 )
 
 type StepInfo struct {
@@ -30,19 +32,54 @@ func (c *StepCatalog) List() []StepInfo {
 
 // Render as Markdown table.
 func (c *StepCatalog) Markdown() string {
-	out := "| Step pattern | Description | Example |\n|---|---|---|\n"
-	for _, it := range c.List() {
-		out += fmt.Sprintf("| `%s` | %s | `%s` |\n", it.Pattern, safe(it.Desc), safe(it.Example))
-	}
-	return out
+	return markdownTable(c.List())
 }
 
-func safe(s string) string {
+// MarkdownFrom renders an arbitrary subset of step infos as Markdown.
+func (c *StepCatalog) MarkdownFrom(entries []StepInfo) string {
+	rows := make([]StepInfo, len(entries))
+	copy(rows, entries)
+	sort.Slice(rows, func(i, j int) bool { return rows[i].Pattern < rows[j].Pattern })
+	return markdownTable(rows)
+}
+
+func markdownTable(entries []StepInfo) string {
+	var b strings.Builder
+	b.WriteString("| Step pattern | Description | Example |\n|---|---|---|\n")
+	for _, it := range entries {
+		fmt.Fprintf(&b, "| %s | %s | %s |\n", markdownCode(it.Pattern), markdownText(it.Desc), markdownExample(it.Example))
+	}
+	return b.String()
+}
+
+func markdownText(s string) string {
 	if s == "" {
 		return ""
 	}
-	// naive guard for pipes/backticks in table
-	return s
+	return escapePipes(s)
+}
+
+func markdownCode(s string) string {
+	if s == "" {
+		return ""
+	}
+	out := escapePipes(s)
+	out = strings.ReplaceAll(out, "`", "\\`")
+	return "`" + out + "`"
+}
+
+func markdownExample(s string) string {
+	if s == "" {
+		return ""
+	}
+	if strings.ContainsAny(s, "\n\r") {
+		return "<pre><code>" + html.EscapeString(s) + "</code></pre>"
+	}
+	return markdownCode(s)
+}
+
+func escapePipes(s string) string {
+	return strings.ReplaceAll(s, "|", "\\|")
 }
 
 // Expose read-only API for CLI
