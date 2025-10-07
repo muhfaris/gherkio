@@ -87,23 +87,43 @@ func runRun(args []string) (err error) {
 		return fmt.Errorf("no .feature matched filters")
 	}
 
-	csvPaths, htmlPaths, unknownReports := classifyReports(*reports)
+	featureSet := map[string]struct{}{}
+	for _, f := range features {
+		featureSet[f] = struct{}{}
+	}
+	meta := report.SummaryMeta{
+		Env:          envName,
+		Tags:         tags,
+		NameFilter:   nameRegex,
+		FeatureCount: len(featureSet),
+		Parallel:     parallel,
+	}
+	if includes != nil && len(*includes) > 0 {
+		meta.Includes = cloneStrings(*includes)
+	}
+	if excludes != nil && len(*excludes) > 0 {
+		meta.Excludes = cloneStrings(*excludes)
+	}
+
+	csvPaths, htmlSpecs, unknownReports := classifyReports(*reports)
 	for _, unk := range unknownReports {
 		fmt.Fprintf(os.Stderr, "unknown report kind %q\n", unk)
 	}
 
 	var (
-		agg     *scenarioAggregator
-		restore func()
+		agg          *scenarioAggregator
+		restoreSink  func()
+		restoreDebug func()
 	)
-	if len(csvPaths) > 0 || len(htmlPaths) > 0 {
-		agg = newScenarioAggregator(csvPaths, htmlPaths)
-		restore = runner.SetScenarioSink(agg)
-		defer restore()
+	agg = newScenarioAggregator(csvPaths, htmlSpecs, meta)
+	if agg != nil {
+		if agg.htmlDebug {
+			restoreDebug = runner.SetDebugCapture(true)
+			defer restoreDebug()
+		}
+		restoreSink = runner.SetScenarioSink(agg)
+		defer restoreSink()
 		defer func() {
-			if agg == nil {
-				return
-			}
 			if flushErr := agg.Flush(); flushErr != nil {
 				if err == nil {
 					err = flushErr
@@ -235,20 +255,24 @@ func shard(paths []string, n int) [][]string {
 	return out
 }
 
-func classifyReports(specs []string) (csvPaths []string, htmlPaths []string, unknown []string) {
+func classifyReports(specs []string) (csvPaths []string, htmlSpecs []htmlSpec, unknown []string) {
 	for _, spec := range specs {
 		if strings.TrimSpace(spec) == "" {
 			continue
 		}
 		kind, path := splitKindPath(spec)
-		switch kind {
+		lower := strings.ToLower(kind)
+		switch lower {
 		case "", "pretty":
 			continue
 		case "csv":
 			csvPaths = append(csvPaths, pathOrDefault(path, "reports/run.csv"))
-		case "html":
-			htmlPaths = append(htmlPaths, pathOrDefault(path, "reports/run.html"))
 		default:
+			if dbg, ok := parseHTMLKind(lower); ok {
+				normPath, fromPath := normalizeHTMLPath(path, "reports/run.html")
+				htmlSpecs = append(htmlSpecs, htmlSpec{Path: normPath, Debug: dbg || fromPath})
+				continue
+			}
 			unknown = append(unknown, kind)
 		}
 	}
@@ -256,34 +280,56 @@ func classifyReports(specs []string) (csvPaths []string, htmlPaths []string, unk
 }
 
 type scenarioAggregator struct {
-	csv      *report.CSV
-	csvPaths []string
-	htmls    []*report.HTML
-	mu       sync.Mutex
-	firstErr error
+	csv       *report.CSV
+	csvPaths  []string
+	htmls     []*report.HTML
+	htmlDebug bool
+	mu        sync.Mutex
+	firstErr  error
 }
 
-func newScenarioAggregator(csvPaths, htmlPaths []string) *scenarioAggregator {
-	htmls := make([]*report.HTML, 0, len(htmlPaths))
-	for _, p := range htmlPaths {
-		htmls = append(htmls, report.NewHTML(p))
+func newScenarioAggregator(csvPaths []string, htmls []htmlSpec, meta report.SummaryMeta) *scenarioAggregator {
+	if len(csvPaths) == 0 && len(htmls) == 0 {
+		return nil
 	}
-	return &scenarioAggregator{
+	inst := &scenarioAggregator{
 		csv:      report.NewCSV(),
 		csvPaths: csvPaths,
-		htmls:    htmls,
 	}
+	inst.htmls = make([]*report.HTML, 0, len(htmls))
+	for _, spec := range htmls {
+		h := report.NewHTML(spec.Path, spec.Debug, meta)
+		inst.htmls = append(inst.htmls, h)
+		if spec.Debug {
+			inst.htmlDebug = true
+		}
+	}
+	return inst
 }
 
 func (a *scenarioAggregator) RecordScenario(feature, scenario, status string, durMs int64, steps []runner.StepLog) {
-	stepDetails := make([]report.StepDetail, 0, len(steps))
-	for _, st := range steps {
-		stepDetails = append(stepDetails, report.StepDetail{
-			Text:       st.Text,
-			Status:     st.Status,
-			DurationMs: st.DurationMs,
-			Error:      st.Error,
-		})
+	if a == nil {
+		return
+	}
+	var stepDetails []report.StepDetail
+	if len(a.htmls) > 0 {
+		stepDetails = make([]report.StepDetail, len(steps))
+		for i, st := range steps {
+			detail := report.StepDetail{
+				Text:       st.Text,
+				Status:     st.Status,
+				DurationMs: st.DurationMs,
+				Error:      st.Error,
+			}
+			if st.Debug != nil {
+				detail.Debug = &report.DebugInfo{
+					RequestBody:    st.Debug.RequestBody,
+					ResponseBody:   st.Debug.ResponseBody,
+					ResponseStatus: st.Debug.ResponseStatus,
+				}
+			}
+			stepDetails[i] = detail
+		}
 	}
 	res := report.Result{Feature: feature, Scenario: scenario, Status: status, DurationMs: durMs, Steps: stepDetails}
 	for _, h := range a.htmls {
@@ -306,6 +352,9 @@ func (a *scenarioAggregator) RecordScenario(feature, scenario, status string, du
 }
 
 func (a *scenarioAggregator) Flush() error {
+	if a == nil {
+		return nil
+	}
 	var flushErr error
 	for _, h := range a.htmls {
 		if err := h.Flush(); err != nil && flushErr == nil {
@@ -319,4 +368,13 @@ func (a *scenarioAggregator) Flush() error {
 		return first
 	}
 	return flushErr
+}
+
+func cloneStrings(src []string) []string {
+	if len(src) == 0 {
+		return nil
+	}
+	out := make([]string, len(src))
+	copy(out, src)
+	return out
 }

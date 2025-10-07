@@ -11,11 +11,20 @@ type StepLog struct {
 	Status     string
 	DurationMs int64
 	Error      string
+	Debug      *StepDebug
+}
+
+type StepDebug struct {
+	RequestBody    string
+	ResponseBody   string
+	ResponseStatus int
 }
 
 var (
-	currentSink ScenarioSink
-	sinkMu      sync.RWMutex
+	currentSink  ScenarioSink
+	sinkMu       sync.RWMutex
+	debugCapture bool
+	debugMu      sync.RWMutex
 )
 
 func SetScenarioSink(s ScenarioSink) func() {
@@ -36,4 +45,22 @@ func recordScenario(feature, scenario, status string, durMs int64, steps []StepL
 	if currentSink != nil {
 		currentSink.RecordScenario(feature, scenario, status, durMs, steps)
 	}
+}
+
+func SetDebugCapture(enabled bool) func() {
+	debugMu.Lock()
+	prev := debugCapture
+	debugCapture = enabled
+	debugMu.Unlock()
+	return func() {
+		debugMu.Lock()
+		debugCapture = prev
+		debugMu.Unlock()
+	}
+}
+
+func isDebugCapture() bool {
+	debugMu.RLock()
+	defer debugMu.RUnlock()
+	return debugCapture
 }

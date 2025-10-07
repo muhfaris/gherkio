@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -72,27 +74,47 @@ func runCall(args []string) error {
 		}
 	}
 	// emit opted reporters (csv/html/junit/cucumber placeholder)
+	meta := report.SummaryMeta{Env: envName, FeatureCount: 1}
 	if len(*reports) > 0 {
 		csv := report.NewCSV()
 		for _, spec := range *reports {
 			kind, path := splitKindPath(spec)
-			switch kind {
+			lower := strings.ToLower(kind)
+			switch lower {
+			case "", "pretty":
+				continue
 			case "csv":
 				_ = csv.AppendSingle(pathOrDefault(path, "reports/call.csv"), req, resp)
-			case "html":
-				h := report.NewHTML(pathOrDefault(path, "reports/call.html"))
-				h.Add(report.Result{
-					Feature:    "single",
-					Scenario:   req.APIKey,
-					Status:     statusLabel(resp.Status),
-					DurationMs: 0,
-				})
-				if err := h.Flush(); err != nil {
-					return err
-				}
-			case "pretty":
-				// already printed
 			default:
+				if dbg, ok := parseHTMLKind(lower); ok {
+					normPath, fromPath := normalizeHTMLPath(path, "reports/call.html")
+					debugEnabled := dbg || fromPath
+					h := report.NewHTML(normPath, debugEnabled, meta)
+					step := report.StepDetail{
+						Text:       fmt.Sprintf("call api %s", req.APIKey),
+						Status:     statusLabel(resp.Status),
+						DurationMs: 0,
+					}
+					if debugEnabled {
+						step.Debug = &report.DebugInfo{
+							RequestBody:    formatPayload(req.Body),
+							ResponseBody:   formatPayload(resp.Body),
+							ResponseStatus: resp.Status,
+						}
+					}
+					res := report.Result{
+						Feature:    "single",
+						Scenario:   req.APIKey,
+						Status:     statusLabel(resp.Status),
+						DurationMs: 0,
+						Steps:      []report.StepDetail{step},
+					}
+					h.Add(res)
+					if err := h.Flush(); err != nil {
+						return err
+					}
+					continue
+				}
 				fmt.Fprintf(os.Stderr, "unknown report kind %q\n", kind)
 			}
 		}
@@ -114,4 +136,28 @@ func splitKindPath(spec string) (string, string) {
 		return parts[0], ""
 	}
 	return parts[0], parts[1]
+}
+
+func formatPayload(body []byte) string {
+	if len(body) == 0 {
+		return "<empty>"
+	}
+	trimmed := bytes.TrimSpace(body)
+	if json.Valid(trimmed) {
+		var buf bytes.Buffer
+		if err := json.Indent(&buf, trimmed, "", "  "); err == nil {
+			return truncateRunes(buf.String(), maxDebugRunes)
+		}
+	}
+	return truncateRunes(string(body), maxDebugRunes)
+}
+
+const maxDebugRunes = 4000
+
+func truncateRunes(s string, limit int) string {
+	runes := []rune(s)
+	if len(runes) <= limit {
+		return s
+	}
+	return string(runes[:limit]) + "\n... (truncated)"
 }

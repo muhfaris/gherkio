@@ -13,4 +13,21 @@ type StepDetail struct {
 	Status     string
 	DurationMs int64
 	Error      string
+	Debug      *DebugInfo
+}
+
+type DebugInfo struct {
+	RequestBody    string
+	ResponseBody   string
+	ResponseStatus int
+}
+
+type SummaryMeta struct {
+	Env          string
+	Tags         string
+	Includes     []string
+	Excludes     []string
+	NameFilter   string
+	FeatureCount int
+	Parallel     int
 }

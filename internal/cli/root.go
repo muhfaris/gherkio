@@ -31,7 +31,7 @@ func Execute(args []string) error {
 }
 
 func printHelp() {
-	fmt.Println(`gherkio – declarative API testing & journey runner (MVP)
+	fmt.Println(`🥒 gherkio – declarative API testing & journey runner (MVP)
 
 Usage:
   gherkio init                         Initialize gherkio/ structure with examples

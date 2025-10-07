@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -37,6 +38,7 @@ type world struct {
 	stepLogs        []StepLog
 	stepStart       time.Time
 	stepText        string
+	pendingDebug    *StepDebug
 }
 
 // helper to bind + register docs in catalog
@@ -59,6 +61,7 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 					w.stepText = ""
 				}
 				w.stepStart = time.Now()
+				w.pendingDebug = nil
 				return ctx, nil
 			})
 			sc.StepContext().After(func(ctx context.Context, st *godog.Step, status godog.StepResultStatus, err error) (context.Context, error) {
@@ -71,7 +74,9 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 				if text == "" && st != nil {
 					text = st.Text
 				}
-				w.stepLogs = append(w.stepLogs, StepLog{Text: text, Status: mapStepStatus(status, err), DurationMs: dur, Error: errorText(err)})
+				log := StepLog{Text: text, Status: mapStepStatus(status, err), DurationMs: dur, Error: errorText(err), Debug: w.pendingDebug}
+				w.stepLogs = append(w.stepLogs, log)
+				w.pendingDebug = nil
 				w.stepStart = time.Time{}
 				w.stepText = ""
 				return ctx, nil
@@ -84,6 +89,8 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 				w.flows = flows
 				w.lastStepArg = nil
 				w.lastHTTPReq = nil
+				w.stepLogs = nil
+				w.pendingDebug = nil
 				// snapshot default env headers for this scenario
 				w.savedEnvHeaders = map[string]string{}
 				for k, v := range w.ctx.Env.Headers {
@@ -128,12 +135,13 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 				}
 				logs := append([]StepLog(nil), w.stepLogs...)
 				recordScenario(feature, scenarioName, status, dur, logs)
-				w.stepLogs = w.stepLogs[:0]
+				w.stepLogs = nil
 				w.stepStart = time.Time{}
 				w.stepText = ""
 				w.currentFeature = ""
 				w.currentScenario = ""
 				w.scenarioStarted = time.Time{}
+				w.pendingDebug = nil
 				return ctx, nil
 			})
 		}
@@ -210,6 +218,7 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 			w.lastDurMs = time.Since(t0).Milliseconds()
 			w.lastRes = res
 			w.lastHTTPReq = httpReq
+			w.captureDebug(w.lastReq, w.lastRes)
 			return err
 		})
 
@@ -255,6 +264,7 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 				w.lastDurMs = time.Since(t0).Milliseconds()
 				w.lastRes = res
 				w.lastHTTPReq = httpReq
+				w.captureDebug(w.lastReq, w.lastRes)
 				return err
 			})
 
@@ -283,6 +293,7 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 			w.lastDurMs = time.Since(t0).Milliseconds()
 			w.lastRes = res
 			w.lastHTTPReq = httpReq
+			w.captureDebug(w.lastReq, w.lastRes)
 			return err
 		})
 
@@ -311,6 +322,7 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 			w.lastDurMs = time.Since(t0).Milliseconds()
 			w.lastRes = res
 			w.lastHTTPReq = httpReq
+			w.captureDebug(w.lastReq, w.lastRes)
 			return err
 		})
 
@@ -865,6 +877,7 @@ func (w *world) runFlow(name string, args map[string]string) error {
 		res, httpReq, err := Call(w.ctx, req)
 		w.lastReq, w.lastRes = req, res
 		w.lastHTTPReq = httpReq
+		w.captureDebug(w.lastReq, w.lastRes)
 		if err != nil {
 			return fmt.Errorf("flow %s step %d (%s): %w", name, i+1, st.Call, err)
 		}
@@ -930,6 +943,42 @@ func errorText(err error) string {
 		return ""
 	}
 	return err.Error()
+}
+
+const maxDebugRunes = 4000
+
+func (w *world) captureDebug(req Request, res Response) {
+	if !isDebugCapture() {
+		w.pendingDebug = nil
+		return
+	}
+	w.pendingDebug = &StepDebug{
+		RequestBody:    formatDebugBody(req.Body),
+		ResponseBody:   formatDebugBody(res.Body),
+		ResponseStatus: res.Status,
+	}
+}
+
+func formatDebugBody(body []byte) string {
+	if len(body) == 0 {
+		return "<empty>"
+	}
+	trimmed := bytes.TrimSpace(body)
+	if json.Valid(trimmed) {
+		var buf bytes.Buffer
+		if err := json.Indent(&buf, trimmed, "", "  "); err == nil {
+			return truncateRunes(buf.String(), maxDebugRunes)
+		}
+	}
+	return truncateRunes(string(body), maxDebugRunes)
+}
+
+func truncateRunes(s string, limit int) string {
+	runes := []rune(s)
+	if len(runes) <= limit {
+		return s
+	}
+	return string(runes[:limit]) + "\n... (truncated)"
 }
 
 func compareJSON(a, b any, ignoreOrder bool) bool {

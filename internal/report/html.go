@@ -16,10 +16,12 @@ type HTML struct {
 	rows    []Result
 	mu      sync.Mutex
 	created time.Time
+	debug   bool
+	meta    SummaryMeta
 }
 
-func NewHTML(path string) *HTML {
-	return &HTML{path: path}
+func NewHTML(path string, debug bool, meta SummaryMeta) *HTML {
+	return &HTML{path: path, debug: debug, meta: meta}
 }
 
 func (h *HTML) Add(res Result) {
@@ -38,12 +40,17 @@ func (h *HTML) Flush() error {
 	copy(rows, h.rows)
 	groups := groupByFeature(rows)
 	buf := &bytes.Buffer{}
+	summary := buildSummary(rows, h.meta, h.debug)
 	data := struct {
 		Generated time.Time
 		Features  []featureGroup
+		Summary   summaryData
+		Debug     bool
 	}{
 		Generated: time.Now(),
 		Features:  groups,
+		Summary:   summary,
+		Debug:     h.debug,
 	}
 	if err := htmlTemplate.Execute(buf, data); err != nil {
 		return err
@@ -71,6 +78,29 @@ type stepGroup struct {
 	Status     string
 	DurationMs int64
 	Items      []StepDetail
+	Debug      *DebugInfo
+}
+
+type summaryData struct {
+	Env              string
+	Tags             string
+	Includes         []string
+	Excludes         []string
+	NameFilter       string
+	FeatureCount     int
+	Parallel         int
+	TotalScenarios   int
+	ScenariosPassed  int
+	ScenariosFailed  int
+	ScenariosPending int
+	TotalSteps       int
+	StepsPassed      int
+	StepsFailed      int
+	StepsPending     int
+	TotalDurationMs  int64
+	LongestScenario  string
+	LongestDuration  int64
+	Debug            bool
 }
 
 func groupByFeature(rows []Result) []featureGroup {
@@ -128,6 +158,7 @@ func buildGroups(steps []StepDetail) []stepGroup {
 				Title:      st.Text,
 				Status:     st.Status,
 				DurationMs: st.DurationMs,
+				Debug:      st.Debug,
 			}
 			continue
 		}
@@ -138,6 +169,7 @@ func buildGroups(steps []StepDetail) []stepGroup {
 				Title:      st.Text,
 				Status:     st.Status,
 				DurationMs: st.DurationMs,
+				Debug:      st.Debug,
 			})
 		}
 	}
@@ -146,15 +178,80 @@ func buildGroups(steps []StepDetail) []stepGroup {
 }
 
 func isAnchorStep(text string) bool {
-	lower := strings.ToLower(text)
-	return strings.Contains(lower, " call api ") || strings.Contains(lower, " run flow ")
+	lower := strings.ToLower(strings.TrimSpace(text))
+	if strings.Contains(lower, " call api ") || strings.HasPrefix(lower, "call api ") {
+		return true
+	}
+	if strings.Contains(lower, " run flow ") || strings.HasPrefix(lower, "run flow ") {
+		return true
+	}
+	return false
+}
+
+func buildSummary(rows []Result, meta SummaryMeta, debug bool) summaryData {
+	sum := summaryData{
+		Env:          meta.Env,
+		Tags:         meta.Tags,
+		Includes:     cloneMetaSlice(meta.Includes),
+		Excludes:     cloneMetaSlice(meta.Excludes),
+		NameFilter:   meta.NameFilter,
+		FeatureCount: meta.FeatureCount,
+		Parallel:     meta.Parallel,
+		Debug:        debug,
+	}
+	featureSet := map[string]struct{}{}
+	for _, r := range rows {
+		featureSet[r.Feature] = struct{}{}
+		sum.TotalScenarios++
+		switch strings.ToUpper(r.Status) {
+		case "PASSED":
+			sum.ScenariosPassed++
+		case "FAILED":
+			sum.ScenariosFailed++
+		case "PENDING":
+			sum.ScenariosPending++
+		default:
+			sum.ScenariosPending++
+		}
+		sum.TotalDurationMs += r.DurationMs
+		if r.DurationMs > sum.LongestDuration {
+			sum.LongestDuration = r.DurationMs
+			sum.LongestScenario = r.Scenario
+		}
+		for _, st := range r.Steps {
+			sum.TotalSteps++
+			switch strings.ToUpper(st.Status) {
+			case "PASSED":
+				sum.StepsPassed++
+			case "FAILED":
+				sum.StepsFailed++
+			case "PENDING", "SKIPPED":
+				sum.StepsPending++
+			default:
+				sum.StepsPending++
+			}
+		}
+	}
+	if sum.FeatureCount == 0 {
+		sum.FeatureCount = len(featureSet)
+	}
+	return sum
+}
+
+func cloneMetaSlice(src []string) []string {
+	if len(src) == 0 {
+		return nil
+	}
+	out := make([]string, len(src))
+	copy(out, src)
+	return out
 }
 
 var htmlTemplate = template.Must(template.New("gherkio-report").Parse(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Gherkio Report</title>
+  <title>🥒 Gherkio Report</title>
   <style>
     body { font-family: system-ui, sans-serif; margin: 24px; background-color: #f5f5f5; color: #222; }
     h1 { margin-bottom: 8px; }
@@ -168,7 +265,14 @@ var htmlTemplate = template.Must(template.New("gherkio-report").Parse(`<!DOCTYPE
     .badges .passed { background: #e6f4ea; color: #0f7a2d; }
     .badges .failed { background: #fdecea; color: #b00020; }
     .badges .pending { background: #fff4e5; color: #8a5300; }
-    table { display: none; }
+    .summary-section { margin: 18px 0 28px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 16px; }
+    .summary-card { background: #fff; border: 1px solid #e3e8ee; border-radius: 8px; padding: 16px; box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08); }
+    .summary-label { text-transform: uppercase; font-size: 12px; letter-spacing: 0.08em; color: #64748b; margin-bottom: 6px; }
+    .summary-value { font-size: 24px; font-weight: 600; color: #1f2937; }
+    .summary-meta { font-size: 12px; color: #475569; margin-top: 4px; }
+    .meta-info { display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; color: #475569; margin-top: 4px; }
+    .meta-pill { background: #fff; border: 1px dashed #cbd5f5; border-radius: 999px; padding: 4px 10px; }
     .status-PASSED { color: #17803d; font-weight: 600; }
     .status-FAILED { color: #d93025; font-weight: 600; }
     .status-PENDING { color: #d08701; font-weight: 600; }
@@ -199,11 +303,58 @@ var htmlTemplate = template.Must(template.New("gherkio-report").Parse(`<!DOCTYPE
     .step-status { font-weight: 600; margin-right: 8px; }
     .step-error { color: #d93025; margin-left: 24px; }
     .step-duration { font-size: 12px; color: #666; margin-left: 24px; }
+    details.debug-block, details.debug-inline { margin-top: 10px; }
+    details.debug-block summary, details.debug-inline summary { font-size: 12px; color: #1a73e8; font-weight: 600; cursor: pointer; }
+    details.debug-block summary::before, details.debug-inline summary::before { content: "▸"; margin-right: 6px; transition: transform 0.2s ease; display: inline-block; }
+    details.debug-block[open] summary::before, details.debug-inline[open] summary::before { transform: rotate(90deg); }
+    .debug-content { background: #fff; border: 1px solid #e3e8ee; border-radius: 6px; padding: 12px 16px; display: grid; gap: 12px; }
+    .debug-section pre { background: #1f2933; color: #f1f5f9; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
+    .debug-title { font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; }
   </style>
 </head>
 <body>
-  <h1>Gherkio Report</h1>
+  <h1>🥒 Gherkio Report</h1>
   <p class="small">Generated at: {{ .Generated.Format "2006-01-02 15:04:05 MST" }}</p>
+  <section class="summary-section">
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-label">Features</div>
+        <div class="summary-value">{{.Summary.FeatureCount}}</div>
+        <div class="summary-meta">{{if gt .Summary.Parallel 1}}Parallel {{.Summary.Parallel}} workers{{else}}Sequential run{{end}}</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Scenarios</div>
+        <div class="summary-value">{{.Summary.TotalScenarios}}</div>
+        <div class="summary-meta">Passed {{.Summary.ScenariosPassed}} · Failed {{.Summary.ScenariosFailed}} · Pending {{.Summary.ScenariosPending}}</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Steps</div>
+        <div class="summary-value">{{.Summary.TotalSteps}}</div>
+        <div class="summary-meta">Passed {{.Summary.StepsPassed}} · Failed {{.Summary.StepsFailed}} · Pending {{.Summary.StepsPending}}</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Duration</div>
+        <div class="summary-value">{{.Summary.TotalDurationMs}} ms</div>
+        {{if .Summary.LongestScenario}}<div class="summary-meta">Longest: {{.Summary.LongestScenario}} ({{.Summary.LongestDuration}} ms)</div>{{end}}
+      </div>
+    </div>
+    <div class="meta-info">
+      {{if .Summary.Env}}<span class="meta-pill"><strong>Env:</strong> {{.Summary.Env}}</span>{{end}}
+      {{if .Summary.Tags}}<span class="meta-pill"><strong>Tags:</strong> {{.Summary.Tags}}</span>{{end}}
+      {{if .Summary.NameFilter}}<span class="meta-pill"><strong>Name filter:</strong> {{.Summary.NameFilter}}</span>{{end}}
+      {{if .Summary.Includes}}
+        <span class="meta-pill"><strong>Includes:</strong>
+          {{range $i, $v := .Summary.Includes}}{{if $i}}, {{end}}{{$v}}{{end}}
+        </span>
+      {{end}}
+      {{if .Summary.Excludes}}
+        <span class="meta-pill"><strong>Excludes:</strong>
+          {{range $i, $v := .Summary.Excludes}}{{if $i}}, {{end}}{{$v}}{{end}}
+        </span>
+      {{end}}
+      {{if .Summary.Debug}}<span class="meta-pill">Debug payloads enabled</span>{{end}}
+    </div>
+  </section>
   {{if .Features}}
     {{range .Features}}
       <details open>
@@ -247,12 +398,42 @@ var htmlTemplate = template.Must(template.New("gherkio-report").Parse(`<!DOCTYPE
                           </li>
                         {{end}}
                       </ol>
+                      {{if and $.Debug .Debug}}
+                        <details class="debug-block">
+                          <summary>Show payload</summary>
+                          <div class="debug-content">
+                            <div class="debug-section">
+                              <div class="debug-title">Request Body</div>
+                              <pre>{{.Debug.RequestBody}}</pre>
+                            </div>
+                            <div class="debug-section">
+                              <div class="debug-title">Response (status {{.Debug.ResponseStatus}})</div>
+                              <pre>{{.Debug.ResponseBody}}</pre>
+                            </div>
+                          </div>
+                        </details>
+                      {{end}}
                     </details>
                   {{else}}
                     <div class="step-line">
                       <span class="step-status status-{{.Status}}">{{.Status}}</span>{{.Title}}
                       {{if ne .DurationMs 0}}<span class="step-duration">{{.DurationMs}} ms</span>{{end}}
                     </div>
+                    {{if and $.Debug .Debug}}
+                      <details class="debug-inline">
+                        <summary>Show payload</summary>
+                        <div class="debug-content">
+                          <div class="debug-section">
+                            <div class="debug-title">Request Body</div>
+                            <pre>{{.Debug.RequestBody}}</pre>
+                          </div>
+                          <div class="debug-section">
+                            <div class="debug-title">Response (status {{.Debug.ResponseStatus}})</div>
+                            <pre>{{.Debug.ResponseBody}}</pre>
+                          </div>
+                        </div>
+                      </details>
+                    {{end}}
                   {{end}}
                 {{end}}
               </div>
