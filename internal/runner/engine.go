@@ -1,0 +1,140 @@
+package runner
+
+import (
+	"bytes"
+	"encoding/base64"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"strings"
+	"text/template"
+
+	"github.com/Masterminds/sprig/v3"
+)
+
+type Request struct {
+	APIKey  string
+	Path    map[string]string
+	Query   map[string]string
+	Headers map[string]string
+	Body    []byte
+}
+
+type Response struct {
+	Status int
+	Header http.Header
+	Body   []byte
+}
+
+func Call(ctx *Context, req Request) (Response, error) {
+	def, ok := ctx.Cat.Endpoints[req.APIKey]
+	if !ok {
+		return Response{}, fmt.Errorf("unknown api key: %s", req.APIKey)
+	}
+	// render path
+	path, err := render(def.Path, req.Path, ctx.Store)
+	if err != nil {
+		return Response{}, err
+	}
+	url := strings.TrimRight(ctx.Env.BaseURL, "/") + path
+	// TODO: query params
+
+	httpReq, err := http.NewRequest(def.Method, url, bytes.NewReader(req.Body))
+	if err != nil {
+		return Response{}, err
+	}
+	// headers: env -> def -> req (req overrides)
+	for k, v := range ctx.Env.Headers {
+		httpReq.Header.Set(k, v)
+	}
+	for k, v := range def.Headers {
+		httpReq.Header.Set(k, v)
+	}
+	for k, v := range req.Headers {
+		httpReq.Header.Set(k, v)
+	}
+
+	authName := def.Auth
+	if authName == "" {
+		authName = ctx.CurrentAuth
+	}
+
+	if authName != "" {
+		applyAuth(ctx, httpReq, authName)
+	}
+
+	resp, err := ctx.HTTP.Do(httpReq)
+	if err != nil {
+		return Response{}, err
+	}
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(resp.Body)
+	return Response{Status: resp.StatusCode, Header: resp.Header, Body: b}, nil
+}
+
+func render(tpl string, pathParams map[string]string, store map[string]any) (string, error) {
+	if tpl == "" {
+		return "", errors.New("empty path template")
+	}
+	t, err := template.New("p").Funcs(sprig.FuncMap()).Parse(tpl)
+	if err != nil {
+		return "", err
+	}
+	ctx := map[string]any{"store": store}
+	for k, v := range pathParams {
+		ctx[k] = v
+	}
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, ctx); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+func applyAuth(ctx *Context, r *http.Request, profile string) {
+	ap, ok := ctx.Cat.Auth[profile]
+	if !ok {
+		return
+	}
+	if ap.FromStore != "" {
+		val, ok := ctx.Store[ap.FromStore]
+		if !ok {
+			return
+		}
+		tpl := ap.Template
+		if tpl == "" {
+			tpl = "{{ .value }}"
+		}
+		out, err := execTemplate(tpl, map[string]any{"value": val, "store": ctx.Store})
+		if err == nil && ap.Header != "" {
+			r.Header.Set(ap.Header, out)
+		}
+		return
+	}
+	if ap.UsernameEnv != "" || ap.PasswordEnv != "" {
+		user := os.Getenv(ap.UsernameEnv)
+		pass := os.Getenv(ap.PasswordEnv)
+		b64 := base64.StdEncoding.EncodeToString([]byte(user + ":" + pass))
+		r.Header.Set("Authorization", "Basic "+b64)
+	}
+}
+
+func execTemplate(tpl string, ctxs ...map[string]any) (string, error) {
+	t, err := template.New("tpl").Funcs(sprig.FuncMap()).Parse(tpl)
+	if err != nil {
+		return "", err
+	}
+	ctx := map[string]any{}
+	for _, c := range ctxs {
+		for k, v := range c {
+			ctx[k] = v
+		}
+	}
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, ctx); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
