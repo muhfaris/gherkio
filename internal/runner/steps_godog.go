@@ -3,9 +3,11 @@ package runner
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
@@ -13,6 +15,7 @@ import (
 	"time"
 
 	"github.com/cucumber/godog"
+	messages "github.com/cucumber/messages/go/v21"
 	"github.com/muhfaris/gherkio/internal/loader"
 	"github.com/tidwall/gjson"
 )
@@ -24,6 +27,8 @@ type world struct {
 	flows           map[string]loader.Flow
 	savedEnvHeaders map[string]string
 	lastDurMs       int64
+	lastStepArg     *messages.PickleStepArgument
+	lastHTTPReq     *http.Request
 }
 
 // helper to bind + register docs in catalog
@@ -38,12 +43,22 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 	return func(sc *godog.ScenarioContext) {
 		w := &world{ctx: NewContext(env, cat), flows: flows}
 		if sc != nil {
+			sc.StepContext().Before(func(ctx context.Context, st *godog.Step) (context.Context, error) {
+				w.lastStepArg = st.Argument
+				return ctx, nil
+			})
+			sc.StepContext().After(func(ctx context.Context, _ *godog.Step, _ godog.StepResultStatus, _ error) (context.Context, error) {
+				w.lastStepArg = nil
+				return ctx, nil
+			})
 			sc.Before(func(c context.Context, _ *godog.Scenario) (context.Context, error) {
 				// reset per-scenario
 				w.ctx = NewContext(env, cat)
 				w.lastReq = Request{}
 				w.lastRes = Response{}
 				w.flows = flows
+				w.lastStepArg = nil
+				w.lastHTTPReq = nil
 				// snapshot default env headers for this scenario
 				w.savedEnvHeaders = map[string]string{}
 				for k, v := range w.ctx.Env.Headers {
@@ -65,6 +80,29 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		// No-op (env & catalogs sudah diload di CLI)
 		bind(sc, `^I load env [\"']([^\"']+)[\"']$`, "Load env", "", func(_ string) error { return nil })
 		bind(sc, `^I load flows from [\"']([^\"']+)[\"']$`, "Load flows", "", func(_ string) error { return nil })
+
+		bind(sc, `^I include feature ["']([^"']+)["']$`, "Include feature", "Include feature \"users.feature\"",
+			func(path string) error {
+				full := filepath.Join("gherkio/features", path)
+				if !strings.HasSuffix(full, ".feature") {
+					full += ".feature"
+				}
+				if _, err := os.Stat(full); err != nil {
+					return fmt.Errorf("included feature not found: %s", full)
+				}
+
+				// Parse and execute via new godog suite (isolated)
+				opts := &godog.Options{Format: "pretty", Paths: []string{full}}
+				suite := godog.TestSuite{
+					Name:                fmt.Sprintf("include-%s", filepath.Base(full)),
+					ScenarioInitializer: InitializeScenario(w.ctx.Env, w.ctx.Cat, w.flows),
+					Options:             opts,
+				}
+				if code := suite.Run(); code != 0 {
+					return fmt.Errorf("included feature %s failed with status %d", full, code)
+				}
+				return nil
+			})
 
 		// header "<name>" should exist
 		bind(sc, `^header [\"']([^\"']+)[\"'] should exist$`, "Assert header exists", "header 'Content-Type' should exist", func(name string) error {
@@ -107,22 +145,57 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		bind(sc, `^I call API [\"']([^\"']+)[\"']$`, "Call API endpoint", "I call API 'users.getById'", func(key string) error {
 			w.lastReq.APIKey = key
 			t0 := time.Now()
-			res, err := Call(w.ctx, w.lastReq)
+			res, httpReq, err := Call(w.ctx, w.lastReq)
 			w.lastDurMs = time.Since(t0).Milliseconds()
 			w.lastRes = res
+			w.lastHTTPReq = httpReq
 			return err
 		})
 
 		// Call API with body: """ {json} """
-		bind(sc, `^I call API [\"']([^\"']+)[\"'] with body:$`, "Call API with docstring body", "I call API 'auth.login' with body:\n\"\"\"\n{\"username\": \"demo\"}\n\"\"\"", func(key string, body *godog.DocString) error {
-			w.lastReq.APIKey = key
-			w.lastReq.Body = []byte(body.Content)
-			t0 := time.Now()
-			res, err := Call(w.ctx, w.lastReq)
-			w.lastDurMs = time.Since(t0).Milliseconds()
-			w.lastRes = res
-			return err
-		})
+		bind(sc, `^I call API [\"']([^\"']+)[\"'] with body:$`, "Call API with structured body", "I call API 'auth.login' with body:\n| username | superadmin |\n| password | Admin@123 |",
+			func(key string) error {
+				w.lastReq.APIKey = key
+				arg := w.lastStepArg
+				if arg == nil {
+					return errors.New("body is empty")
+				}
+
+				switch {
+				case arg.DocString != nil:
+					raw := arg.DocString.Content
+					if strings.TrimSpace(raw) == "" {
+						return errors.New("body is empty")
+					}
+					w.lastReq.Body = []byte(raw)
+				case arg.DataTable != nil:
+					m := pickleTableToMap(arg.DataTable)
+					if len(m) == 0 {
+						return errors.New("body is empty")
+					}
+					b, err := json.Marshal(m)
+					if err != nil {
+						return err
+					}
+					w.lastReq.Body = b
+				default:
+					return errors.New("body is empty")
+				}
+
+				if w.lastReq.Headers == nil {
+					w.lastReq.Headers = map[string]string{}
+				}
+				if _, ok := w.lastReq.Headers["Content-Type"]; !ok {
+					w.lastReq.Headers["Content-Type"] = "application/json"
+				}
+
+				t0 := time.Now()
+				res, httpReq, err := Call(w.ctx, w.lastReq)
+				w.lastDurMs = time.Since(t0).Milliseconds()
+				w.lastRes = res
+				w.lastHTTPReq = httpReq
+				return err
+			})
 
 		// Call API with: (table → JSON body)
 		// example:
@@ -145,14 +218,16 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 			}
 			w.lastReq.Body = b
 			t0 := time.Now()
-			res, err := Call(w.ctx, w.lastReq)
+			res, httpReq, err := Call(w.ctx, w.lastReq)
 			w.lastDurMs = time.Since(t0).Milliseconds()
 			w.lastRes = res
+			w.lastHTTPReq = httpReq
 			return err
 		})
 
 		// I call API "<key>" using fixture "<path>"
-		bind(sc, `^I call API [\"']([^\"']+)[\"'] using fixture [\"']([^\"']+)[\"']$`, "Call API using fixture file", "I call API 'users.create' using fixture 'fixtures/user.json'", func(key, fpath string) error {
+		bind(sc, `^I call API [\"']([^\"']+)[\"'] using fixture [\"']([^\"']+)[\"']$`, "Call API using fixture file", "I call API 'users.create' using fixture 'user.json'", func(key, fpath string) error {
+			fpath = filepath.Join("gherkio/fixtures/", fpath)
 			b, err := os.ReadFile(fpath)
 			if err != nil {
 				return err
@@ -163,12 +238,14 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 			if _, ok := w.lastReq.Headers["Content-Type"]; !ok {
 				w.lastReq.Headers["Content-Type"] = "application/json"
 			}
+
 			w.lastReq.APIKey = key
 			w.lastReq.Body = b
 			t0 := time.Now()
-			res, err := Call(w.ctx, w.lastReq)
+			res, httpReq, err := Call(w.ctx, w.lastReq)
 			w.lastDurMs = time.Since(t0).Milliseconds()
 			w.lastRes = res
+			w.lastHTTPReq = httpReq
 			return err
 		})
 
@@ -184,7 +261,7 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		})
 
 		// Assertions
-		bind(sc, `^response status should be (\\d+)$`, "Assert response status code", "response status should be 200", func(code int) error {
+		bind(sc, `^response status should be (\d+)$`, "Assert response status code", "response status should be 200", func(code int) error {
 			if w.lastRes.Status != code {
 				return fmt.Errorf("expect %d got %d", code, w.lastRes.Status)
 			}
@@ -192,7 +269,7 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		})
 
 		// response status should be in 200-299 (generic range)
-		bind(sc, `^response status should be in (\\d{3})-(\\d{3})$`, "Assert response status in range", "response status should be in 200-299", func(lo, hi int) error {
+		bind(sc, `^response status should be in (\d{3})-(\d{3})$`, "Assert response status in range", "response status should be in 200-299", func(lo, hi int) error {
 			if w.lastRes.Status < lo || w.lastRes.Status > hi {
 				return fmt.Errorf("status %d not in range %d-%d", w.lastRes.Status, lo, hi)
 			}
@@ -208,7 +285,7 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		})
 
 		// response time should be <op> <ms>
-		bind(sc, `^response time should be (==|!=|>=|>|<=|<) (\\d+)ms$`, "Assert response time", "response time should be <= 500ms", func(op string, want int64) error {
+		bind(sc, `^response time should be (==|!=|>=|>|<=|<) (\d+)ms$`, "Assert response time", "response time should be <= 500ms", func(op string, want int64) error {
 			got := w.lastDurMs
 			ok := false
 			switch op {
@@ -317,7 +394,7 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		})
 
 		// json "<path>" should be <op> <number>
-		bind(sc, `^json [\"']([^\"']+)[\"'] should be (==|!=|>=|>|<=|<) ([\\d\\.]+)$`, "Assert JSON numeric value", "json '$.age' should be >= 18", func(path, op, wantStr string) error {
+		bind(sc, `^json [\"']([^\"']+)[\"'] should be (==|!=|>=|>|<=|<) ([0-9.]+)$`, "Assert JSON numeric value", "json '$.age' should be >= 18", func(path, op, wantStr string) error {
 			v := getJSONPath(w.lastRes.Body, path)
 			if !v.Exists() {
 				return fmt.Errorf("json path %q not found", path)
@@ -370,7 +447,7 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		})
 
 		// json "<path>" length should be <op> <n>
-		bind(sc, `^json [\"']([^\"']+)[\"'] length should be (==|!=|>=|>|<=|<) (\\d+)$`, "Assert JSON length", "json '$.items' length should be == 5", func(path, op string, n int) error {
+		bind(sc, `^json [\"']([^\"']+)[\"'] length should be (==|!=|>=|>|<=|<) (\d+)$`, "Assert JSON length", "json '$.items' length should be == 5", func(path, op string, n int) error {
 			v := getJSONPath(w.lastRes.Body, path)
 			if !v.Exists() {
 				return fmt.Errorf("json path %q not found", path)
@@ -416,8 +493,34 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		})
 
 		// set "<key>" to "<value>"
-		bind(sc, `^set [\"']([^\"']+)[\"'] to [\"']([^\"']+)[\"']$`, "Set value in store", "set 'base_url' to 'https://api.example.com'", func(k, v string) error {
-			w.ctx.Store[k] = v
+		bind(sc, `^set [\"']([^\"']+)[\"'] to [\"']([^\"']+)[\"']$`, "Set value in store", "set 'base_url' to 'https://api.example.com'",
+			func(k, v string) error {
+				w.ctx.Store[k] = v
+				return nil
+			})
+
+		// show variable "<key>"
+		bind(sc, `^show variable [\"']([^\"']+)[\"']$`, "Print value from store", "show variable 'access_token'", func(key string) error {
+			val, ok := w.ctx.Store[key]
+			if !ok {
+				return fmt.Errorf("store key %q not found", key)
+			}
+
+			fmt.Printf("store[%s] = ", key)
+			switch v := val.(type) {
+			case string:
+				fmt.Printf("%s\n", v)
+			case fmt.Stringer:
+				fmt.Printf("%s\n", v.String())
+			case []byte:
+				fmt.Printf("%s\n", string(v))
+			default:
+				if b, err := json.MarshalIndent(v, "", "  "); err == nil {
+					fmt.Printf("%s\n", string(b))
+				} else {
+					fmt.Printf("%#v\n", v)
+				}
+			}
 			return nil
 		})
 
@@ -464,7 +567,7 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		})
 
 		// I wait <duration>
-		bind(sc, `^I wait (\\d+)(ms|s)$`, "Wait for duration", "I wait 100ms", func(n int, unit string) error {
+		bind(sc, `^I wait (\d+)(ms|s)$`, "Wait for duration", "I wait 100ms", func(n int, unit string) error {
 			var d time.Duration
 			if unit == "ms" {
 				d = time.Duration(n) * time.Millisecond
@@ -485,6 +588,35 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 
 		// print response
 		bind(sc, `^print response$`, "Print last response", "print response", func() error {
+			fmt.Println("\n--- request ---")
+			if w.lastHTTPReq != nil {
+				fmt.Printf("method: %s\n", w.lastHTTPReq.Method)
+				fmt.Printf("url: %s\n", w.lastHTTPReq.URL.String())
+				if len(w.lastHTTPReq.Header) > 0 {
+					fmt.Println("headers:")
+					for k, vals := range w.lastHTTPReq.Header {
+						fmt.Printf("  %s: %s\n", k, strings.Join(vals, ", "))
+					}
+				} else {
+					fmt.Println("headers: <none>")
+				}
+			} else {
+				fmt.Println("method: <unknown>")
+				fmt.Println("url: <unknown>")
+				fmt.Println("headers: <none>")
+			}
+			if len(w.lastReq.Body) > 0 {
+				var js any
+				if json.Unmarshal(w.lastReq.Body, &js) == nil {
+					pretty, _ := json.MarshalIndent(js, "", "  ")
+					fmt.Printf("body:\n%s\n", string(pretty))
+				} else {
+					fmt.Printf("body:\n%s\n", string(w.lastReq.Body))
+				}
+			} else {
+				fmt.Println("body: <empty>")
+			}
+
 			fmt.Printf("\n--- response ---\nstatus: %d\n", w.lastRes.Status)
 
 			if len(w.lastRes.Header) > 0 {
@@ -492,6 +624,8 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 				for k, vals := range w.lastRes.Header {
 					fmt.Printf("  %s: %s\n", k, strings.Join(vals, ", "))
 				}
+			} else {
+				fmt.Println("headers: <none>")
 			}
 
 			if len(w.lastRes.Body) > 0 {
@@ -519,6 +653,22 @@ func tableToMap(t *godog.Table) map[string]string {
 		}
 	}
 	return m
+}
+
+func pickleTableToMap(t *messages.PickleTable) map[string]string {
+	out := map[string]string{}
+	if t == nil {
+		return out
+	}
+	for _, row := range t.Rows {
+		if row == nil || len(row.Cells) < 2 {
+			continue
+		}
+		key := strings.TrimSpace(row.Cells[0].Value)
+		val := strings.TrimSpace(row.Cells[1].Value)
+		out[key] = val
+	}
+	return out
 }
 
 // Accepts paths like: data.token, $.data.token, $data.token
@@ -574,8 +724,9 @@ func (w *world) runFlow(name string, args map[string]string) error {
 				req.Headers["Content-Type"] = "application/json"
 			}
 		}
-		res, err := Call(w.ctx, req)
+		res, httpReq, err := Call(w.ctx, req)
 		w.lastReq, w.lastRes = req, res
+		w.lastHTTPReq = httpReq
 		if err != nil {
 			return fmt.Errorf("flow %s step %d (%s): %w", name, i+1, st.Call, err)
 		}
@@ -584,14 +735,26 @@ func (w *world) runFlow(name string, args map[string]string) error {
 		}
 		// saves
 		for jp, key := range st.Save {
-			v := gjson.GetBytes(res.Body, jp)
+			v := getJSONPath(res.Body, jp)
 			if !v.Exists() {
-				return fmt.Errorf("flow %s step %d: jsonpath %s not found", name, i+1, jp)
+				preview := previewBody(res.Body)
+				return fmt.Errorf("flow %s step %d: jsonpath %s not found (status=%d body=%s)", name, i+1, jp, res.Status, preview)
 			}
 			w.ctx.Store[key] = v.Value()
 		}
 	}
 	return nil
+}
+
+func previewBody(body []byte) string {
+	if len(body) == 0 {
+		return "<empty>"
+	}
+	max := 512
+	if len(body) > max {
+		return fmt.Sprintf("%q...", string(body[:max]))
+	}
+	return fmt.Sprintf("%q", string(body))
 }
 
 func renderMap(in map[string]string, ctx map[string]any) map[string]string {

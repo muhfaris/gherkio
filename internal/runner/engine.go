@@ -28,24 +28,37 @@ type Response struct {
 	Body   []byte
 }
 
-func Call(ctx *Context, req Request) (Response, error) {
+func Call(ctx *Context, req Request) (Response, *http.Request, error) {
+	httpReq, err := buildHTTPRequest(ctx, req)
+	if err != nil {
+		return Response{}, nil, err
+	}
+
+	resp, err := ctx.HTTP.Do(httpReq)
+	if err != nil {
+		return Response{}, httpReq, err
+	}
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(resp.Body)
+	return Response{Status: resp.StatusCode, Header: resp.Header, Body: b}, httpReq, nil
+}
+
+func buildHTTPRequest(ctx *Context, req Request) (*http.Request, error) {
 	def, ok := ctx.Cat.Endpoints[req.APIKey]
 	if !ok {
-		return Response{}, fmt.Errorf("unknown api key: %s", req.APIKey)
+		return nil, fmt.Errorf("unknown api key: %s", req.APIKey)
 	}
-	// render path
 	path, err := render(def.Path, req.Path, ctx.Store)
 	if err != nil {
-		return Response{}, err
+		return nil, err
 	}
 	url := strings.TrimRight(ctx.Env.BaseURL, "/") + path
 	// TODO: query params
 
 	httpReq, err := http.NewRequest(def.Method, url, bytes.NewReader(req.Body))
 	if err != nil {
-		return Response{}, err
+		return nil, err
 	}
-	// headers: env -> def -> req (req overrides)
 	for k, v := range ctx.Env.Headers {
 		httpReq.Header.Set(k, v)
 	}
@@ -60,18 +73,10 @@ func Call(ctx *Context, req Request) (Response, error) {
 	if authName == "" {
 		authName = ctx.CurrentAuth
 	}
-
 	if authName != "" {
 		applyAuth(ctx, httpReq, authName)
 	}
-
-	resp, err := ctx.HTTP.Do(httpReq)
-	if err != nil {
-		return Response{}, err
-	}
-	defer resp.Body.Close()
-	b, _ := io.ReadAll(resp.Body)
-	return Response{Status: resp.StatusCode, Header: resp.Header, Body: b}, nil
+	return httpReq, nil
 }
 
 func render(tpl string, pathParams map[string]string, store map[string]any) (string, error) {

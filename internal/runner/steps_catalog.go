@@ -18,7 +18,6 @@ type StepCatalog struct {
 var stepCatalog = &StepCatalog{}
 
 func (c *StepCatalog) Add(pat, desc, ex string) {
-	fmt.Printf("Adding step: %s\n", pat)
 	c.items = append(c.items, StepInfo{Pattern: pat, Desc: desc, Example: ex})
 }
 

@@ -58,7 +58,7 @@ func runCall(args []string) error {
 		}
 	}
 
-	resp, err := runner.Call(ctx, req)
+	resp, _, err := runner.Call(ctx, req)
 	if err != nil {
 		return err
 	}

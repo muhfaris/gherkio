@@ -18,7 +18,8 @@ func runSteps(args []string) error {
 		return err
 	}
 
-	runner.InitializeScenario(loader.Env{}, loader.Catalog{}, map[string]loader.Flow{})
+	initScenario := runner.InitializeScenario(loader.Env{}, loader.Catalog{}, map[string]loader.Flow{})
+	initScenario(nil) // bind steps into catalog without a Godog context
 	cat := runner.GetStepCatalog()
 	var data string
 	if format == "md" {
