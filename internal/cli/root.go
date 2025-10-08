@@ -25,6 +25,8 @@ func Execute(args []string) error {
 		return runRun(args[1:])
 	case "steps":
 		return runSteps(args[1:])
+	case "import":
+		return runImport(args[1:])
 	default:
 		return fmt.Errorf("unknown subcommand: %s", sub)
 	}
@@ -38,6 +40,7 @@ Usage:
   gherkio call  [flags]                Single-endpoint call using catalogs
   gherkio run   [flags]                Run Gherkin features (journey)
   gherkio steps [flags]                Run Gherkin steps
+  gherkio import curl [flags]          Import a curl command into catalog/fixture/feature
 
 Flags (call):
   --env <name>                         Environment name (must exist in gherkio/envs/<name>.yaml)
@@ -54,6 +57,15 @@ Flags (run):
   --tags "<expr>"                     (placeholder)
   --parallel N                         (placeholder)
   --report kind[:path]
+
+Flags (import curl):
+  --api <key>                          API key to generate (required)
+  --curl '<cmd>'                       Raw curl command to import (required)
+  --catalog path                       Catalog file to update (default gherkio/apis/imported.yaml)
+  --fixture path                       Fixture file path (optional)
+  --feature path                       Feature file path (optional)
+  --title "Scenario title"            Scenario title override
+  --name "Feature name"              Feature name override
 `)
 }
 

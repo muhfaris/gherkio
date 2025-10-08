@@ -9,6 +9,7 @@ import (
 type Env struct {
 	BaseURL  string            `yaml:"baseURL"`
 	Headers  map[string]string `yaml:"headers"`
+	Vars     map[string]string `yaml:"vars"`
 	Timeouts struct {
 		Request string `yaml:"request"`
 	} `yaml:"timeouts"`

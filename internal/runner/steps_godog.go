@@ -104,6 +104,10 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 					w.currentFeature = ""
 				}
 				w.scenarioStarted = time.Now()
+				for k, v := range w.ctx.Env.Vars {
+					rendered := mustExec(v, map[string]any{"store": w.ctx.Store})
+					w.ctx.Store[k] = rendered
+				}
 				return c, nil
 			})
 
@@ -838,6 +842,24 @@ func (w *world) runFlow(name string, args map[string]string) error {
 	f, ok := w.flows[name]
 	if !ok {
 		return fmt.Errorf("unknown flow: %s", name)
+	}
+	if args == nil {
+		args = map[string]string{}
+	}
+	if len(f.Params) > 0 {
+		for _, param := range f.Params {
+			if _, ok := args[param]; ok {
+				continue
+			}
+			if val, ok := w.ctx.Store[param]; ok {
+				args[param] = fmt.Sprint(val)
+				continue
+			}
+			compound := name + "." + param
+			if val, ok := w.ctx.Store[compound]; ok {
+				args[param] = fmt.Sprint(val)
+			}
+		}
 	}
 	// context for templating
 	ctxMap := map[string]any{"store": w.ctx.Store}
