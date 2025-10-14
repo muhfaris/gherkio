@@ -18,6 +18,8 @@ can later be split into its own repository.
   - `gherkio.run` – proxy to `gherkio run ...`
   - `gherkio.feature.write` – create or overwrite feature files from structured
     arguments.
+  - `gherkio.feature.preview` – render the resulting feature text without
+    touching the filesystem so users can confirm the scenario first.
   - `gherkio.scenario.suggest` – generate a ready-to-save Gherkin scenario
     skeleton (and corresponding `gherkio.feature.write` payload) from high level
     API intent.

@@ -37,9 +37,9 @@ recommendations build on the current MCP bridge implementation in
   redacted snippets of the executed request/response (headers, body
   shapes). AI tools can use these artefacts to justify the generated
   scenarios or craft `Then` assertions automatically.
-* **Scenario preview** – Offer a lightweight tool that renders the final
-  Gherkin text without writing it (`gherkio.feature.preview`). This lets
-  the AI ask the user for confirmation before persisting files.
+* **Scenario preview** – Done. `gherkio.feature.preview` renders the final
+  Gherkin text without touching disk so the AI can request sign-off before
+  persisting via `gherkio.feature.write`.
 
 ## 4. Documentation & Schemas
 

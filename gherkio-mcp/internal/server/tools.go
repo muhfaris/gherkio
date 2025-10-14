@@ -106,6 +106,7 @@ func registerTools(host *Server, mcpServer *mcp.Server) error {
 	registerCallTool(host, mcpServer)
 	registerRunTool(host, mcpServer)
 	registerFeatureWriteTool(host, mcpServer)
+	registerFeaturePreviewTool(host, mcpServer)
 	registerScenarioSuggestTool(host, mcpServer)
 	return nil
 }
@@ -223,15 +224,9 @@ func registerFeatureWriteTool(host *Server, mcpServer *mcp.Server) {
 			return nil, featureWriteResult{}, fmt.Errorf("file exists and overwrite is false")
 		}
 
-		content := input.Content
-		if strings.TrimSpace(content) == "" {
-			if strings.TrimSpace(input.Title) == "" {
-				return nil, featureWriteResult{}, fmt.Errorf("title is required when content is empty")
-			}
-			if len(input.Scenarios) == 0 {
-				return nil, featureWriteResult{}, fmt.Errorf("at least one scenario is required when content is empty")
-			}
-			content = buildFeatureContent(input.Title, input.Description, input.Tags, input.Scenarios)
+		content, err := renderFeatureContent(input.Content, input.Title, input.Description, input.Tags, input.Scenarios)
+		if err != nil {
+			return nil, featureWriteResult{}, err
 		}
 
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
@@ -273,6 +268,41 @@ func registerFeatureWriteTool(host *Server, mcpServer *mcp.Server) {
 	})
 }
 
+type featurePreviewInput struct {
+	Content     string                 `json:"content" jsonschema:"Raw feature file contents"`
+	Title       string                 `json:"title" jsonschema:"Feature title (required if content empty)"`
+	Description string                 `json:"description" jsonschema:"Optional feature description"`
+	Tags        []string               `json:"tags" jsonschema:"Feature level tags"`
+	Scenarios   []featureWriteScenario `json:"scenarios" jsonschema:"Generated scenarios when content is omitted"`
+}
+
+type featurePreviewResult struct {
+	Status  string `json:"status"`
+	Gherkin string `json:"gherkin"`
+}
+
+func registerFeaturePreviewTool(host *Server, mcpServer *mcp.Server) {
+	mcp.AddTool[featurePreviewInput, featurePreviewResult](mcpServer, &mcp.Tool{
+		Name:        "gherkio.feature.preview",
+		Description: "Render a feature file preview without writing to disk",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input featurePreviewInput) (*mcp.CallToolResult, featurePreviewResult, error) {
+		gherkin, err := renderFeatureContent(input.Content, input.Title, input.Description, input.Tags, input.Scenarios)
+		if err != nil {
+			return nil, featurePreviewResult{}, err
+		}
+
+		trimmed := strings.TrimSpace(gherkin)
+		result := &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: "Rendered feature preview"},
+				&mcp.TextContent{Text: "```gherkin\n" + trimmed + "\n```"},
+			},
+		}
+
+		return result, featurePreviewResult{Status: "ok", Gherkin: gherkin}, nil
+	})
+}
+
 func registerScenarioSuggestTool(host *Server, mcpServer *mcp.Server) {
 	mcp.AddTool[scenarioSuggestInput, scenarioSuggestResult](mcpServer, &mcp.Tool{
 		Name:        "gherkio.scenario.suggest",
@@ -289,7 +319,10 @@ func registerScenarioSuggestTool(host *Server, mcpServer *mcp.Server) {
 		featureTitle := deriveFeatureTitle(input)
 		featureDescription := strings.TrimSpace(input.FeatureDescription)
 		featureTags := dedupStrings(input.FeatureTags)
-		gherkin := buildFeatureContent(featureTitle, featureDescription, featureTags, []featureWriteScenario{scenario})
+		gherkin, err := renderFeatureContent("", featureTitle, featureDescription, featureTags, []featureWriteScenario{scenario})
+		if err != nil {
+			return nil, scenarioSuggestResult{}, err
+		}
 		suggestedPath := suggestedFeaturePath(input, scenarioName)
 		summary := fmt.Sprintf("Scenario %q prepared for API %s", scenarioName, strings.TrimSpace(input.API))
 
@@ -337,6 +370,19 @@ func registerScenarioSuggestTool(host *Server, mcpServer *mcp.Server) {
 
 		return result, output, nil
 	})
+}
+
+func renderFeatureContent(content, title, description string, tags []string, scenarios []featureWriteScenario) (string, error) {
+	if strings.TrimSpace(content) != "" {
+		return content, nil
+	}
+	if strings.TrimSpace(title) == "" {
+		return "", fmt.Errorf("title is required when content is empty")
+	}
+	if len(scenarios) == 0 {
+		return "", fmt.Errorf("at least one scenario is required when content is empty")
+	}
+	return buildFeatureContent(title, description, tags, scenarios), nil
 }
 
 func buildFeatureContent(title, description string, tags []string, scenarios []featureWriteScenario) string {
