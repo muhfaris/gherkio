@@ -18,6 +18,11 @@ can later be split into its own repository.
   - `gherkio.run` – proxy to `gherkio run ...`
   - `gherkio.feature.write` – create or overwrite feature files from structured
     arguments.
+  - `gherkio.feature.preview` – render the resulting feature text without
+    touching the filesystem so users can confirm the scenario first.
+  - `gherkio.scenario.suggest` – generate a ready-to-save Gherkin scenario
+    skeleton (and corresponding `gherkio.feature.write` payload) from high level
+    API intent.
 - **Ping** responses for health checks.
 - **Official SDK**: built on top of `github.com/modelcontextprotocol/go-sdk` for spec-compliant transports, schemas, and lifecycle.
 
@@ -31,6 +36,13 @@ cd gherkio-mcp
 GOCACHE=$(pwd)/.gocache go build ./cmd/gherkio-mcp
 ```
 
+Or install the binary into your `$GOBIN`/`$GOPATH/bin` for reuse from any
+workspace:
+
+```bash
+make install
+```
+
 To run directly:
 
 ```bash
@@ -39,6 +51,109 @@ GOCACHE=$(pwd)/.gocache go run ./cmd/gherkio-mcp
 
 > Tip: the binary reads from stdin and writes to stdout. When testing manually,
 > you can pipe JSON-RPC requests using `jq -n` or a small script.
+
+## Usage
+
+1. Start the MCP bridge (either the compiled binary or `go run` command above).
+2. Connect an MCP-compatible client over stdio using the regular handshake
+   sequence.
+3. Use the `resources/*` and `tools/*` methods outlined below to explore and
+   generate test scenarios.
+
+### Listing & Reading Resources
+
+List the repository files exposed to the MCP client:
+
+```json
+{"jsonrpc":"2.0","id":"2","method":"resources/list","params":{}}
+```
+
+Fetch the contents of a specific feature file:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "3",
+  "method": "resources/read",
+  "params": {"uri": "gherkio://features/petstore/get_pet.feature"}
+}
+```
+
+### Generating Scenarios with AI Support
+
+The `gherkio.scenario.suggest` tool turns high-level API intent into Gherkin you
+can review or save. Invoke it via `tools/execute`:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "4",
+  "method": "tools/execute",
+  "params": {
+    "name": "gherkio.scenario.suggest",
+    "arguments": {
+      "featureName": "Get pet",
+      "api": {
+        "name": "petstore",
+        "operation": "GET /pet/{id}",
+        "responseStatus": 200
+      }
+    }
+  }
+}
+```
+
+The result contains:
+
+- a docstring-ready `scenario` block,
+- suggested file and scenario names, and
+- a payload you can feed straight into `gherkio.feature.write`.
+
+### Previewing vs. Writing Features
+
+Use `gherkio.feature.preview` to render the final feature text before touching
+disk:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "5",
+  "method": "tools/execute",
+  "params": {
+    "name": "gherkio.feature.preview",
+    "arguments": {
+      "feature": {"name": "Get pet", "description": "Ensure pets are retrievable"},
+      "scenarios": [
+        {"name": "Get a pet", "steps": [
+          "Given a pet exists",
+          "When I request the pet by id",
+          "Then the response status is 200"
+        ]}
+      ]
+    }
+  }
+}
+```
+
+Once satisfied, persist the feature using the same payload with
+`gherkio.feature.write` (optionally overriding the destination path with
+`relativePath`).
+
+### Proxying CLI Commands
+
+To reuse the existing `gherkio` CLI over MCP, call the provided proxies:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "6",
+  "method": "tools/execute",
+  "params": {"name": "gherkio.call", "arguments": {"args": ["apis", "list"]}}
+}
+```
+
+`gherkio.run` follows the same shape and expects the workflow slug as the first
+argument.
 
 ## Configuration
 

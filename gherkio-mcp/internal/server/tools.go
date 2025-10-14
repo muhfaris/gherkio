@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -68,10 +69,45 @@ type featureWriteResult struct {
 	Created  bool   `json:"created"`
 }
 
+type scenarioSuggestInput struct {
+	FeatureTitle       string            `json:"featureTitle" jsonschema:"Optional feature title"`
+	FeatureDescription string            `json:"featureDescription" jsonschema:"Optional feature description"`
+	FeatureTags        []string          `json:"featureTags" jsonschema:"Tags applied to the feature"`
+	ScenarioName       string            `json:"scenarioName" jsonschema:"Explicit scenario name"`
+	Purpose            string            `json:"purpose" jsonschema:"Business goal of the scenario"`
+	Env                string            `json:"env" jsonschema:"Environment under test"`
+	API                string            `json:"api" jsonschema:"API catalog key"`
+	Method             string            `json:"method" jsonschema:"HTTP method"`
+	Endpoint           string            `json:"endpoint" jsonschema:"Concrete endpoint or route template"`
+	Preconditions      []string          `json:"preconditions" jsonschema:"Preconditions to satisfy"`
+	PathParams         map[string]string `json:"pathParams" jsonschema:"Concrete path parameter values"`
+	QueryParams        map[string]string `json:"queryParams" jsonschema:"Query parameter values"`
+	Headers            map[string]string `json:"headers" jsonschema:"HTTP headers"`
+	RequestBody        string            `json:"requestBody" jsonschema:"Request body or fixture reference"`
+	ExpectStatus       int               `json:"expectStatus" jsonschema:"Expected HTTP status code"`
+	ResponseChecks     []string          `json:"responseChecks" jsonschema:"Additional response assertions"`
+	ScenarioTags       []string          `json:"scenarioTags" jsonschema:"Scenario level tags"`
+}
+
+type scenarioSuggestResult struct {
+	FeatureTitle       string                 `json:"featureTitle"`
+	FeatureDescription string                 `json:"featureDescription,omitempty"`
+	FeatureTags        []string               `json:"featureTags,omitempty"`
+	Scenario           featureWriteScenario   `json:"scenario"`
+	SuggestedPath      string                 `json:"suggestedPath"`
+	Gherkin            string                 `json:"gherkin"`
+	Summary            string                 `json:"summary"`
+	FeatureTemplate    featureWriteInput      `json:"featureTemplate"`
+	Command            []string               `json:"command"`
+	CallArguments      map[string]interface{} `json:"callArguments"`
+}
+
 func registerTools(host *Server, mcpServer *mcp.Server) error {
 	registerCallTool(host, mcpServer)
 	registerRunTool(host, mcpServer)
 	registerFeatureWriteTool(host, mcpServer)
+	registerFeaturePreviewTool(host, mcpServer)
+	registerScenarioSuggestTool(host, mcpServer)
 	return nil
 }
 
@@ -188,15 +224,9 @@ func registerFeatureWriteTool(host *Server, mcpServer *mcp.Server) {
 			return nil, featureWriteResult{}, fmt.Errorf("file exists and overwrite is false")
 		}
 
-		content := input.Content
-		if strings.TrimSpace(content) == "" {
-			if strings.TrimSpace(input.Title) == "" {
-				return nil, featureWriteResult{}, fmt.Errorf("title is required when content is empty")
-			}
-			if len(input.Scenarios) == 0 {
-				return nil, featureWriteResult{}, fmt.Errorf("at least one scenario is required when content is empty")
-			}
-			content = buildFeatureContent(input.Title, input.Description, input.Tags, input.Scenarios)
+		content, err := renderFeatureContent(input.Content, input.Title, input.Description, input.Tags, input.Scenarios)
+		if err != nil {
+			return nil, featureWriteResult{}, err
 		}
 
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
@@ -236,6 +266,123 @@ func registerFeatureWriteTool(host *Server, mcpServer *mcp.Server) {
 		}
 		return result, output, nil
 	})
+}
+
+type featurePreviewInput struct {
+	Content     string                 `json:"content" jsonschema:"Raw feature file contents"`
+	Title       string                 `json:"title" jsonschema:"Feature title (required if content empty)"`
+	Description string                 `json:"description" jsonschema:"Optional feature description"`
+	Tags        []string               `json:"tags" jsonschema:"Feature level tags"`
+	Scenarios   []featureWriteScenario `json:"scenarios" jsonschema:"Generated scenarios when content is omitted"`
+}
+
+type featurePreviewResult struct {
+	Status  string `json:"status"`
+	Gherkin string `json:"gherkin"`
+}
+
+func registerFeaturePreviewTool(host *Server, mcpServer *mcp.Server) {
+	mcp.AddTool[featurePreviewInput, featurePreviewResult](mcpServer, &mcp.Tool{
+		Name:        "gherkio.feature.preview",
+		Description: "Render a feature file preview without writing to disk",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input featurePreviewInput) (*mcp.CallToolResult, featurePreviewResult, error) {
+		gherkin, err := renderFeatureContent(input.Content, input.Title, input.Description, input.Tags, input.Scenarios)
+		if err != nil {
+			return nil, featurePreviewResult{}, err
+		}
+
+		trimmed := strings.TrimSpace(gherkin)
+		result := &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: "Rendered feature preview"},
+				&mcp.TextContent{Text: "```gherkin\n" + trimmed + "\n```"},
+			},
+		}
+
+		return result, featurePreviewResult{Status: "ok", Gherkin: gherkin}, nil
+	})
+}
+
+func registerScenarioSuggestTool(host *Server, mcpServer *mcp.Server) {
+	mcp.AddTool[scenarioSuggestInput, scenarioSuggestResult](mcpServer, &mcp.Tool{
+		Name:        "gherkio.scenario.suggest",
+		Description: "Generate a structured Gherkin scenario skeleton for an API call",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input scenarioSuggestInput) (*mcp.CallToolResult, scenarioSuggestResult, error) {
+		scenarioName := deriveScenarioName(input)
+		scenarioSteps := buildScenarioSteps(input)
+		scenario := featureWriteScenario{
+			Name:  scenarioName,
+			Steps: scenarioSteps,
+			Tags:  dedupStrings(input.ScenarioTags),
+		}
+
+		featureTitle := deriveFeatureTitle(input)
+		featureDescription := strings.TrimSpace(input.FeatureDescription)
+		featureTags := dedupStrings(input.FeatureTags)
+		gherkin, err := renderFeatureContent("", featureTitle, featureDescription, featureTags, []featureWriteScenario{scenario})
+		if err != nil {
+			return nil, scenarioSuggestResult{}, err
+		}
+		suggestedPath := suggestedFeaturePath(input, scenarioName)
+		summary := fmt.Sprintf("Scenario %q prepared for API %s", scenarioName, strings.TrimSpace(input.API))
+
+		template := featureWriteInput{
+			Path:        suggestedPath,
+			Title:       featureTitle,
+			Description: featureDescription,
+			Tags:        featureTags,
+			Scenarios:   []featureWriteScenario{scenario},
+			Overwrite:   true,
+		}
+
+		callArgs := map[string]interface{}{
+			"env":            input.Env,
+			"api":            input.API,
+			"method":         strings.ToUpper(strings.TrimSpace(input.Method)),
+			"endpoint":       input.Endpoint,
+			"expectStatus":   input.ExpectStatus,
+			"pathParams":     input.PathParams,
+			"queryParams":    input.QueryParams,
+			"headers":        input.Headers,
+			"requestBody":    input.RequestBody,
+			"responseChecks": input.ResponseChecks,
+		}
+
+		result := &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: summary},
+				&mcp.TextContent{Text: "```gherkin\n" + strings.TrimSpace(gherkin) + "\n```"},
+			},
+		}
+
+		output := scenarioSuggestResult{
+			FeatureTitle:       featureTitle,
+			FeatureDescription: featureDescription,
+			FeatureTags:        featureTags,
+			Scenario:           scenario,
+			SuggestedPath:      suggestedPath,
+			Gherkin:            gherkin,
+			Summary:            summary,
+			FeatureTemplate:    template,
+			Command:            []string{"gherkio.feature.write"},
+			CallArguments:      callArgs,
+		}
+
+		return result, output, nil
+	})
+}
+
+func renderFeatureContent(content, title, description string, tags []string, scenarios []featureWriteScenario) (string, error) {
+	if strings.TrimSpace(content) != "" {
+		return content, nil
+	}
+	if strings.TrimSpace(title) == "" {
+		return "", fmt.Errorf("title is required when content is empty")
+	}
+	if len(scenarios) == 0 {
+		return "", fmt.Errorf("at least one scenario is required when content is empty")
+	}
+	return buildFeatureContent(title, description, tags, scenarios), nil
 }
 
 func buildFeatureContent(title, description string, tags []string, scenarios []featureWriteScenario) string {
@@ -378,4 +525,181 @@ func dedupStrings(in []string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+func deriveScenarioName(input scenarioSuggestInput) string {
+	if name := strings.TrimSpace(input.ScenarioName); name != "" {
+		return name
+	}
+	if purpose := strings.TrimSpace(input.Purpose); purpose != "" {
+		return purpose
+	}
+	api := strings.TrimSpace(input.API)
+	if api != "" && input.ExpectStatus > 0 {
+		return fmt.Sprintf("%s returns %d", api, input.ExpectStatus)
+	}
+	if api != "" {
+		return fmt.Sprintf("Exercise %s", api)
+	}
+	if input.ExpectStatus > 0 {
+		return fmt.Sprintf("Expect status %d", input.ExpectStatus)
+	}
+	return "Generated API scenario"
+}
+
+func deriveFeatureTitle(input scenarioSuggestInput) string {
+	if title := strings.TrimSpace(input.FeatureTitle); title != "" {
+		return title
+	}
+	api := strings.TrimSpace(input.API)
+	if api != "" {
+		return fmt.Sprintf("Validate %s API", api)
+	}
+	if purpose := strings.TrimSpace(input.Purpose); purpose != "" {
+		return purpose
+	}
+	return "API validation"
+}
+
+func buildScenarioSteps(input scenarioSuggestInput) []string {
+	var steps []string
+	var givens []string
+
+	if env := strings.TrimSpace(input.Env); env != "" {
+		givens = append(givens, fmt.Sprintf("the \"%s\" environment is configured", env))
+	}
+	for _, pre := range input.Preconditions {
+		pre = strings.TrimSpace(pre)
+		if pre == "" {
+			continue
+		}
+		givens = append(givens, pre)
+	}
+	for i, g := range givens {
+		keyword := "Given"
+		if i > 0 {
+			keyword = "And"
+		}
+		steps = append(steps, fmt.Sprintf("%s %s", keyword, g))
+	}
+
+	method := strings.ToUpper(strings.TrimSpace(input.Method))
+	if method == "" {
+		method = "GET"
+	}
+	endpoint := strings.TrimSpace(input.Endpoint)
+	api := strings.TrimSpace(input.API)
+	var whenPhrase string
+	switch {
+	case api != "" && endpoint != "":
+		whenPhrase = fmt.Sprintf("I call the \"%s\" API using %s %s", api, method, endpoint)
+	case api != "":
+		whenPhrase = fmt.Sprintf("I call the \"%s\" API using %s", api, method)
+	case endpoint != "":
+		whenPhrase = fmt.Sprintf("I send a %s request to %s", method, endpoint)
+	default:
+		whenPhrase = fmt.Sprintf("I send a %s request", method)
+	}
+	steps = append(steps, fmt.Sprintf("When %s", whenPhrase))
+
+	for _, kv := range sortedKeyVals(input.PathParams) {
+		steps = append(steps, fmt.Sprintf("And the path parameter \"%s\" is \"%s\"", kv.Key, kv.Value))
+	}
+	for _, kv := range sortedKeyVals(input.QueryParams) {
+		steps = append(steps, fmt.Sprintf("And the query parameter \"%s\" is \"%s\"", kv.Key, kv.Value))
+	}
+	for _, kv := range sortedKeyVals(input.Headers) {
+		steps = append(steps, fmt.Sprintf("And the \"%s\" header is \"%s\"", kv.Key, kv.Value))
+	}
+
+	if body := strings.TrimSpace(input.RequestBody); body != "" {
+		steps = append(steps, formatDocstringStep(body))
+	}
+
+	startedThen := false
+	if input.ExpectStatus > 0 {
+		steps = append(steps, fmt.Sprintf("Then the response status should be %d", input.ExpectStatus))
+		startedThen = true
+	}
+	for i, check := range input.ResponseChecks {
+		check = strings.TrimSpace(check)
+		if check == "" {
+			continue
+		}
+		keyword := "And"
+		if !startedThen && i == 0 {
+			keyword = "Then"
+			startedThen = true
+		}
+		steps = append(steps, fmt.Sprintf("%s %s", keyword, check))
+	}
+	if !startedThen {
+		steps = append(steps, "Then the response should match the acceptance criteria")
+	}
+
+	return steps
+}
+
+func suggestedFeaturePath(input scenarioSuggestInput, scenarioName string) string {
+	api := strings.TrimSpace(input.API)
+	purpose := strings.TrimSpace(input.Purpose)
+	slugSource := api
+	if slugSource != "" && purpose != "" {
+		slugSource = slugSource + "-" + purpose
+	} else if slugSource == "" {
+		slugSource = scenarioName
+	}
+	slug := slugify(slugSource)
+	if slug == "" {
+		slug = "generated-scenario"
+	}
+	return filepath.ToSlash(filepath.Join("features", "generated", slug+".feature"))
+}
+
+func formatDocstringStep(body string) string {
+	lines := strings.Split(body, "\n")
+	for i, line := range lines {
+		lines[i] = "      " + strings.TrimRight(line, " ")
+	}
+	return "And the request body is:\n      \"\"\"\n" + strings.Join(lines, "\n") + "\n      \"\"\""
+}
+
+type keyVal struct {
+	Key   string
+	Value string
+}
+
+func sortedKeyVals(m map[string]string) []keyVal {
+	if len(m) == 0 {
+		return nil
+	}
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		if strings.TrimSpace(k) == "" {
+			continue
+		}
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	out := make([]keyVal, 0, len(keys))
+	for _, k := range keys {
+		v := strings.TrimSpace(m[k])
+		if v == "" {
+			continue
+		}
+		out = append(out, keyVal{Key: k, Value: v})
+	}
+	return out
+}
+
+var slugPattern = regexp.MustCompile(`[^a-z0-9]+`)
+
+func slugify(in string) string {
+	in = strings.ToLower(strings.TrimSpace(in))
+	if in == "" {
+		return ""
+	}
+	slug := slugPattern.ReplaceAllString(in, "-")
+	slug = strings.Trim(slug, "-")
+	return slug
 }
