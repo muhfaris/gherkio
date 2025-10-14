@@ -33,14 +33,14 @@ func Execute(args []string) error {
 }
 
 func printHelp() {
-	fmt.Println(`🥒 gherkio – declarative API testing & journey runner (MVP)
+	fmt.Print(`🥒 gherkio – declarative API testing & journey runner (MVP)
 
 Usage:
   gherkio init                         Initialize gherkio/ structure with examples
   gherkio call  [flags]                Single-endpoint call using catalogs
   gherkio run   [flags]                Run Gherkin features (journey)
   gherkio steps [flags]                Run Gherkin steps
-  gherkio import curl [flags]          Import a curl command into catalog/fixture/feature
+  gherkio import [flags]               Import curl commands or OpenAPI specs into catalogs/fixtures
 
 Flags (call):
   --env <name>                         Environment name (must exist in gherkio/envs/<name>.yaml)
@@ -48,7 +48,7 @@ Flags (call):
   --path k=v [--path k=v]              Path params
   --query k=v [--query k=v]            Query params
   --header k=v [--header k=v]          Headers
-  --body @file.json | '{json}'         Request body
+  --body @fixture (json|yaml) | '{json}' Request body (JSON or multipart fixture)
   --expect-status N                    Expected HTTP status code
   --report kind[:path]                 Reporters (pretty|html|junit|cucumber|csv)
 
@@ -58,14 +58,17 @@ Flags (run):
   --parallel N                         (placeholder)
   --report kind[:path]
 
-Flags (import curl):
+Flags (import):
   --api <key>                          API key to generate (required)
   --curl '<cmd>'                       Raw curl command to import (required)
-  --catalog path                       Catalog file to update (default gherkio/apis/imported.yaml)
+  --catalog path                       Catalog file to update (default gherkio/apis/imported.yaml, or gherkio/apis/openapi.yaml with --openapi)
   --fixture path                       Fixture file path (optional)
   --feature path                       Feature file path (optional)
   --title "Scenario title"            Scenario title override
   --name "Feature name"              Feature name override
+  --openapi path                       OpenAPI file (YAML/JSON) to import (mutually exclusive with --curl)
+  --fixtures dir                       Directory for generated fixtures when using --openapi (default gherkio/fixtures/openapi)
+  --prefix key                         Optional prefix added to generated API keys (OpenAPI mode)
 `)
 }
 

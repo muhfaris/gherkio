@@ -21,11 +21,13 @@ func runRun(args []string) (err error) {
 	fs := flag.NewFlagSet("run", flag.ContinueOnError)
 	var envName, tags, nameRegex string
 	var parallel int
+	var debug bool
 	includes := multiString(fs, "feature")         // repeatable include filter
 	excludes := multiString(fs, "exclude-feature") // repeatable exclude filter
 
 	reports := multiString(fs, "report")
 	fs.StringVar(&envName, "env", "", "environment name")
+	fs.BoolVar(&debug, "debug", false, "print request/response and include debug info in HTML report")
 	fs.StringVar(&tags, "tags", "", "tag expression (e.g. \"@smoke and not @wip\")")
 	fs.StringVar(&nameRegex, "name", "", "filter Scenario name by regex (best-effort)")
 	fs.IntVar(&parallel, "parallel", 1, "number of parallel workers (by feature file)")
@@ -111,15 +113,18 @@ func runRun(args []string) (err error) {
 	}
 
 	var (
-		agg          *scenarioAggregator
-		restoreSink  func()
-		restoreDebug func()
+		agg            *scenarioAggregator
+		restoreSink    func()
+		restoreDebug   func()
+		restoreConsole func()
 	)
-	agg = newScenarioAggregator(csvPaths, htmlSpecs, meta)
+	agg = newScenarioAggregator(csvPaths, htmlSpecs, meta, debug)
 	if agg != nil {
-		if agg.htmlDebug {
+		if agg.debugEnabled {
 			restoreDebug = runner.SetDebugCapture(true)
+			restoreConsole = runner.SetDebugConsole(true)
 			defer restoreDebug()
+			defer restoreConsole()
 		}
 		restoreSink = runner.SetScenarioSink(agg)
 		defer restoreSink()
@@ -132,6 +137,12 @@ func runRun(args []string) (err error) {
 				}
 			}
 		}()
+	}
+	if debug && agg == nil {
+		restoreDebug = runner.SetDebugCapture(true)
+		restoreConsole = runner.SetDebugConsole(true)
+		defer restoreDebug()
+		defer restoreConsole()
 	}
 
 	if parallel < 1 {
@@ -280,28 +291,29 @@ func classifyReports(specs []string) (csvPaths []string, htmlSpecs []htmlSpec, u
 }
 
 type scenarioAggregator struct {
-	csv       *report.CSV
-	csvPaths  []string
-	htmls     []*report.HTML
-	htmlDebug bool
-	mu        sync.Mutex
-	firstErr  error
+	csv          *report.CSV
+	csvPaths     []string
+	htmls        []*report.HTML
+	debugEnabled bool
+	mu           sync.Mutex
+	firstErr     error
 }
 
-func newScenarioAggregator(csvPaths []string, htmls []htmlSpec, meta report.SummaryMeta) *scenarioAggregator {
+func newScenarioAggregator(csvPaths []string, htmls []htmlSpec, meta report.SummaryMeta, debugFlag bool) *scenarioAggregator {
 	if len(csvPaths) == 0 && len(htmls) == 0 {
 		return nil
 	}
 	inst := &scenarioAggregator{
-		csv:      report.NewCSV(),
-		csvPaths: csvPaths,
+		csv:          report.NewCSV(),
+		csvPaths:     csvPaths,
+		debugEnabled: debugFlag,
 	}
 	inst.htmls = make([]*report.HTML, 0, len(htmls))
 	for _, spec := range htmls {
-		h := report.NewHTML(spec.Path, spec.Debug, meta)
+		h := report.NewHTML(spec.Path, spec.Debug || debugFlag, meta)
 		inst.htmls = append(inst.htmls, h)
-		if spec.Debug {
-			inst.htmlDebug = true
+		if spec.Debug || debugFlag {
+			inst.debugEnabled = true
 		}
 	}
 	return inst

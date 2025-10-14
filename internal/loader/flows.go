@@ -22,6 +22,7 @@ type FlowStep struct {
 	Query   map[string]string `yaml:"query,omitempty"`
 	Headers map[string]string `yaml:"headers,omitempty"`
 	Body    string            `yaml:"body,omitempty"`
+	Fixture string            `yaml:"fixture,omitempty"`
 	Save    map[string]string `yaml:"save,omitempty"`
 	Expect  *Expectation      `yaml:"expect,omitempty"`
 	SetAuth string            `yaml:"setAuth,omitempty"`

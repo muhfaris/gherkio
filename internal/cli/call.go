@@ -50,13 +50,21 @@ func runCall(args []string) error {
 	}
 	if body != "" {
 		if strings.HasPrefix(body, "@") {
-			b, err := os.ReadFile(strings.TrimPrefix(body, "@"))
+			fixturePath := strings.TrimPrefix(body, "@")
+			payload, err := runner.LoadFixtureFile(fixturePath, ctx.Store)
 			if err != nil {
 				return err
 			}
-			req.Body = b
+			runner.ApplyFixture(&req, payload)
 		} else {
+			req.Multipart = nil
 			req.Body = []byte(body)
+			if req.Headers == nil {
+				req.Headers = map[string]string{}
+			}
+			if _, ok := req.Headers["Content-Type"]; !ok {
+				req.Headers["Content-Type"] = "application/json"
+			}
 		}
 	}
 

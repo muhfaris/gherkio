@@ -206,7 +206,27 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 			return nil
 		})
 		bind(sc, `^I set query params:$`, "Set query parameters", "I set query params:\n| page | 1 |\n| limit | 10 |", func(table *godog.Table) error {
-			w.lastReq.Query = tableToMap(table)
+			rendered := map[string]string{}
+			if table != nil {
+				ctx := map[string]any{"store": w.ctx.Store}
+				for _, r := range table.Rows {
+					if len(r.Cells) < 2 {
+						continue
+					}
+					key := strings.TrimSpace(r.Cells[0].Value)
+					val := strings.TrimSpace(r.Cells[1].Value)
+					out, err := execTemplate(val, ctx)
+					if err != nil {
+						return fmt.Errorf("render query param %s: %w", key, err)
+					}
+					rendered[key] = out
+				}
+			}
+			w.lastReq.Query = rendered
+			return nil
+		})
+		bind(sc, `^I clear query params$`, "Clear query parameters", "I clear query params", func() error {
+			w.lastReq.Query = nil
 			return nil
 		})
 		bind(sc, `^I set headers:$`, "Set headers", "I set headers:\n| Authorization | Bearer token |\n| Content-Type | application/json |", func(table *godog.Table) error {
@@ -304,23 +324,13 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		// I call API "<key>" using fixture "<path>"
 		bind(sc, `^I call API [\"']([^\"']+)[\"'] using fixture [\"']([^\"']+)[\"']$`, "Call API using fixture file", "I call API 'users.create' using fixture 'user.json'", func(key, fpath string) error {
 			fpath = filepath.Join("gherkio/fixtures/", fpath)
-			b, err := os.ReadFile(fpath)
+			payload, err := LoadFixtureFile(fpath, w.ctx.Store)
 			if err != nil {
-				return err
+				return fmt.Errorf("load fixture %s: %w", fpath, err)
 			}
-			body, err := execTemplate(string(b), map[string]any{"store": w.ctx.Store})
-			if err != nil {
-				return fmt.Errorf("render fixture %s: %w", fpath, err)
-			}
-			if w.lastReq.Headers == nil {
-				w.lastReq.Headers = map[string]string{}
-			}
-			if _, ok := w.lastReq.Headers["Content-Type"]; !ok {
-				w.lastReq.Headers["Content-Type"] = "application/json"
-			}
+			ApplyFixture(&w.lastReq, payload)
 
 			w.lastReq.APIKey = key
-			w.lastReq.Body = []byte(body)
 			t0 := time.Now()
 			res, httpReq, err := Call(w.ctx, w.lastReq)
 			w.lastDurMs = time.Since(t0).Milliseconds()
@@ -517,6 +527,88 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 			return nil
 		})
 
+		// I create <n> document groups
+		bind(sc, `^I create (\\d+) document groups$`, "Create multiple document groups", "I create 5 document groups", func(count int) error {
+			if count <= 0 {
+				return nil
+			}
+			suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+			ids := make([]string, 0, count)
+			for i := 1; i <= count; i++ {
+				name := fmt.Sprintf("Document Group %s-%d", suffix, i)
+				code := fmt.Sprintf("DOC-%s-%d", suffix, i)
+				payload := map[string]any{"name": name, "code": code}
+				body, err := json.Marshal(payload)
+				if err != nil {
+					return err
+				}
+				req := Request{APIKey: "document.group.create", Body: body, Headers: map[string]string{"Content-Type": "application/json"}}
+				res, httpReq, err := Call(w.ctx, req)
+				w.lastReq, w.lastRes, w.lastHTTPReq = req, res, httpReq
+				if err != nil {
+					return err
+				}
+				if res.Status < 200 || res.Status >= 300 {
+					return fmt.Errorf("document.group.create returned status %d", res.Status)
+				}
+				if id := gjson.GetBytes(res.Body, "data.id"); id.Exists() {
+					ids = append(ids, id.String())
+					w.ctx.Store["document_group_id"] = id.String()
+				}
+				if i == 1 {
+					w.ctx.Store["document_group_search_name"] = name
+				}
+			}
+			w.ctx.Store["document_group_ids"] = ids
+			w.lastReq = Request{}
+			return nil
+		})
+
+		// I delete created document groups
+		bind(sc, `^I delete created document groups$`, "Delete generated document groups", "I delete created document groups", func() error {
+			raw, ok := w.ctx.Store["document_group_ids"]
+			if !ok {
+				return errors.New("document_group_ids not found in store")
+			}
+			ids, ok := raw.([]string)
+			if !ok {
+				return fmt.Errorf("document_group_ids has unexpected type %T", raw)
+			}
+			if len(ids) == 0 {
+				return errors.New("document_group_ids is empty")
+			}
+			for _, id := range ids {
+				w.ctx.Store["document_group_id"] = id
+				req := Request{APIKey: "document.group.delete"}
+				res, httpReq, err := Call(w.ctx, req)
+				w.lastReq, w.lastRes, w.lastHTTPReq = req, res, httpReq
+				if err != nil {
+					return err
+				}
+				if res.Status < 200 || res.Status >= 300 {
+					return fmt.Errorf("document.group.delete returned status %d", res.Status)
+				}
+			}
+			delete(w.ctx.Store, "document_group_ids")
+			return nil
+		})
+
+		// json "<path>" should be empty
+		bind(sc, `^json ["']([^"']+)["'] should be empty$`, "Assert JSON path is empty", "json '$.data' should be empty", func(path string) error {
+			val := getJSONPath(w.lastRes.Body, path)
+			if !val.Exists() {
+				return fmt.Errorf("json path %q not found", path)
+			}
+			raw := strings.TrimSpace(val.Raw)
+			if raw == "" || raw == `""` || raw == "null" || raw == "[]" || raw == "{}" {
+				return nil
+			}
+			if val.Type == gjson.String && strings.TrimSpace(val.Str) == "" {
+				return nil
+			}
+			return fmt.Errorf("json %q is not empty: %s", path, raw)
+		})
+
 		// json "<path>" should not exist
 		bind(sc, `^json [\"']([^\"']+)[\"'] should not exist$`, "Assert JSON path does not exist", "json '$.error' should not exist", func(path string) error {
 			v := getJSONPath(w.lastRes.Body, path)
@@ -647,9 +739,13 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		})
 
 		// set "<key>" to "<value>"
-		bind(sc, `^set [\"']([^\"']+)[\"'] to [\"']([^\"']+)[\"']$`, "Set value in store", "set 'base_url' to 'https://api.example.com'",
+		bind(sc, `^set [\"']([^\"']+)[\"'] to [\"'](.+)[\"']$`, "Set value in store", "set 'base_url' to 'https://api.example.com'",
 			func(k, v string) error {
-				w.ctx.Store[k] = v
+				rendered, err := execTemplate(v, map[string]any{"store": w.ctx.Store})
+				if err != nil {
+					return fmt.Errorf("render value for %s: %w", k, err)
+				}
+				w.ctx.Store[k] = rendered
 				return nil
 			})
 
@@ -884,11 +980,20 @@ func (w *world) runFlow(name string, args map[string]string) error {
 		if len(st.Headers) > 0 {
 			req.Headers = renderMap(st.Headers, ctxMap)
 		}
-		if st.Body != "" {
+		fixturePath := strings.TrimSpace(st.Fixture)
+		if fixturePath != "" {
+			resolved := filepath.Join("gherkio/fixtures/", fixturePath)
+			payload, err := LoadFixtureFile(resolved, w.ctx.Store)
+			if err != nil {
+				return fmt.Errorf("flow %s step %d (%s): load fixture %s: %w", name, i+1, st.Call, fixturePath, err)
+			}
+			ApplyFixture(&req, payload)
+		} else if st.Body != "" {
+			req.Multipart = nil
 			req.Body = []byte(mustExec(st.Body, ctxMap))
 		}
-		// default Content-Type if body present
-		if len(req.Body) > 0 {
+		// default Content-Type if body present (and not multipart)
+		if req.Multipart == nil && len(req.Body) > 0 {
 			if req.Headers == nil {
 				req.Headers = map[string]string{}
 			}
@@ -970,6 +1075,11 @@ func errorText(err error) string {
 const maxDebugRunes = 4000
 
 func (w *world) captureDebug(req Request, res Response) {
+	if isDebugConsole() {
+		fmt.Printf("\n[debug] API: %s -> %d\n", req.APIKey, res.Status)
+		fmt.Printf("[debug] request body:\n%s\n", formatDebugBody(req.Body))
+		fmt.Printf("[debug] response body:\n%s\n", formatDebugBody(res.Body))
+	}
 	if !isDebugCapture() {
 		w.pendingDebug = nil
 		return

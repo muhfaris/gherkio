@@ -7,8 +7,12 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"mime"
+	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"text/template"
@@ -18,11 +22,24 @@ import (
 )
 
 type Request struct {
-	APIKey  string
-	Path    map[string]string
-	Query   map[string]string
-	Headers map[string]string
-	Body    []byte
+	APIKey    string
+	Path      map[string]string
+	Query     map[string]string
+	Headers   map[string]string
+	Body      []byte
+	Multipart *MultipartPayload
+}
+
+type MultipartPayload struct {
+	Parts []MultipartPart
+}
+
+type MultipartPart struct {
+	Name        string
+	Value       string
+	FilePath    string
+	Filename    string
+	ContentType string
 }
 
 type Response struct {
@@ -58,7 +75,66 @@ func buildHTTPRequest(ctx *Context, req Request) (*http.Request, error) {
 	url := strings.TrimRight(ctx.Env.BaseURL, "/") + path
 	// TODO: query params
 
-	httpReq, err := http.NewRequest(def.Method, url, bytes.NewReader(req.Body))
+	var (
+		bodyReader          io.Reader
+		contentTypeOverride string
+	)
+
+	if req.Multipart != nil {
+		if len(req.Multipart.Parts) == 0 {
+			return nil, errors.New("multipart payload requires at least one part")
+		}
+		buf := &bytes.Buffer{}
+		writer := multipart.NewWriter(buf)
+		for _, part := range req.Multipart.Parts {
+			name := strings.TrimSpace(part.Name)
+			if name == "" {
+				return nil, errors.New("multipart part name is required")
+			}
+			if part.FilePath != "" {
+				filename := part.Filename
+				if strings.TrimSpace(filename) == "" {
+					filename = filepath.Base(part.FilePath)
+				}
+				file, err := os.Open(part.FilePath)
+				if err != nil {
+					return nil, fmt.Errorf("open multipart file %s: %w", part.FilePath, err)
+				}
+				disp := mime.FormatMediaType("form-data", map[string]string{
+					"name":     name,
+					"filename": filename,
+				})
+				headers := textproto.MIMEHeader{}
+				headers.Set("Content-Disposition", disp)
+				if part.ContentType != "" {
+					headers.Set("Content-Type", part.ContentType)
+				}
+				fieldWriter, err := writer.CreatePart(headers)
+				if err != nil {
+					file.Close()
+					return nil, err
+				}
+				if _, err := io.Copy(fieldWriter, file); err != nil {
+					file.Close()
+					return nil, err
+				}
+				file.Close()
+			} else {
+				if err := writer.WriteField(name, part.Value); err != nil {
+					return nil, err
+				}
+			}
+		}
+		contentTypeOverride = writer.FormDataContentType()
+		if err := writer.Close(); err != nil {
+			return nil, err
+		}
+		bodyReader = buf
+	} else {
+		bodyReader = bytes.NewReader(req.Body)
+	}
+
+	httpReq, err := http.NewRequest(def.Method, url, bodyReader)
 	if err != nil {
 		return nil, err
 	}
@@ -70,6 +146,9 @@ func buildHTTPRequest(ctx *Context, req Request) (*http.Request, error) {
 	}
 	for k, v := range req.Headers {
 		httpReq.Header.Set(k, v)
+	}
+	if contentTypeOverride != "" {
+		httpReq.Header.Set("Content-Type", contentTypeOverride)
 	}
 
 	authName := def.Auth
@@ -155,7 +234,9 @@ var (
 func templateFuncs() template.FuncMap {
 	fns := sprig.FuncMap()
 	fns["randomInt"] = randomInt
-	fns["randomUnix"] = randomUnix
+	fns["fnRandomUnix"] = randomUnix
+	fns["fnToday"] = fnToday
+	fns["fnFutureDate"] = fnFutureDate
 	return fns
 }
 
@@ -214,6 +295,37 @@ func randomUnix(args ...any) (int64, error) {
 	default:
 		return 0, fmt.Errorf("randomUnix: expected 0 or 2 arguments, got %d", len(args))
 	}
+}
+
+func fnToday(format string, args ...string) (string, error) {
+	if strings.TrimSpace(format) == "" {
+		format = "2006-01-02T15:04:05"
+	}
+	loc := time.Local
+	if len(args) > 0 && strings.TrimSpace(args[0]) != "" {
+		var err error
+		loc, err = time.LoadLocation(args[0])
+		if err != nil {
+			return "", fmt.Errorf("load location %s: %w", args[0], err)
+		}
+	}
+	now := time.Now().In(loc)
+	return now.Format(format), nil
+}
+func fnFutureDate(days int, format string, args ...string) (string, error) {
+	if strings.TrimSpace(format) == "" {
+		format = "2006-01-02T15:04:05"
+	}
+	loc := time.Local
+	if len(args) > 0 && strings.TrimSpace(args[0]) != "" {
+		var err error
+		loc, err = time.LoadLocation(args[0])
+		if err != nil {
+			return "", fmt.Errorf("load location %s: %w", args[0], err)
+		}
+	}
+	now := time.Now().In(loc).AddDate(0, 0, days)
+	return now.Format(format), nil
 }
 
 func parseTimestamp(v string) (time.Time, error) {
