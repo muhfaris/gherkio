@@ -18,6 +18,9 @@ can later be split into its own repository.
   - `gherkio.run` – proxy to `gherkio run ...`
   - `gherkio.feature.write` – create or overwrite feature files from structured
     arguments.
+  - `gherkio.scenario.suggest` – generate a ready-to-save Gherkin scenario
+    skeleton (and corresponding `gherkio.feature.write` payload) from high level
+    API intent.
 - **Ping** responses for health checks.
 - **Official SDK**: built on top of `github.com/modelcontextprotocol/go-sdk` for spec-compliant transports, schemas, and lifecycle.
 
