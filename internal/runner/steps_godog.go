@@ -405,7 +405,8 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		})
 
 		// json "<path>" should exist
-		bind(sc, `^json [\"']([^\"']+)[\"'] should exist$`, "Assert JSON path exists", "json '$.data.id' should exist", func(path string) error {
+		bind(sc, `^json ["'](.+?)["'] should exist$`, "Assert JSON path exists", "json '$.data.id' should exist", func(path string) error {
+			path = w.renderPath(path)
 			v := getJSONPath(w.lastRes.Body, path)
 			if !v.Exists() {
 				return fmt.Errorf("json path %q not found", path)
@@ -420,7 +421,8 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		})
 
 		// save "<jsonpath>" as "<key>"
-		bind(sc, `^save [\"']([^\"']+)[\"'] as [\"']([^\"']+)[\"']$`, "Save JSONPath to store", "save '$.access_token' as 'token'", func(path, key string) error {
+		bind(sc, `^save ["'](.+?)["'] as ["']([^"']+)["']$`, "Save JSONPath to store", "save '$.access_token' as 'token'", func(path, key string) error {
+			path = w.renderPath(path)
 			v := getJSONPath(w.lastRes.Body, path)
 			if !v.Exists() {
 				return fmt.Errorf("json path %q not found", path)
@@ -429,10 +431,11 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 			return nil
 		})
 
-		bind(sc, `^save request json [\"']([^\"']+)[\"'] as [\"']([^\"']+)[\"']$`, "Save request JSONPath to store", "save request json '$.name' as 'room_name'", func(path, key string) error {
+		bind(sc, `^save request json ["'](.+?)["'] as ["']([^"']+)["']$`, "Save request JSONPath to store", "save request json '$.name' as 'room_name'", func(path, key string) error {
 			if len(w.lastReq.Body) == 0 {
 				return errors.New("last request body is empty")
 			}
+			path = w.renderPath(path)
 			v := getJSONPath(w.lastReq.Body, path)
 			if !v.Exists() {
 				return fmt.Errorf("request json path %q not found", path)
@@ -454,7 +457,8 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		})
 
 		// json "<path>" should equal "<value>"
-		bind(sc, `^json [\"']([^\"']+)[\"'] should equal [\"']([^\"']+)[\"']$`, "Assert JSON value equals", "json '$.status' should equal 'success'", func(path, want string) error {
+		bind(sc, `^json ["'](.+?)["'] should equal ["']([^"']+)["']$`, "Assert JSON value equals", "json '$.status' should equal 'success'", func(path, want string) error {
+			path = w.renderPath(path)
 			val := getJSONPath(w.lastRes.Body, path)
 			if !val.Exists() {
 				return fmt.Errorf("json path %q not found", path)
@@ -465,7 +469,8 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 			return nil
 		})
 
-		bind(sc, `^json [\"']([^\"']+)[\"'] should equal store [\"']([^\"']+)[\"']$`, "Assert JSON equals stored value", "json '$.data.id' should equal store 'resource_id'", func(path, key string) error {
+		bind(sc, `^json ["'](.+?)["'] should equal store ["']([^"']+)["']$`, "Assert JSON equals stored value", "json '$.data.id' should equal store 'resource_id'", func(path, key string) error {
+			path = w.renderPath(path)
 			val := getJSONPath(w.lastRes.Body, path)
 			if !val.Exists() {
 				return fmt.Errorf("json path %q not found", path)
@@ -481,7 +486,8 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 			return fmt.Errorf("json %s=%s does not equal store[%s]=%s", path, val.Raw, key, formatAny(storeVal))
 		})
 
-		bind(sc, `^json [\"']([^\"']+)[\"'] should equal store [\"']([^\"']+)[\"'] ignoring order$`, "Assert JSON equals stored value (ignore order)", "json '$.data.tags' should equal store 'expected_tags' ignoring order", func(path, key string) error {
+		bind(sc, `^json ["'](.+?)["'] should equal store ["']([^"']+)["'] ignoring order$`, "Assert JSON equals stored value (ignore order)", "json '$.data.tags' should equal store 'expected_tags' ignoring order", func(path, key string) error {
+			path = w.renderPath(path)
 			val := getJSONPath(w.lastRes.Body, path)
 			if !val.Exists() {
 				return fmt.Errorf("json path %q not found", path)
@@ -496,7 +502,8 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 			return fmt.Errorf("json %s=%s does not equal store[%s]=%s (ignoring order)", path, val.Raw, key, formatAny(storeVal))
 		})
 
-		bind(sc, `^json [\"']([^\"']+)[\"'] should match store request [\"']([^\"']+)[\"']$`, "Assert JSON equals stored request JSON", "json '$.data' should match store request 'meeting_room_payload'", func(path, key string) error {
+		bind(sc, `^json ["'](.+?)["'] should match store request ["']([^"']+)["']$`, "Assert JSON equals stored request JSON", "json '$.data' should match store request 'meeting_room_payload'", func(path, key string) error {
+			path = w.renderPath(path)
 			actual := getJSONPath(w.lastRes.Body, path)
 			if !actual.Exists() {
 				return fmt.Errorf("json path %q not found", path)
@@ -515,7 +522,8 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		})
 
 		// json "<path>" should not be empty
-		bind(sc, `^json [\"']([^\"']+)[\"'] should not be empty$`, "Assert JSON path is not empty", "json '$.data' should not be empty", func(path string) error {
+		bind(sc, `^json ["'](.+?)["'] should not be empty$`, "Assert JSON path is not empty", "json '$.data' should not be empty", func(path string) error {
+			path = w.renderPath(path)
 			val := getJSONPath(w.lastRes.Body, path)
 			if !val.Exists() {
 				return fmt.Errorf("json path %q not found", path)
@@ -599,7 +607,8 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		})
 
 		// json "<path>" should be empty
-		bind(sc, `^json ["']([^"']+)["'] should be empty$`, "Assert JSON path is empty", "json '$.data' should be empty", func(path string) error {
+		bind(sc, `^json ["'](.+?)["'] should be empty$`, "Assert JSON path is empty", "json '$.data' should be empty", func(path string) error {
+			path = w.renderPath(path)
 			val := getJSONPath(w.lastRes.Body, path)
 			if !val.Exists() {
 				return fmt.Errorf("json path %q not found", path)
@@ -615,16 +624,18 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		})
 
 		// json "<path>" should not exist
-		bind(sc, `^json [\"']([^\"']+)[\"'] should not exist$`, "Assert JSON path does not exist", "json '$.error' should not exist", func(path string) error {
-			v := getJSONPath(w.lastRes.Body, path)
-			if v.Exists() {
-				return fmt.Errorf("json path %q exists (value: %s)", path, v.Raw)
+		bind(sc, `^json ["'](.+?)["'] should not exist$`, "Assert JSON path does not exist", "json '$.error' should not exist", func(path string) error {
+			path = w.renderPath(path)
+			val := getJSONPath(w.lastRes.Body, path)
+			if val.Exists() {
+				return fmt.Errorf("json path %q exists (value: %s)", path, val.Raw)
 			}
 			return nil
 		})
 
 		// json "<path>" should match "<regex>"
-		bind(sc, `^json [\"']([^\"']+)[\"'] should match [\"']([^\"']+)[\"']$`, "Assert JSON value matches regex", "json '$.email' should match '[a-z]+@example.com'", func(path, rx string) error {
+		bind(sc, `^json ["'](.+?)["'] should match ["']([^"']+)["']$`, "Assert JSON value matches regex", "json '$.email' should match '[a-z]+@example.com'", func(path, rx string) error {
+			path = w.renderPath(path)
 			v := getJSONPath(w.lastRes.Body, path)
 			if !v.Exists() {
 				return fmt.Errorf("json path %q not found", path)
@@ -645,7 +656,8 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		})
 
 		// json "<path>" should be <op> <number>
-		bind(sc, `^json [\"']([^\"']+)[\"'] should be (==|!=|>=|>|<=|<) ([0-9.]+)$`, "Assert JSON numeric value", "json '$.age' should be >= 18", func(path, op, wantStr string) error {
+		bind(sc, `^json ["'](.+?)["'] should be (==|!=|>=|>|<=|<) ([0-9.]+)$`, "Assert JSON numeric value", "json '$.age' should be >= 18", func(path, op, wantStr string) error {
+			path = w.renderPath(path)
 			v := getJSONPath(w.lastRes.Body, path)
 			if !v.Exists() {
 				return fmt.Errorf("json path %q not found", path)
@@ -698,7 +710,8 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		})
 
 		// json "<path>" length should be <op> <n>
-		bind(sc, `^json [\"']([^\"']+)[\"'] length should be (==|!=|>=|>|<=|<) (\d+)$`, "Assert JSON length", "json '$.items' length should be == 5", func(path, op string, n int) error {
+		bind(sc, `^json ["'](.+?)["'] length should be (==|!=|>=|>|<=|<) (\d+)$`, "Assert JSON length", "json '$.items' length should be == 5", func(path, op string, n int) error {
+			path = w.renderPath(path)
 			v := getJSONPath(w.lastRes.Body, path)
 			if !v.Exists() {
 				return fmt.Errorf("json path %q not found", path)
@@ -780,7 +793,8 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		})
 
 		// json "<path>" should be one of:
-		bind(sc, `^json [\"']([^\"']+)[\"'] should be one of:$`, "Assert JSON value in list", "json '$.status' should be one of:\nactive\ninactive", func(path string, ds *godog.DocString) error {
+		bind(sc, `^json ["'](.+?)["'] should be one of:$`, "Assert JSON value in list", "json '$.status' should be one of:\nactive\ninactive", func(path string, ds *godog.DocString) error {
+			path = w.renderPath(path)
 			v := getJSONPath(w.lastRes.Body, path)
 			if !v.Exists() {
 				return fmt.Errorf("json path %q not found", path)
@@ -1172,6 +1186,13 @@ func sortSlice(arr []any) {
 		aj, _ := json.Marshal(arr[j])
 		return string(ai) < string(aj)
 	})
+}
+
+func (w *world) renderPath(tpl string) string {
+	if w == nil || w.ctx == nil {
+		return tpl
+	}
+	return mustExec(tpl, map[string]any{"store": w.ctx.Store})
 }
 
 func renderMap(in map[string]string, ctx map[string]any) map[string]string {
