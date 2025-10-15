@@ -38,7 +38,16 @@ func init() {
 func runCall(cmd *cobra.Command, args []string) error {
 	envName, _ := cmd.Flags().GetString("env")
 	apiKey, _ := cmd.Flags().GetString("api")
-	body, _ := cmd.Flags().GetString("body")
+var(
+	envName, _ = cmd.Flags().GetString("env")
+	apiKey, _ = cmd.Flags().GetString("api")
+	body, _ = cmd.Flags().GetString("body")
+	expectStatusStr, _ = cmd.Flags().GetString("expect-status")
+	paths, _ = cmd.Flags().GetStringArray("path")
+	queries, _ = cmd.Flags().GetStringArray("query")
+	headers, _ = cmd.Flags().GetStringArray("header")
+	reports, _ = cmd.Flags().GetStringArray("report")
+	)
 	expectStatusStr, _ := cmd.Flags().GetString("expect-status")
 	paths, _ := cmd.Flags().GetStringArray("path")
 	queries, _ := cmd.Flags().GetStringArray("query")
