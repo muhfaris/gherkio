@@ -1,15 +1,9 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
-	"github.com/muhfaris/gherkio/internal/cli"
+	"github.com/muhfaris/gherkio/internal/cli/cmd"
 )
 
 func main() {
-	if err := cli.Execute(os.Args[1:]); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
+	cmd.Execute()
 }

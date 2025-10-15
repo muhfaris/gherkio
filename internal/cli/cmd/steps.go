@@ -1,7 +1,6 @@
-package cli
+package cmd
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"sort"
@@ -10,37 +9,48 @@ import (
 
 	"github.com/muhfaris/gherkio/internal/loader"
 	"github.com/muhfaris/gherkio/internal/runner"
+	"github.com/spf13/cobra"
 )
 
-func runSteps(args []string) error {
-	var format, out string
-	var matches matchFilters
-	fs := flag.NewFlagSet("steps", flag.ContinueOnError)
-	fs.StringVar(&format, "format", "text", "text|md")
-	fs.StringVar(&out, "out", "", "output file (optional)")
-	fs.Var(&matches, "match", "filter steps containing substring (repeatable, AND logic)")
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
+var stepsCmd = &cobra.Command{
+	Use:   "steps",
+	Short: "Run Gherkin steps",
+	Long:  `Displays all available Gherkin steps that can be used in feature files.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runSteps(cmd, args)
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(stepsCmd)
+	stepsCmd.Flags().String("format", "text", `Output format ("text" or "md")`)
+	stepsCmd.Flags().String("out", "", "Output file path (optional, defaults to stdout)")
+	stepsCmd.Flags().StringArray("match", []string{}, "Filter steps by a matching substring (can be specified multiple times)")
+}
+
+func runSteps(cmd *cobra.Command, args []string) error {
+	format, _ := cmd.Flags().GetString("format")
+	out, _ := cmd.Flags().GetString("out")
+	matches, _ := cmd.Flags().GetStringArray("match")
 
 	initScenario := runner.InitializeScenario(loader.Env{}, loader.Catalog{}, map[string]loader.Flow{})
 	initScenario(nil) // bind steps into catalog without a Godog context
 	cat := runner.GetStepCatalog()
 	entries := cat.List()
 	total := len(entries)
-	if matches.Len() > 0 {
-		entries = filterEntries(entries, &matches)
+	if len(matches) > 0 {
+		entries = filterEntries(entries, newMatchFilters(matches))
 	}
 	var data string
 	if format == "md" {
 		if len(entries) == 0 {
-			data = renderNoMatches(matches.Raw())
+			data = renderNoMatches(matches)
 		} else {
 			data = cat.MarkdownFrom(entries)
 		}
 	} else {
 		useColor := out == "" && isTerminal(os.Stdout)
-		data = renderTextCatalog(entries, total, matches.Raw(), useColor)
+		data = renderTextCatalog(entries, total, matches, useColor)
 	}
 
 	if out == "" {
@@ -225,21 +235,12 @@ type matchFilters struct {
 	lower []string
 }
 
-func (m *matchFilters) String() string {
-	return strings.Join(m.raw, ",")
-}
-
-func (m *matchFilters) Set(v string) error {
-	parts := strings.Split(v, ",")
-	for _, part := range parts {
-		s := strings.TrimSpace(part)
-		if s == "" {
-			continue
-		}
-		m.raw = append(m.raw, s)
-		m.lower = append(m.lower, strings.ToLower(s))
+func newMatchFilters(raw []string) *matchFilters {
+	lower := make([]string, len(raw))
+	for i, v := range raw {
+		lower[i] = strings.ToLower(v)
 	}
-	return nil
+	return &matchFilters{raw: raw, lower: lower}
 }
 
 func (m *matchFilters) Len() int {
@@ -247,13 +248,4 @@ func (m *matchFilters) Len() int {
 		return 0
 	}
 	return len(m.raw)
-}
-
-func (m *matchFilters) Raw() []string {
-	if m == nil || len(m.raw) == 0 {
-		return nil
-	}
-	out := make([]string, len(m.raw))
-	copy(out, m.raw)
-	return out
 }

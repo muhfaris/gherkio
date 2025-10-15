@@ -1,8 +1,7 @@
-package cli
+package cmd
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,32 +9,49 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/cucumber/godog"
 	"github.com/muhfaris/gherkio/internal/loader"
 	"github.com/muhfaris/gherkio/internal/report"
 	"github.com/muhfaris/gherkio/internal/runner"
-
-	"github.com/cucumber/godog"
+	"github.com/spf13/cobra"
 )
 
-func runRun(args []string) (err error) {
-	fs := flag.NewFlagSet("run", flag.ContinueOnError)
-	var envName, tags, nameRegex string
-	var parallel int
-	var debug bool
-	includes := multiString(fs, "feature")         // repeatable include filter
-	excludes := multiString(fs, "exclude-feature") // repeatable exclude filter
+type htmlSpec struct {
+	Path  string
+	Debug bool
+}
 
-	reports := multiString(fs, "report")
-	fs.StringVar(&envName, "env", "", "environment name")
-	fs.BoolVar(&debug, "debug", false, "print request/response and include debug info in HTML report")
-	fs.StringVar(&tags, "tags", "", "tag expression (e.g. \"@smoke and not @wip\")")
-	fs.StringVar(&nameRegex, "name", "", "filter Scenario name by regex (best-effort)")
-	fs.IntVar(&parallel, "parallel", 1, "number of parallel workers (by feature file)")
+var runCmd = &cobra.Command{
+	Use:   "run",
+	Short: "Run Gherkin features (journey)",
+	Long:  `Executes Gherkin feature files to run API journeys.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runRun(cmd, args)
+	},
+}
 
-	// parallel, name, feature filters: placeholders for MVP
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
+func init() {
+	rootCmd.AddCommand(runCmd)
+	runCmd.Flags().String("env", "", "Environment name (must exist in gherkio/envs/<name>.yaml)")
+	runCmd.Flags().Bool("debug", false, "Print request/response and include debug info in HTML report")
+	runCmd.Flags().String("tags", "", `Filter scenarios by tags (e.g. "@smoke and not @wip")`)
+	runCmd.Flags().String("name", "", "Filter scenarios by name using a regex pattern")
+	runCmd.Flags().Int("parallel", 1, "Number of parallel workers (by feature file)")
+	runCmd.Flags().StringArray("feature", []string{}, "Run only specific feature files (path or glob pattern)")
+	runCmd.Flags().StringArray("exclude-feature", []string{}, "Exclude specific feature files (path or glob pattern)")
+	runCmd.Flags().StringArray("report", []string{}, `Generate report in a specific format: kind[:path] (e.g. "html:report.html")`)
+}
+
+func runRun(cmd *cobra.Command, args []string) (err error) {
+	envName, _ := cmd.Flags().GetString("env")
+	debug, _ := cmd.Flags().GetBool("debug")
+	tags, _ := cmd.Flags().GetString("tags")
+	nameRegex, _ := cmd.Flags().GetString("name")
+	parallel, _ := cmd.Flags().GetInt("parallel")
+	includes, _ := cmd.Flags().GetStringArray("feature")
+	excludes, _ := cmd.Flags().GetStringArray("exclude-feature")
+	reports, _ := cmd.Flags().GetStringArray("report")
+
 	if envName == "" {
 		return errors.New("--env is required")
 	}
@@ -55,7 +71,7 @@ func runRun(args []string) (err error) {
 		fmt.Fprintln(os.Stderr, "Warning: failed to load flows:", err)
 	}
 	if len(flows) > 0 {
-		fmt.Printf("Loaded %d flow(s) from gherkio/flows\\n", len(flows))
+		fmt.Printf("Loaded %d flow(s) from gherkio/flows\n", len(flows))
 	}
 
 	featDir := "gherkio/features"
@@ -68,12 +84,12 @@ func runRun(args []string) (err error) {
 	}
 
 	// include / exclude by path (substring or glob)
-	if len(*includes) > 0 {
-		features = filterFeatures(features, *includes, true)
+	if len(includes) > 0 {
+		features = filterFeatures(features, includes, true)
 	}
 
-	if len(*excludes) > 0 {
-		features = filterFeatures(features, *excludes, false)
+	if len(excludes) > 0 {
+		features = filterFeatures(features, excludes, false)
 	}
 
 	// optional: filter by Scenario name (regex) by scanning file content (best-effort)
@@ -100,14 +116,14 @@ func runRun(args []string) (err error) {
 		FeatureCount: len(featureSet),
 		Parallel:     parallel,
 	}
-	if includes != nil && len(*includes) > 0 {
-		meta.Includes = cloneStrings(*includes)
+	if len(includes) > 0 {
+		meta.Includes = cloneStrings(includes)
 	}
-	if excludes != nil && len(*excludes) > 0 {
-		meta.Excludes = cloneStrings(*excludes)
+	if len(excludes) > 0 {
+		meta.Excludes = cloneStrings(excludes)
 	}
 
-	csvPaths, htmlSpecs, unknownReports := classifyReports(*reports)
+	csvPaths, htmlSpecs, unknownReports := classifyReports(reports)
 	for _, unk := range unknownReports {
 		fmt.Fprintf(os.Stderr, "unknown report kind %q\n", unk)
 	}

@@ -10,18 +10,27 @@ Declarative API testing with Gherkin, reusable flows, and rich HTML reporting.
 - **Environment vars**: preload credentials/secrets via `env.vars` with automatic flow fallback
 - **Reports**: HTML summary banner with payload drill-down, CSV export, JUnit/Cucumber roadmap
 
+## Installation
+
+You can install gherkio using the install script:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/muhfaris/gherkio/main/install.sh | sh
+```
+
+Alternatively, you can download the latest release from the [releases page](https://github.com/muhfaris/gherkio/releases).
+
 ## Quick Start
 
 ```bash
-go mod tidy
-./gherkio init
-./gherkio run --env dev --report html:reports/run.html
+gherkio init
+gherkio run --env dev --report html:reports/run.html
 ```
 
 ### Import an API from curl
 
 ```bash
-./gherkio import \
+gherkio import \
   --api meetingrooms.update \
   --curl "curl https://api.example.com/meeting-rooms/123 \\
     -X PUT -H 'Content-Type: application/json' --data '{"name":"Room"}'"

@@ -1,10 +1,25 @@
-package cli
+package cmd
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/spf13/cobra"
 )
+
+var initCmd = &cobra.Command{
+	Use:   "init",
+	Short: "Initialize gherkio/ structure with examples",
+	Long:  `Creates the necessary directories and sample files for gherkio to run.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runInit(args)
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(initCmd)
+}
 
 func runInit(args []string) error {
 	base := "gherkio"
