@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/sprig/v3"
+	"github.com/google/uuid"
 )
 
 type Request struct {
@@ -233,16 +234,81 @@ var (
 
 func templateFuncs() template.FuncMap {
 	fns := sprig.FuncMap()
-	fns["randomInt"] = randomInt
-	fns["fnRandomUnix"] = randomUnix
-	fns["fnToday"] = fnToday
-	fns["fnFutureDate"] = fnFutureDate
+	for name, fn := range GetFunctionTemplateInfo() {
+		fns[name] = fn.Func
+	}
 	return fns
 }
 
-func randomInt(min, max int) (int, error) {
+type FunctionTemplateInfo struct {
+	Func        any
+	Description string
+	Example     string
+	Result      string
+}
+
+func GetFunctionTemplateInfo() map[string]FunctionTemplateInfo {
+	return map[string]FunctionTemplateInfo{
+		"fnRandomInt": {
+			Func:        fnRandomInt,
+			Description: "Generates a random integer within a given range (inclusive).",
+			Example:     `{{ fnRandomInt 1 10 }}`,
+			Result:      "A random integer e.g., 7",
+		},
+		"fnRandomUnix": {
+			Func:        randomUnix,
+			Description: "Generates a random Unix timestamp. Without arguments, it returns the current timestamp. Can also be constrained to a date range.",
+			Example:     `{{ fnRandomUnix }} or {{ fnRandomUnix "2024-01-01" "2024-12-31" }}`,
+			Result:      "A Unix timestamp e.g., 1715692800",
+		},
+		"fnToday": {
+			Func:        fnToday,
+			Description: "Returns the current date, optionally in a specific format and timezone. Defaults to '2006-01-02T15:04:05' and local timezone.",
+			Example:     `{{ fnToday "2006-01-02" }} or {{ fnToday "2006-01-02" "UTC" }}`,
+			Result:      "The current date e.g., 2024-05-14",
+		},
+		"fnFutureDate": {
+			Func:        fnFutureDate,
+			Description: "Returns a future date by adding days to the current date, optionally in a specific format and timezone.",
+			Example:     `{{ fnFutureDate 7 "2006-01-02" }} or {{ fnFutureDate 7 "2006-01-02" "UTC" }}`,
+			Result:      "The future date e.g., 2024-05-21",
+		},
+		"fnRandomString": {
+			Func:        fnRandomString,
+			Description: "Generates a random string of a specified kind ('alpha', 'alphanum', 'numeric') and length.",
+			Example:     `{{ fnRandomString "alphanum" 16 }}`,
+			Result:      "A random string e.g., aKdeR29d0w3f4Gz",
+		},
+		"fnRandomEmail": {
+			Func:        fnRandomEmail,
+			Description: "Generates a random email address, optionally with a specific domain.",
+			Example:     `{{ fnRandomEmail "mycompany.com" }}`,
+			Result:      "A random email e.g., user-1678886400@mycompany.com",
+		},
+		"fnUUID": {
+			Func:        fnUUID,
+			Description: "Generates a new UUID (v4).",
+			Example:     `{{ fnUUID }}`,
+			Result:      "A UUID e.g., 123e4567-e89b-12d3-a456-426614174000",
+		},
+		"fnGetEnv": {
+			Func:        fnGetEnv,
+			Description: "Retrieves an environment variable's value, with an optional default.",
+			Example:     `{{ fnGetEnv "API_KEY" "default_key" }}`,
+			Result:      "Value of the API_KEY env var",
+		},
+		"fnBase64Encode": {
+			Func:        fnBase64Encode,
+			Description: "Encodes a string into Base64.",
+			Example:     `{{ fnBase64Encode "user:pass" }}`,
+			Result:      "dXNlcjpwYXNz",
+		},
+	}
+}
+
+func fnRandomInt(min, max int) (int, error) {
 	if max < min {
-		return 0, fmt.Errorf("randomInt: max (%d) must be >= min (%d)", max, min)
+		return 0, fmt.Errorf("fnRandomInt: max (%d) must be >= min (%d)", max, min)
 	}
 	randMu.Lock()
 	defer randMu.Unlock()
@@ -251,7 +317,7 @@ func randomInt(min, max int) (int, error) {
 	}
 	rangeSize := max - min + 1
 	if rangeSize <= 0 {
-		return 0, fmt.Errorf("randomInt: invalid range [%d,%d]", min, max)
+		return 0, fmt.Errorf("fnRandomInt: invalid range [%d,%d]", min, max)
 	}
 	return randSrc.Intn(rangeSize) + min, nil
 }
@@ -326,6 +392,63 @@ func fnFutureDate(days int, format string, args ...string) (string, error) {
 	}
 	now := time.Now().In(loc).AddDate(0, 0, days)
 	return now.Format(format), nil
+}
+
+const (
+	alpha    = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	alphaNum = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	numeric  = "0123456789"
+)
+
+func fnRandomString(kind string, length int) (string, error) {
+	var chars string
+	switch strings.ToLower(kind) {
+	case "alpha":
+		chars = alpha
+	case "alphanum":
+		chars = alphaNum
+	case "numeric":
+		chars = numeric
+	default:
+		return "", fmt.Errorf("fnRandomString: unknown kind %q, expected 'alpha', 'alphanum', or 'numeric'", kind)
+	}
+	if length <= 0 {
+		return "", fmt.Errorf("fnRandomString: length must be > 0")
+	}
+
+	randMu.Lock()
+	defer randMu.Unlock()
+
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = chars[randSrc.Intn(len(chars))]
+	}
+	return string(b), nil
+}
+
+func fnRandomEmail(domain ...string) (string, error) {
+	d := "example.com"
+	if len(domain) > 0 && strings.TrimSpace(domain[0]) != "" {
+		d = domain[0]
+	}
+	return fmt.Sprintf("user-%d@%s", time.Now().UnixNano(), d), nil
+}
+
+func fnUUID() (string, error) {
+	// Already imported in the original file
+	return uuid.New().String(), nil
+}
+
+func fnGetEnv(key string, defaultValue ...string) (string, error) {
+	val := os.Getenv(key)
+	if val == "" && len(defaultValue) > 0 {
+		return defaultValue[0], nil
+	}
+	return val, nil
+}
+
+func fnBase64Encode(v string) (string, error) {
+	return base64.StdEncoding.EncodeToString([]byte(v)), nil
 }
 
 func parseTimestamp(v string) (time.Time, error) {
