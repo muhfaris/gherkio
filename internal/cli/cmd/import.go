@@ -1,11 +1,10 @@
-package cli
+package cmd
 
 import (
 	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -19,8 +18,32 @@ import (
 	"time"
 
 	"github.com/muhfaris/gherkio/internal/loader"
+	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
+
+var importCmd = &cobra.Command{
+	Use:   "import",
+	Short: "Import curl commands or OpenAPI specs into catalogs/fixtures",
+	Long:  `Imports API definitions from curl commands or OpenAPI specifications, generating catalogs and fixtures.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runImport(cmd, args)
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(importCmd)
+	importCmd.Flags().String("api", "", "API key to generate (e.g., users.create)")
+	importCmd.Flags().String("curl", "", "curl command to import")
+	importCmd.Flags().String("catalog", "", "catalog file to update/create")
+	importCmd.Flags().String("fixture", "", "fixture file to write (optional)")
+	importCmd.Flags().String("feature", "", "feature file to write (optional)")
+	importCmd.Flags().String("title", "", "scenario title (optional)")
+	importCmd.Flags().String("name", "", "feature name (optional)")
+	importCmd.Flags().String("openapi", "", "OpenAPI file (YAML/JSON) to import")
+	importCmd.Flags().String("fixtures", "", "Directory for generated fixtures (OpenAPI mode)")
+	importCmd.Flags().String("prefix", "", "Optional prefix added to generated API keys (OpenAPI mode)")
+}
 
 type curlImportOptions struct {
 	APIKey     string
@@ -39,41 +62,17 @@ type openapiImportOptions struct {
 	KeyPrefix   string
 }
 
-func runImport(args []string) error {
-	if len(args) > 0 && args[0] == "curl" {
-		fmt.Fprintln(os.Stderr, "warning: `gherkio import curl` is deprecated; use `gherkio import` instead")
-		args = args[1:]
-	}
-
-	fs := flag.NewFlagSet("import", flag.ContinueOnError)
-	var (
-		apiKey          string
-		reportName      string
-		curlCmd         string
-		catalog         string
-		fixture         string
-		feature         string
-		title           string
-		openapiSpec     string
-		openapiFixtures string
-		openapiPrefix   string
-	)
-	fs.StringVar(&apiKey, "api", "", "API key to generate (e.g., users.create)")
-	fs.StringVar(&curlCmd, "curl", "", "curl command to import")
-	fs.StringVar(&catalog, "catalog", "", "catalog file to update/create")
-	fs.StringVar(&fixture, "fixture", "", "fixture file to write (optional)")
-	fs.StringVar(&feature, "feature", "", "feature file to write (optional)")
-	fs.StringVar(&title, "title", "", "scenario title (optional)")
-	fs.StringVar(&reportName, "name", "", "feature name (optional)")
-	fs.StringVar(&openapiSpec, "openapi", "", "OpenAPI file (YAML/JSON) to import")
-	fs.StringVar(&openapiFixtures, "fixtures", "", "Directory for generated fixtures (OpenAPI mode)")
-	fs.StringVar(&openapiPrefix, "prefix", "", "Optional prefix added to generated API keys (OpenAPI mode)")
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	if fs.NArg() > 0 {
-		return fmt.Errorf("unexpected argument(s): %v", fs.Args())
-	}
+func runImport(cmd *cobra.Command, args []string) error {
+	apiKey, _ := cmd.Flags().GetString("api")
+	curlCmd, _ := cmd.Flags().GetString("curl")
+	catalog, _ := cmd.Flags().GetString("catalog")
+	fixture, _ := cmd.Flags().GetString("fixture")
+	feature, _ := cmd.Flags().GetString("feature")
+	title, _ := cmd.Flags().GetString("title")
+	reportName, _ := cmd.Flags().GetString("name")
+	openapiSpec, _ := cmd.Flags().GetString("openapi")
+	openapiFixtures, _ := cmd.Flags().GetString("fixtures")
+	openapiPrefix, _ := cmd.Flags().GetString("prefix")
 
 	if openapiSpec != "" {
 		if curlCmd != "" || apiKey != "" || fixture != "" || feature != "" || title != "" || reportName != "" {
