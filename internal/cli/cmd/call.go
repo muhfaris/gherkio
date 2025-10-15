@@ -1,10 +1,9 @@
-package cli
+package cmd
 
 import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -12,22 +11,40 @@ import (
 	"github.com/muhfaris/gherkio/internal/loader"
 	"github.com/muhfaris/gherkio/internal/report"
 	"github.com/muhfaris/gherkio/internal/runner"
+	"github.com/spf13/cobra"
 )
 
-func runCall(args []string) error {
-	fs := flag.NewFlagSet("call", flag.ContinueOnError)
-	var envName, apiKey, body, expectStatusStr string
-	paths := collectKV(fs, "path")
-	queries := collectKV(fs, "query")
-	headers := collectKV(fs, "header")
-	reports := multiString(fs, "report")
-	fs.StringVar(&envName, "env", "", "environment name")
-	fs.StringVar(&apiKey, "api", "", "endpoint key")
-	fs.StringVar(&body, "body", "", "body: @file or inline JSON")
-	fs.StringVar(&expectStatusStr, "expect-status", "", "expected status code")
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
+var callCmd = &cobra.Command{
+	Use:   "call",
+	Short: "Single-endpoint call using catalogs",
+	Long:  `Performs a single API call based on the defined catalogs and flags.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runCall(cmd, args)
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(callCmd)
+	callCmd.Flags().String("env", "", "Environment name (must exist in gherkio/envs/<name>.yaml)")
+	callCmd.Flags().String("api", "", "Endpoint key from gherkio/apis/*.yaml (e.g., users.getById)")
+	callCmd.Flags().String("body", "", "Request body (JSON or multipart fixture)")
+	callCmd.Flags().String("expect-status", "", "Expected HTTP status code")
+	callCmd.Flags().StringArray("path", []string{}, "Path params (k=v)")
+	callCmd.Flags().StringArray("query", []string{}, "Query params (k=v)")
+	callCmd.Flags().StringArray("header", []string{}, "Headers (k=v)")
+	callCmd.Flags().StringArray("report", []string{}, "Reporters (pretty|html|junit|cucumber|csv)")
+}
+
+func runCall(cmd *cobra.Command, args []string) error {
+	envName, _ := cmd.Flags().GetString("env")
+	apiKey, _ := cmd.Flags().GetString("api")
+	body, _ := cmd.Flags().GetString("body")
+	expectStatusStr, _ := cmd.Flags().GetString("expect-status")
+	paths, _ := cmd.Flags().GetStringArray("path")
+	queries, _ := cmd.Flags().GetStringArray("query")
+	headers, _ := cmd.Flags().GetStringArray("header")
+	reports, _ := cmd.Flags().GetStringArray("report")
+
 	if envName == "" || apiKey == "" {
 		return errors.New("--env and --api are required")
 	}
@@ -44,9 +61,9 @@ func runCall(args []string) error {
 	ctx := runner.NewContext(env, cat)
 	req := runner.Request{
 		APIKey:  apiKey,
-		Path:    paths.ToMap(),
-		Query:   queries.ToMap(),
-		Headers: headers.ToMap(),
+		Path:    kvToMap(paths),
+		Query:   kvToMap(queries),
+		Headers: kvToMap(headers),
 	}
 	if body != "" {
 		if strings.HasPrefix(body, "@") {
@@ -83,9 +100,9 @@ func runCall(args []string) error {
 	}
 	// emit opted reporters (csv/html/junit/cucumber placeholder)
 	meta := report.SummaryMeta{Env: envName, FeatureCount: 1}
-	if len(*reports) > 0 {
+	if len(reports) > 0 {
 		csv := report.NewCSV()
-		for _, spec := range *reports {
+		for _, spec := range reports {
 			kind, path := splitKindPath(spec)
 			lower := strings.ToLower(kind)
 			switch lower {
@@ -130,12 +147,10 @@ func runCall(args []string) error {
 	return nil
 }
 
-func atoi(s string) (int, error) { var n int; _, err := fmt.Sscanf(s, "%d", &n); return n, err }
-
-func multiString(fs *flag.FlagSet, name string) *[]string {
-	var out []string
-	fs.Func(name, "repeatable", func(v string) error { out = append(out, v); return nil })
-	return &out
+func atoi(s string) (int, error) {
+	var n int
+	_, err := fmt.Sscanf(s, "%d", &n)
+	return n, err
 }
 
 func splitKindPath(spec string) (string, string) {
@@ -168,4 +183,46 @@ func truncateRunes(s string, limit int) string {
 		return s
 	}
 	return string(runes[:limit]) + "\n... (truncated)"
+}
+
+func kvToMap(data []string) map[string]string {
+	result := make(map[string]string)
+	for _, item := range data {
+		parts := strings.SplitN(item, "=", 2)
+		if len(parts) == 2 {
+			result[parts[0]] = parts[1]
+		}
+	}
+	return result
+}
+func pathOrDefault(path, defaultPath string) string {
+	if path != "" {
+		return path
+	}
+	return defaultPath
+}
+
+func parseHTMLKind(kind string) (debug bool, ok bool) {
+	s := strings.ToLower(kind)
+	switch s {
+	case "html":
+		return false, true
+	case "html-dbg", "html-debug":
+		return true, true
+	}
+	return false, false
+}
+
+func normalizeHTMLPath(path, defaultPath string) (norm string, fromDefault bool) {
+	if path != "" {
+		return path, false
+	}
+	return defaultPath, true
+}
+
+func statusLabel(code int) string {
+	if code >= 200 && code < 300 {
+		return "passed"
+	}
+	return "failed"
 }

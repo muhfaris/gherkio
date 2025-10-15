@@ -6,41 +6,25 @@ on:
       - 'v*'
 
 jobs:
-  build:
+  goreleaser:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        goos: [linux, windows, darwin]
-        goarch: [amd64, arm64]
-    env:
-      GOOS: ${{ matrix.goos }}
-      GOARCH: ${{ matrix.goarch }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
-          check-latest: true
-      - name: Build
-        run: |
-          go build -o dist/gherkio-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/gherkio
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+          go-version: '1.21'
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v5
         with:
-          name: gherkio-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: dist/gherkio-${{ matrix.goos }}-${{ matrix.goarch }}
-
-  release:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: dist
-      - name: Create release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: dist/**/*
+          # either 'goreleaser' (default) or 'goreleaser-pro'
+          distribution: goreleaser
+          version: latest
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Your GoReleaser Pro key, if you are using the 'goreleaser-pro' distribution
+          # GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
