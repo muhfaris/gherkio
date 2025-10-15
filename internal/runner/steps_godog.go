@@ -255,19 +255,22 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 					return errors.New("body is empty")
 				}
 
+				ctx := map[string]any{"store": w.ctx.Store}
 				switch {
 				case arg.DocString != nil:
 					raw := arg.DocString.Content
 					if strings.TrimSpace(raw) == "" {
 						return errors.New("body is empty")
 					}
-					w.lastReq.Body = []byte(raw)
+					rendered := mustExec(raw, ctx)
+					w.lastReq.Body = []byte(rendered)
 				case arg.DataTable != nil:
 					m := pickleTableToMap(arg.DataTable)
 					if len(m) == 0 {
 						return errors.New("body is empty")
 					}
-					b, err := json.Marshal(m)
+					rendered := renderMap(m, ctx)
+					b, err := json.Marshal(rendered)
 					if err != nil {
 						return err
 					}
@@ -300,6 +303,8 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		bind(sc, `^I call API [\"']([^\"']+)[\"'] with:$`, "Call API with table as JSON body", "I call API 'auth.login' with:\n| username | superadmin |\n| password | Admin@123 |", func(key string, table *godog.Table) error {
 			w.lastReq.APIKey = key
 			m := tableToMap(table)
+			ctx := map[string]any{"store": w.ctx.Store}
+			m = renderMap(m, ctx)
 			b, err := json.Marshal(m)
 			if err != nil {
 				return err
