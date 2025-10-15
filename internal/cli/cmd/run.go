@@ -32,14 +32,14 @@ var runCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(runCmd)
-	runCmd.Flags().String("env", "", "environment name")
-	runCmd.Flags().Bool("debug", false, "print request/response and include debug info in HTML report")
-	runCmd.Flags().String("tags", "", "tag expression (e.g. \"@smoke and not @wip\")")
-	runCmd.Flags().String("name", "", "filter Scenario name by regex (best-effort)")
-	runCmd.Flags().Int("parallel", 1, "number of parallel workers (by feature file)")
-	runCmd.Flags().StringArray("feature", []string{}, "repeatable include filter")
-	runCmd.Flags().StringArray("exclude-feature", []string{}, "repeatable exclude filter")
-	runCmd.Flags().StringArray("report", []string{}, "Reporters (pretty|html|junit|cucumber|csv)")
+	runCmd.Flags().String("env", "", "Environment name (must exist in gherkio/envs/<name>.yaml)")
+	runCmd.Flags().Bool("debug", false, "Print request/response and include debug info in HTML report")
+	runCmd.Flags().String("tags", "", `Filter scenarios by tags (e.g. "@smoke and not @wip")`)
+	runCmd.Flags().String("name", "", "Filter scenarios by name using a regex pattern")
+	runCmd.Flags().Int("parallel", 1, "Number of parallel workers (by feature file)")
+	runCmd.Flags().StringArray("feature", []string{}, "Run only specific feature files (path or glob pattern)")
+	runCmd.Flags().StringArray("exclude-feature", []string{}, "Exclude specific feature files (path or glob pattern)")
+	runCmd.Flags().StringArray("report", []string{}, `Generate report in a specific format: kind[:path] (e.g. "html:report.html")`)
 }
 
 func runRun(cmd *cobra.Command, args []string) (err error) {

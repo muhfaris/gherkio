@@ -33,16 +33,16 @@ var importCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(importCmd)
-	importCmd.Flags().String("api", "", "API key to generate (e.g., users.create)")
-	importCmd.Flags().String("curl", "", "curl command to import")
-	importCmd.Flags().String("catalog", "", "catalog file to update/create")
-	importCmd.Flags().String("fixture", "", "fixture file to write (optional)")
-	importCmd.Flags().String("feature", "", "feature file to write (optional)")
-	importCmd.Flags().String("title", "", "scenario title (optional)")
-	importCmd.Flags().String("name", "", "feature name (optional)")
-	importCmd.Flags().String("openapi", "", "OpenAPI file (YAML/JSON) to import")
-	importCmd.Flags().String("fixtures", "", "Directory for generated fixtures (OpenAPI mode)")
-	importCmd.Flags().String("prefix", "", "Optional prefix added to generated API keys (OpenAPI mode)")
+	importCmd.Flags().String("api", "", `API key to generate (e.g. "users.create")`)
+	importCmd.Flags().String("curl", "", `Raw curl command to import (e.g. 'curl -X POST ...')`)
+	importCmd.Flags().String("catalog", "", "Catalog file to update/create (defaults to gherkio/apis/imported.yaml)")
+	importCmd.Flags().String("fixture", "", "Fixture file to write (optional)")
+	importCmd.Flags().String("feature", "", "Feature file to write (optional)")
+	importCmd.Flags().String("title", "", "Scenario title (optional)")
+	importCmd.Flags().String("name", "", "Feature name (optional)")
+	importCmd.Flags().String("openapi", "", "Path to OpenAPI file (YAML/JSON) to import")
+	importCmd.Flags().String("fixtures", "", "Directory for generated fixtures in OpenAPI mode (defaults to gherkio/fixtures/openapi)")
+	importCmd.Flags().String("prefix", "", "Optional prefix for generated API keys in OpenAPI mode")
 }
 
 type curlImportOptions struct {

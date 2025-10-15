@@ -26,13 +26,13 @@ var callCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(callCmd)
 	callCmd.Flags().String("env", "", "Environment name (must exist in gherkio/envs/<name>.yaml)")
-	callCmd.Flags().String("api", "", "Endpoint key from gherkio/apis/*.yaml (e.g., users.getById)")
-	callCmd.Flags().String("body", "", "Request body (JSON or multipart fixture)")
+	callCmd.Flags().String("api", "", `Endpoint key from gherkio/apis/*.yaml (e.g. "users.getById")`)
+	callCmd.Flags().String("body", "", `Request body (JSON string or path to a fixture file, e.g. "@fixtures/user.json")`)
 	callCmd.Flags().String("expect-status", "", "Expected HTTP status code")
-	callCmd.Flags().StringArray("path", []string{}, "Path params (k=v)")
-	callCmd.Flags().StringArray("query", []string{}, "Query params (k=v)")
-	callCmd.Flags().StringArray("header", []string{}, "Headers (k=v)")
-	callCmd.Flags().StringArray("report", []string{}, "Reporters (pretty|html|junit|cucumber|csv)")
+	callCmd.Flags().StringArray("path", []string{}, "Path params (key=value), can be specified multiple times")
+	callCmd.Flags().StringArray("query", []string{}, "Query params (key=value), can be specified multiple times")
+	callCmd.Flags().StringArray("header", []string{}, "Headers (key=value), can be specified multiple times")
+	callCmd.Flags().StringArray("report", []string{}, `Generate report in a specific format: kind[:path] (e.g. "html:report.html")`)
 }
 
 func runCall(cmd *cobra.Command, args []string) error {

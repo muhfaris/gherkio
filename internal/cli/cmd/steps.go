@@ -23,9 +23,9 @@ var stepsCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(stepsCmd)
-	stepsCmd.Flags().String("format", "text", "text|md")
-	stepsCmd.Flags().String("out", "", "output file (optional)")
-	stepsCmd.Flags().StringArray("match", []string{}, "filter steps containing substring (repeatable, AND logic)")
+	stepsCmd.Flags().String("format", "text", `Output format ("text" or "md")`)
+	stepsCmd.Flags().String("out", "", "Output file path (optional, defaults to stdout)")
+	stepsCmd.Flags().StringArray("match", []string{}, "Filter steps by a matching substring (can be specified multiple times)")
 }
 
 func runSteps(cmd *cobra.Command, args []string) error {
