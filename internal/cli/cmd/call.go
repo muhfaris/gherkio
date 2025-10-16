@@ -18,6 +18,11 @@ var callCmd = &cobra.Command{
 	Use:   "call",
 	Short: "Single-endpoint call using catalogs",
 	Long:  `Performs a single API call based on the defined catalogs and flags.`,
+	Example: `  # Get user by ID
+  gherkio call --env dev --api users.getById --path id=123
+
+  # Create a new user from a fixture file
+  gherkio call --env dev --api users.create --body @fixtures/new_user.json`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runCall(cmd, args)
 	},

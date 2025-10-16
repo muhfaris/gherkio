@@ -14,6 +14,8 @@ var fnCmd = &cobra.Command{
 	Use:   "fn",
 	Short: "Function template documentation",
 	Long:  `Displays documentation for available function templates.`,
+	Example: `  # List all function templates
+  gherkio docs fn`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runFnDocs(cmd, args)
 	},

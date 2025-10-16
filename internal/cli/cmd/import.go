@@ -26,6 +26,11 @@ var importCmd = &cobra.Command{
 	Use:   "import",
 	Short: "Import curl commands or OpenAPI specs into catalogs/fixtures",
 	Long:  `Imports API definitions from curl commands or OpenAPI specifications, generating catalogs and fixtures.`,
+	Example: `  # Import a curl command
+  gherkio import --api users.create --curl 'curl -X POST -H "Content-Type: application/json" -d ''{"name":"test"}' http://localhost:8080/users'
+
+  # Import from an OpenAPI specification
+  gherkio import --openapi path/to/openapi.yaml`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runImport(cmd, args)
 	},

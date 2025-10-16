@@ -25,6 +25,14 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run Gherkin features (journey)",
 	Long:  `Executes Gherkin feature files to run API journeys.`,
+	Example: `  # Run all features
+  gherkio run --env dev
+
+  # Run a specific feature file
+  gherkio run --env dev --feature gherkio/features/users.feature
+
+  # Run scenarios with a specific tag
+  gherkio run --env dev --tags @smoke`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runRun(cmd, args)
 	},
