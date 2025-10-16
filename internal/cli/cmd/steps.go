@@ -16,13 +16,21 @@ var stepsCmd = &cobra.Command{
 	Use:   "steps",
 	Short: "Run Gherkin steps",
 	Long:  `Displays all available Gherkin steps that can be used in feature files.`,
+	Example: `  # List all available steps
+  gherkio docs steps
+
+  # Find steps related to JSON
+  gherkio docs steps --match json
+
+  # Output in Markdown format
+  gherkio docs steps --format md`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runSteps(cmd, args)
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(stepsCmd)
+	docsCmd.AddCommand(stepsCmd)
 	stepsCmd.Flags().String("format", "text", `Output format ("text" or "md")`)
 	stepsCmd.Flags().String("out", "", "Output file path (optional, defaults to stdout)")
 	stepsCmd.Flags().StringArray("match", []string{}, "Filter steps by a matching substring (can be specified multiple times)")
