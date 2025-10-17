@@ -469,6 +469,30 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 			return nil
 		})
 
+		// json "<path>" should equal true|false|null
+		bind(sc, `^json ["'](.+?)["'] should equal (true|false|null)$`, "Assert JSON literal equals", "json '$.flags.isEnabled' should equal true", func(path, literal string) error {
+			path = w.renderPath(path)
+			val := getJSONPath(w.lastRes.Body, path)
+			if !val.Exists() {
+				return fmt.Errorf("json path %q not found", path)
+			}
+			switch strings.ToLower(literal) {
+			case "true":
+				if val.Type != gjson.True {
+					return fmt.Errorf("expect true got %s", val.Raw)
+				}
+			case "false":
+				if val.Type != gjson.False {
+					return fmt.Errorf("expect false got %s", val.Raw)
+				}
+			case "null":
+				if val.Type != gjson.Null {
+					return fmt.Errorf("expect null got %s", val.Raw)
+				}
+			}
+			return nil
+		})
+
 		bind(sc, `^json ["'](.+?)["'] should equal store ["']([^"']+)["']$`, "Assert JSON equals stored value", "json '$.data.id' should equal store 'resource_id'", func(path, key string) error {
 			path = w.renderPath(path)
 			val := getJSONPath(w.lastRes.Body, path)
