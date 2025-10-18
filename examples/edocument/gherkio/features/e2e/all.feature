@@ -146,7 +146,7 @@ Feature: Company Setup and Configuration Journey
     """
     Then response status should be 201
     And json "$.data.id" should not be empty
-    And save "$.data.id" as "divisiPajakId"
+    And save "$.data.id" as "divisiAkuntansiId"
 
     Given I set path params:
       | companyId | {{.store.companyId}} |
@@ -270,4 +270,16 @@ Feature: Company Setup and Configuration Journey
     Then response status should be 200
     And json '$.data.#(id=="{{.store.deptTeknologiId}}")' should exist
     And json '$.data.#(id=="{{.store.deptKeuanganId}}")' should exist
+    And json '$.data.#(id=="{{.store.deptKeuanganId}}").name' should not be empty
+    And I clear query params
+
+    # -- Get Organization Nodes (Filter by Level) --
+    Given I set path params:
+      | companyId | {{.store.companyId}} |
+    And I set query params:
+      | organizationLevelId | {{.store.divisionLevelId}} |
+      | pageSize            | 100                         |
+    When I call API "GetOrganizationNodes"
+    Then response status should be 200
+    And json '$.data.#(id=="{{.store.divisiAkuntansiId}}")' should exist
     And I clear query params
