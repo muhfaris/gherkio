@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/muhfaris/gherkio/internal/loader"
@@ -90,10 +92,11 @@ func runCall(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	resp, _, err := runner.Call(ctx, req)
+	resp, httpReq, err := runner.Call(ctx, req)
 	if err != nil {
 		return err
 	}
+	reqMethod, reqURL, reqHeaders := debugRequestInfo(httpReq)
 	// simple pretty output
 	report.NewPretty(os.Stdout).RecordSingle(req, resp)
 
@@ -127,6 +130,10 @@ func runCall(cmd *cobra.Command, args []string) error {
 					}
 					if debugEnabled {
 						step.Debug = &report.DebugInfo{
+							APIKey:         req.APIKey,
+							RequestMethod:  reqMethod,
+							RequestURL:     reqURL,
+							RequestHeaders: reqHeaders,
 							RequestBody:    formatPayload(req.Body),
 							ResponseBody:   formatPayload(resp.Body),
 							ResponseStatus: resp.Status,
@@ -188,6 +195,46 @@ func truncateRunes(s string, limit int) string {
 		return s
 	}
 	return string(runes[:limit]) + "\n... (truncated)"
+}
+
+func debugRequestInfo(httpReq *http.Request) (method, url, headers string) {
+	method = "<unknown>"
+	url = "<unknown>"
+	headers = "<none>"
+	if httpReq == nil {
+		return
+	}
+	if httpReq.Method != "" {
+		method = httpReq.Method
+	}
+	if httpReq.URL != nil {
+		url = httpReq.URL.String()
+	}
+	if len(httpReq.Header) > 0 {
+		headers = formatHeaderMap(httpReq.Header)
+	}
+	return
+}
+
+func formatHeaderMap(h http.Header) string {
+	if len(h) == 0 {
+		return "<none>"
+	}
+	keys := make([]string, 0, len(h))
+	for k := range h {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var b strings.Builder
+	for i, k := range keys {
+		if i > 0 {
+			b.WriteByte('\n')
+		}
+		b.WriteString(k)
+		b.WriteString(": ")
+		b.WriteString(strings.Join(h[k], ", "))
+	}
+	return truncateRunes(b.String(), maxDebugRunes)
 }
 
 func kvToMap(data []string) map[string]string {

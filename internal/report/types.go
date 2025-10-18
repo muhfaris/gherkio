@@ -17,6 +17,10 @@ type StepDetail struct {
 }
 
 type DebugInfo struct {
+	APIKey         string
+	RequestMethod  string
+	RequestURL     string
+	RequestHeaders string
 	RequestBody    string
 	ResponseBody   string
 	ResponseStatus int

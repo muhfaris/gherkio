@@ -242,7 +242,7 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 			w.lastDurMs = time.Since(t0).Milliseconds()
 			w.lastRes = res
 			w.lastHTTPReq = httpReq
-			w.captureDebug(w.lastReq, w.lastRes)
+			w.captureDebug(w.lastReq, w.lastRes, httpReq)
 			return err
 		})
 
@@ -291,7 +291,7 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 				w.lastDurMs = time.Since(t0).Milliseconds()
 				w.lastRes = res
 				w.lastHTTPReq = httpReq
-				w.captureDebug(w.lastReq, w.lastRes)
+				w.captureDebug(w.lastReq, w.lastRes, httpReq)
 				return err
 			})
 
@@ -322,7 +322,7 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 			w.lastDurMs = time.Since(t0).Milliseconds()
 			w.lastRes = res
 			w.lastHTTPReq = httpReq
-			w.captureDebug(w.lastReq, w.lastRes)
+			w.captureDebug(w.lastReq, w.lastRes, httpReq)
 			return err
 		})
 
@@ -341,13 +341,14 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 			w.lastDurMs = time.Since(t0).Milliseconds()
 			w.lastRes = res
 			w.lastHTTPReq = httpReq
-			w.captureDebug(w.lastReq, w.lastRes)
+			w.captureDebug(w.lastReq, w.lastRes, httpReq)
 			return err
 		})
 
 		// I run flow "<name>" with:
 		bind(sc, `^I run flow [\"']([^\"']+)[\"'] with:$`, "Run flow with parameters", "I run flow 'login' with:\n| username | demo |\n| password | secret |", func(name string, table *godog.Table) error {
 			args := tableToMap(table)
+			args = renderMap(args, map[string]any{"store": w.ctx.Store})
 			return w.runFlow(name, args)
 		})
 
@@ -1047,7 +1048,7 @@ func (w *world) runFlow(name string, args map[string]string) error {
 		res, httpReq, err := Call(w.ctx, req)
 		w.lastReq, w.lastRes = req, res
 		w.lastHTTPReq = httpReq
-		w.captureDebug(w.lastReq, w.lastRes)
+		w.captureDebug(w.lastReq, w.lastRes, httpReq)
 		if err != nil {
 			return fmt.Errorf("flow %s step %d (%s): %w", name, i+1, st.Call, err)
 		}
@@ -1117,19 +1118,47 @@ func errorText(err error) string {
 
 const maxDebugRunes = 4000
 
-func (w *world) captureDebug(req Request, res Response) {
+func (w *world) captureDebug(req Request, res Response, httpReq *http.Request) {
+	method := "<unknown>"
+	url := "<unknown>"
+	headers := "<none>"
+	if httpReq != nil {
+		if httpReq.Method != "" {
+			method = httpReq.Method
+		}
+		if httpReq.URL != nil {
+			url = httpReq.URL.String()
+		}
+		if hdr := formatDebugHeaders(httpReq.Header); hdr != "" {
+			headers = hdr
+		}
+	}
+	reqBody := formatDebugBody(req.Body)
+	resBody := formatDebugBody(res.Body)
 	if isDebugConsole() {
-		fmt.Printf("\n[debug] API: %s -> %d\n", req.APIKey, res.Status)
-		fmt.Printf("[debug] request body:\n%s\n", formatDebugBody(req.Body))
-		fmt.Printf("[debug] response body:\n%s\n", formatDebugBody(res.Body))
+		fmt.Printf("\n[debug] API: %s (%s %s) -> %d\n", req.APIKey, method, url, res.Status)
+		if headers == "<none>" {
+			fmt.Println("[debug] request headers: <none>")
+		} else {
+			fmt.Println("[debug] request headers:")
+			for _, line := range strings.Split(headers, "\n") {
+				fmt.Printf("[debug]   %s\n", line)
+			}
+		}
+		fmt.Printf("[debug] request body:\n%s\n", reqBody)
+		fmt.Printf("[debug] response body:\n%s\n", resBody)
 	}
 	if !isDebugCapture() {
 		w.pendingDebug = nil
 		return
 	}
 	w.pendingDebug = &StepDebug{
-		RequestBody:    formatDebugBody(req.Body),
-		ResponseBody:   formatDebugBody(res.Body),
+		APIKey:         req.APIKey,
+		RequestMethod:  method,
+		RequestURL:     url,
+		RequestHeaders: headers,
+		RequestBody:    reqBody,
+		ResponseBody:   resBody,
 		ResponseStatus: res.Status,
 	}
 }
@@ -1154,6 +1183,27 @@ func truncateRunes(s string, limit int) string {
 		return s
 	}
 	return string(runes[:limit]) + "\n... (truncated)"
+}
+
+func formatDebugHeaders(h http.Header) string {
+	if len(h) == 0 {
+		return ""
+	}
+	keys := make([]string, 0, len(h))
+	for k := range h {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var b strings.Builder
+	for i, k := range keys {
+		if i > 0 {
+			b.WriteByte('\n')
+		}
+		b.WriteString(k)
+		b.WriteString(": ")
+		b.WriteString(strings.Join(h[k], ", "))
+	}
+	return truncateRunes(b.String(), maxDebugRunes)
 }
 
 func compareJSON(a, b any, ignoreOrder bool) bool {

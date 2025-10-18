@@ -403,6 +403,14 @@ var htmlTemplate = template.Must(template.New("gherkio-report").Parse(`<!DOCTYPE
                           <summary>Show payload</summary>
                           <div class="debug-content">
                             <div class="debug-section">
+                              <div class="debug-title">Request Info</div>
+                              <pre>API: {{.Debug.APIKey}}
+Method: {{.Debug.RequestMethod}}
+URL: {{.Debug.RequestURL}}
+Headers:
+{{.Debug.RequestHeaders}}</pre>
+                            </div>
+                            <div class="debug-section">
                               <div class="debug-title">Request Body</div>
                               <pre>{{.Debug.RequestBody}}</pre>
                             </div>
@@ -423,6 +431,14 @@ var htmlTemplate = template.Must(template.New("gherkio-report").Parse(`<!DOCTYPE
                       <details class="debug-inline">
                         <summary>Show payload</summary>
                         <div class="debug-content">
+                          <div class="debug-section">
+                            <div class="debug-title">Request Info</div>
+                            <pre>API: {{.Debug.APIKey}}
+Method: {{.Debug.RequestMethod}}
+URL: {{.Debug.RequestURL}}
+Headers:
+{{.Debug.RequestHeaders}}</pre>
+                          </div>
                           <div class="debug-section">
                             <div class="debug-title">Request Body</div>
                             <pre>{{.Debug.RequestBody}}</pre>

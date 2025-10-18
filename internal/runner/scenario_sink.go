@@ -15,6 +15,10 @@ type StepLog struct {
 }
 
 type StepDebug struct {
+	APIKey         string
+	RequestMethod  string
+	RequestURL     string
+	RequestHeaders string
 	RequestBody    string
 	ResponseBody   string
 	ResponseStatus int

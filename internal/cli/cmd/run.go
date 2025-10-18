@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 
@@ -87,6 +88,7 @@ func runRun(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return err
 	}
+	sort.Strings(features)
 	if len(features) == 0 {
 		return fmt.Errorf("no .feature found in %s", featDir)
 	}
@@ -359,6 +361,10 @@ func (a *scenarioAggregator) RecordScenario(feature, scenario, status string, du
 			}
 			if st.Debug != nil {
 				detail.Debug = &report.DebugInfo{
+					APIKey:         st.Debug.APIKey,
+					RequestMethod:  st.Debug.RequestMethod,
+					RequestURL:     st.Debug.RequestURL,
+					RequestHeaders: st.Debug.RequestHeaders,
 					RequestBody:    st.Debug.RequestBody,
 					ResponseBody:   st.Debug.ResponseBody,
 					ResponseStatus: st.Debug.ResponseStatus,
