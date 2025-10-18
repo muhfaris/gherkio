@@ -154,6 +154,13 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		bind(sc, `^I load env [\"']([^\"']+)[\"']$`, "Load env", "", func(_ string) error { return nil })
 		bind(sc, `^I load flows from [\"']([^\"']+)[\"']$`, "Load flows", "", func(_ string) error { return nil })
 
+		// Override base URL for the current scenario
+		bind(sc, `^(?:Given\s+)?the base URL is ["']([^"']*)["']$`, "Override base URL", "Given the base URL is 'https://api.example.com'", func(raw string) error {
+			rendered := mustExec(raw, map[string]any{"store": w.ctx.Store})
+			w.ctx.Env.BaseURL = rendered
+			return nil
+		})
+
 		bind(sc, `^I include feature ["']([^"']+)["']$`, "Include feature", "Include feature \"users.feature\"",
 			func(path string) error {
 				full := filepath.Join("gherkio/features", path)
@@ -401,6 +408,43 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 			}
 			if !ok {
 				return fmt.Errorf("assert failed: %d ms %s %d ms", got, op, want)
+			}
+			return nil
+		})
+
+		bind(sc, `^(?:Then\s+)?the store should contain:$`, "Assert store entries", "Then the store should contain:\n| key | value |", func(table *godog.Table) error {
+			if table == nil || len(table.Rows) == 0 {
+				return errors.New("table required")
+			}
+			rows := table.Rows
+			start := 0
+			if len(rows) > 0 && len(rows[0].Cells) >= 1 {
+				head := strings.TrimSpace(strings.ToLower(rows[0].Cells[0].Value))
+				if head == "key" || head == "name" {
+					start = 1
+				}
+			}
+			storeCtx := map[string]any{"store": w.ctx.Store}
+			for i := start; i < len(rows); i++ {
+				cells := rows[i].Cells
+				if len(cells) == 0 {
+					continue
+				}
+				key := strings.TrimSpace(cells[0].Value)
+				if key == "" {
+					return fmt.Errorf("row %d: empty key", i+1)
+				}
+				val, ok := w.ctx.Store[key]
+				if !ok {
+					return fmt.Errorf("store key %q not found", key)
+				}
+				if len(cells) > 1 {
+					wantRaw := cells[1].Value
+					want := mustExec(strings.TrimSpace(wantRaw), storeCtx)
+					if !storeValueMatches(val, want) {
+						return fmt.Errorf("store[%s]=%s does not match %q", key, formatAny(val), want)
+					}
+				}
 			}
 			return nil
 		})
@@ -1204,6 +1248,53 @@ func formatDebugHeaders(h http.Header) string {
 		b.WriteString(strings.Join(h[k], ", "))
 	}
 	return truncateRunes(b.String(), maxDebugRunes)
+}
+
+func storeValueMatches(actual any, expected string) bool {
+	expTrim := strings.TrimSpace(expected)
+	if actual == nil {
+		return expTrim == "" || strings.EqualFold(expTrim, "null")
+	}
+	if str, ok := actual.(fmt.Stringer); ok {
+		return str.String() == expected
+	}
+	switch v := actual.(type) {
+	case string:
+		return v == expected
+	case []byte:
+		return string(v) == expected
+	}
+	rv := reflect.ValueOf(actual)
+	switch rv.Kind() {
+	case reflect.Bool:
+		if want, err := strconv.ParseBool(expTrim); err == nil {
+			return rv.Bool() == want
+		}
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		if want, err := strconv.ParseInt(expTrim, 10, 64); err == nil {
+			return rv.Int() == want
+		}
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		if want, err := strconv.ParseUint(expTrim, 10, 64); err == nil {
+			return rv.Uint() == want
+		}
+	case reflect.Float32, reflect.Float64:
+		if want, err := strconv.ParseFloat(expTrim, 64); err == nil {
+			return rv.Float() == want
+		}
+	case reflect.Slice:
+		if rv.Type().Elem().Kind() == reflect.Uint8 {
+			return string(rv.Bytes()) == expected
+		}
+	}
+	if expTrim != "" && (strings.HasPrefix(expTrim, "{") || strings.HasPrefix(expTrim, "[")) {
+		var wantJSON any
+		if err := json.Unmarshal([]byte(expTrim), &wantJSON); err == nil {
+			return compareJSON(actual, wantJSON, false)
+		}
+	}
+	formatted := formatAny(actual)
+	return formatted == expected || formatted == expTrim
 }
 
 func compareJSON(a, b any, ignoreOrder bool) bool {

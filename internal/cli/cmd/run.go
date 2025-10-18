@@ -49,6 +49,7 @@ func init() {
 	runCmd.Flags().StringArray("feature", []string{}, "Run only specific feature files (path or glob pattern)")
 	runCmd.Flags().StringArray("exclude-feature", []string{}, "Exclude specific feature files (path or glob pattern)")
 	runCmd.Flags().StringArray("report", []string{}, `Generate report in a specific format: kind[:path] (e.g. "html:report.html")`)
+	runCmd.Flags().Bool("dry-run", false, "Validate feature files and step bindings without executing requests")
 }
 
 func runRun(cmd *cobra.Command, args []string) (err error) {
@@ -60,6 +61,7 @@ func runRun(cmd *cobra.Command, args []string) (err error) {
 	includes, _ := cmd.Flags().GetStringArray("feature")
 	excludes, _ := cmd.Flags().GetStringArray("exclude-feature")
 	reports, _ := cmd.Flags().GetStringArray("report")
+	dryRun, _ := cmd.Flags().GetBool("dry-run")
 
 	if envName == "" {
 		return errors.New("--env is required")
@@ -113,6 +115,10 @@ func runRun(cmd *cobra.Command, args []string) (err error) {
 
 	if len(features) == 0 {
 		return fmt.Errorf("no .feature matched filters")
+	}
+
+	if dryRun {
+		return lintFeatures(features)
 	}
 
 	featureSet := map[string]struct{}{}
@@ -179,6 +185,7 @@ func runRun(cmd *cobra.Command, args []string) (err error) {
 			Format: "pretty",
 			Paths:  features,
 			Tags:   tags,
+			Strict: true,
 		}
 		suite := godog.TestSuite{
 			Name:                "gherkio",
@@ -206,6 +213,7 @@ func runRun(cmd *cobra.Command, args []string) (err error) {
 				Format: "pretty",
 				Paths:  paths,
 				Tags:   tags,
+				Strict: true,
 			}
 			suite := godog.TestSuite{
 				Name:                fmt.Sprintf("gherkio-%d", i+1),
