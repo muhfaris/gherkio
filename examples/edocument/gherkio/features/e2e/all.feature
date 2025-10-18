@@ -51,8 +51,9 @@ Feature: Company Setup and Configuration Journey
       "name": "Department {{fnRandomString 8}}"
     }
     """
-    Then response status should be 200
-    And save "id" as "departmentLevelId"
+    Then response status should be 201
+    And json "$.data.id" should not be empty
+    And save "$.data.id" as "departmentLevelId"
 
     # Level 2: Division
     Given I set path params:
@@ -64,8 +65,9 @@ Feature: Company Setup and Configuration Journey
       "parentLevelId": "{{.store.departmentLevelId}}"
     }
     """
-    Then response status should be 200
-    And save "id" as "divisionLevelId"
+    Then response status should be 201
+    And json "$.data.id" should not be empty
+    And save "$.data.id" as "divisionLevelId"
 
     # Level 3: Unit
     Given I set path params:
@@ -77,8 +79,9 @@ Feature: Company Setup and Configuration Journey
       "parentLevelId": "{{.store.divisionLevelId}}"
     }
     """
-    Then response status should be 200
-    And save "id" as "unitLevelId"
+    Then response status should be 201
+    And json "$.data.id" should not be empty
+    And save "$.data.id" as "unitLevelId"
 
     # Level 4: Team
     Given I set path params:
@@ -95,6 +98,13 @@ Feature: Company Setup and Configuration Journey
     And save "$.data.id" as "teamLevelId"
 
     # 7. Create the Organization Nodes
+    # Get initial count of nodes
+    Given I set path params:
+      | companyId | {{.store.companyId}} |
+    When I call API "GetOrganizationNodes"
+    Then response status should be 200
+    And I clear query params
+
     # -- Departemen Keuangan --
     Given I set path params:
       | companyId | {{.store.companyId}} |
@@ -136,7 +146,7 @@ Feature: Company Setup and Configuration Journey
     """
     Then response status should be 201
     And json "$.data.id" should not be empty
-    And save "$.data.id" as "divisiAkuntansiId"
+    And save "$.data.id" as "divisiPajakId"
 
     Given I set path params:
       | companyId | {{.store.companyId}} |
@@ -148,7 +158,7 @@ Feature: Company Setup and Configuration Journey
       "parentOrganizationId": "{{.store.deptKeuanganId}}"
     }
     """
-    Then response status should be 200
+    Then response status should be 201
     And json "$.data.id" should not be empty
     And save "$.data.id" as "divisiAnggaranId"
 
@@ -162,9 +172,9 @@ Feature: Company Setup and Configuration Journey
       "organizationLevelId": "{{.store.departmentLevelId}}"
     }
     """
-    Then response status should be 200
+    Then response status should be 201
     And json "$.data.id" should not be empty
-    And save "id" as "deptSdmId"
+    And save "$.data.id" as "deptSdmId"
 
     # -- Divisi di bawah SDM --
     Given I set path params:
@@ -177,7 +187,7 @@ Feature: Company Setup and Configuration Journey
       "parentOrganizationId": "{{.store.deptSdmId}}"
     }
     """
-    Then response status should be 200
+    Then response status should be 201
 
     Given I set path params:
       | companyId | {{.store.companyId}} |
@@ -189,7 +199,7 @@ Feature: Company Setup and Configuration Journey
       "parentOrganizationId": "{{.store.deptSdmId}}"
     }
     """
-    Then response status should be 200
+    Then response status should be 201
 
     # -- Departemen Teknologi --
     Given I set path params:
@@ -201,8 +211,9 @@ Feature: Company Setup and Configuration Journey
       "organizationLevelId": "{{.store.departmentLevelId}}"
     }
     """
-    Then response status should be 200
-    And save "id" as "deptTeknologiId"
+    Then response status should be 201
+    And json "$.data.id" should not be empty
+    And save "$.data.id" as "deptTeknologiId"
 
     # -- Divisi di bawah Teknologi --
     Given I set path params:
@@ -215,7 +226,7 @@ Feature: Company Setup and Configuration Journey
       "parentOrganizationId": "{{.store.deptTeknologiId}}"
     }
     """
-    Then response status should be 200
+    Then response status should be 201
 
     Given I set path params:
       | companyId | {{.store.companyId}} |
@@ -227,7 +238,7 @@ Feature: Company Setup and Configuration Journey
       "parentOrganizationId": "{{.store.deptTeknologiId}}"
     }
     """
-    Then response status should be 200
+    Then response status should be 201
 
     Given I set path params:
       | companyId | {{.store.companyId}} |
@@ -239,5 +250,24 @@ Feature: Company Setup and Configuration Journey
       "parentOrganizationId": "{{.store.deptTeknologiId}}"
     }
     """
-    Then response status should be 200
+    Then response status should be 201
 
+    # 8. Verify the created structure
+    # -- Get Organization Levels --
+    Given I set path params:
+      | companyId | {{.store.companyId}} |
+    When I call API "GetOrganizationLevels"
+    Then response status should be 200
+    And json '$.data.#(id=="{{.store.departmentLevelId}}")' should exist
+    And json '$.data.#(id=="{{.store.teamLevelId}}")' should exist
+
+    # -- Get All Organization Nodes --
+    Given I set path params:
+      | companyId | {{.store.companyId}} |
+    And I set query params:
+      | pageSize | 100 |
+    When I call API "GetOrganizationNodes"
+    Then response status should be 200
+    And json '$.data.#(id=="{{.store.deptTeknologiId}}")' should exist
+    And json '$.data.#(id=="{{.store.deptKeuanganId}}")' should exist
+    And I clear query params

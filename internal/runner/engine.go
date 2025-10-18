@@ -154,6 +154,14 @@ func buildHTTPRequest(ctx *Context, req Request) (*http.Request, error) {
 		httpReq.Header.Set("Content-Type", contentTypeOverride)
 	}
 
+	if len(req.Query) > 0 {
+		q := httpReq.URL.Query()
+		for k, v := range req.Query {
+			q.Set(k, v)
+		}
+		httpReq.URL.RawQuery = q.Encode()
+	}
+
 	authName := def.Auth
 	if authName == "" {
 		authName = ctx.CurrentAuth
