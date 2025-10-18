@@ -916,6 +916,39 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 			return nil
 		})
 
+		// --- Store Assertions ---
+		bind(sc, `^the store should not be empty$`, "Assert store is not empty", "the store should not be empty", func() error {
+			if len(w.ctx.Store) == 0 {
+				return errors.New("the store is empty")
+			}
+			return nil
+		})
+
+		bind(sc, `^the store should contain "([^"]*)"$`, "Assert store contains key", "the store should contain \"access_token\"", func(key string) error {
+			if _, ok := w.ctx.Store[key]; !ok {
+				return fmt.Errorf("the store does not contain key %q", key)
+			}
+			return nil
+		})
+
+		bind(sc, `^I print the store$`, "Print the store content", "I print the store", func() error {
+			fmt.Println("\n--- store ---")
+			if len(w.ctx.Store) == 0 {
+				fmt.Println("<empty>")
+				return nil
+			}
+			keys := make([]string, 0, len(w.ctx.Store))
+			for k := range w.ctx.Store {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			for _, k := range keys {
+				fmt.Printf("%s: %v\n", k, w.ctx.Store[k])
+			}
+			fmt.Println("-------------")
+			return nil
+		})
+
 		// save response body to file "<path>"
 		bind(sc, `^save response body to file [\"']([^\"']+)[\"']$`, "Save response to file", "save response body to file 'response.json'", func(path string) error {
 			if err := os.WriteFile(path, w.lastRes.Body, 0o644); err != nil {

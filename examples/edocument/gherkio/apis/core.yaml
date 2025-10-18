@@ -1,0 +1,133 @@
+version: 1
+auth:
+  bearer:
+    fromStore: access_token
+    header: Authorization
+    template: "Bearer {{ .value }}"
+endpoints:
+  Login:
+    method: POST
+    path: /api/Auth/login
+  MyInfo:
+    method: GET
+    path: /api/Auth/me
+  GetAnnouncements:
+    method: GET
+    path: /api/Announcements
+  CreateAnnouncement:
+    method: POST
+    path: /api/Announcements
+  GetAnnouncementByID:
+    method: GET
+    path: /api/Announcements/{{.id}}
+  UpdateAnnouncement:
+    method: PUT
+    path: /api/Announcements/{{.id}}
+  DeleteAnnouncement:
+    method: DELETE
+    path: /api/Announcements/{{.id}}
+  GetArticles:
+    method: GET
+    path: /api/Articles
+  CreateArticle:
+    method: POST
+    path: /api/Articles
+  GetArticleByID:
+    method: GET
+    path: /api/Articles/{{.id}}
+  UpdateArticle:
+    method: PUT
+    path: /api/Articles/{{.id}}
+  DeleteArticle:
+    method: DELETE
+    path: /api/Articles/{{.id}}
+  ChangeArticleStatus:
+    method: PUT
+    path: /api/Articles/{{.id}}/status
+  GetBookings:
+    method: GET
+    path: /api/bookings
+  CreateBooking:
+    method: POST
+    path: /api/bookings
+  GetBookingByID:
+    method: GET
+    path: /api/bookings/{{.id}}
+  ConfirmBooking:
+    method: POST
+    path: /api/bookings/{{.id}}/confirm
+  RejectBooking:
+    method: POST
+    path: /api/bookings/{{.id}}/reject
+  CancelBooking:
+    method: POST
+    path: /api/bookings/{{.id}}/cancel
+  GetCompanies:
+    method: GET
+    path: /api/Companies
+  CreateCompany:
+    method: POST
+    path: /api/Companies
+  GetCompanyByID:
+    method: GET
+    path: /api/Companies/{{.id}}
+  UpdateCompany:
+    method: PUT
+    path: /api/Companies/{{.id}}
+  DeleteCompany:
+    method: DELETE
+    path: /api/Companies/{{.id}}
+  GetUsers:
+    method: GET
+    path: /api/Users
+  CreateUser:
+    method: POST
+    path: /api/Users
+  GetUserByID:
+    method: GET
+    path: /api/Users/{{.id}}
+  UpdateUser:
+    method: PUT
+    path: /api/Users/{{.id}}
+  DeleteUser:
+    method: DELETE
+    path: /api/Users/{{.id}}
+  GetDocuments:
+    method: GET
+    path: /api/documents
+  CreateDocument:
+    method: POST
+    path: /api/documents
+  GetDocumentByID:
+    method: GET
+    path: /api/documents/{{.id}}
+  UpdateDocument:
+    method: PUT
+    path: /api/documents/{{.id}}
+  DeleteDocument:
+    method: DELETE
+    path: /api/documents/{{.id}}
+  GetDocumentTypes:
+    method: GET
+    path: /api/document-types
+  CreateDocumentType:
+    method: POST
+    path: /api/document-types
+  GetDocumentTypeByID:
+    method: GET
+    path: /api/document-types/{{.id}}
+  UpdateDocumentType:
+    method: PUT
+    path: /api/document-types/{{.id}}
+  DeleteDocumentType:
+    method: DELETE
+    path: /api/document-types/{{.id}}
+  GetSettings:
+    method: GET
+    path: /api/Settings
+  CreateOrganizationLevel:
+    method: POST
+    path: /api/companies/{{.companyId}}/organization-levels
+  CreateOrganizationNode:
+    method: POST
+    path: /api/companies/{{.companyId}}/organization-nodes

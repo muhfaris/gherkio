@@ -1,0 +1,12 @@
+version: 1
+baseURL: https://bac95622f7e996a8893a0b57d16d1692.serveo.net
+headers:
+  X-App: gherkio
+timeouts:
+  request: 20s
+retries:
+  max: 1
+  wait: 200ms
+redact:
+  headers: [Authorization, X-Api-Key]
+  json: ["$.password", "$.token"]

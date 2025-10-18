@@ -1,0 +1,30 @@
+version: 1
+flows:
+  authenticate-superadmin:
+    description: Performs a login as superadmin and captures the authentication token.
+    steps:
+      - call: Login
+        body: |
+          {
+            "username": "superadmin",
+            "password": "Admin@123"
+          }
+        save:
+          "$.data.access_token": access_token
+        expect:
+          status: 200
+
+  create-announcement-and-capture-id:
+    description: Creates a new announcement via API and captures the returned ID into the store.
+    steps:
+      - call: CreateAnnouncement
+        body: |
+          {
+            "name": "Test Journey Announcement",
+            "date": "2024-10-18T10:00:00Z",
+            "description": "This announcement is part of a full journey test."
+          }
+        save:
+          "$.data.id": createdAnnouncementID
+        expect:
+          status: 201
