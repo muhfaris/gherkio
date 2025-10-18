@@ -118,7 +118,7 @@ func runRun(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	if dryRun {
-		return lintFeatures(features)
+		return lintFeatures(features, env, cat, flows)
 	}
 
 	featureSet := map[string]struct{}{}

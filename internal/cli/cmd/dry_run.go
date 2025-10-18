@@ -11,6 +11,7 @@ import (
 	gherkin "github.com/cucumber/gherkin/go/v26"
 	messages "github.com/cucumber/messages/go/v21"
 
+	"github.com/muhfaris/gherkio/internal/loader"
 	"github.com/muhfaris/gherkio/internal/runner"
 )
 
@@ -19,6 +20,7 @@ type lintProblem struct {
 	Line     int
 	Text     string
 	Keyword  string
+	Reason   string
 	Examples []string
 }
 
@@ -27,7 +29,8 @@ type compiledStep struct {
 	info runner.StepInfo
 }
 
-func lintFeatures(paths []string) error {
+func lintFeatures(paths []string, env loader.Env, cat loader.Catalog, flows map[string]loader.Flow) error {
+	ensureStepCatalog(env, cat, flows)
 	patterns, err := compileStepPatterns()
 	if err != nil {
 		return err
@@ -48,24 +51,39 @@ func lintFeatures(paths []string) error {
 				continue
 			}
 			totalSteps++
-			if matchStep(patterns, step.Text) {
+			if !matchStep(patterns, step.Text) {
+				problem := lintProblem{
+					File:     path,
+					Line:     int(step.Line),
+					Text:     step.Text,
+					Keyword:  step.Keyword,
+					Reason:   "undefined step",
+					Examples: suggestSteps(patterns, step.Text),
+				}
+				problems = append(problems, problem)
 				continue
 			}
-			problem := lintProblem{
-				File:    path,
-				Line:    int(step.Line),
-				Text:    step.Text,
-				Keyword: step.Keyword,
+			if msg, hints := semanticProblem(step.Text, cat, flows); msg != "" {
+				problems = append(problems, lintProblem{
+					File:     path,
+					Line:     int(step.Line),
+					Text:     step.Text,
+					Keyword:  step.Keyword,
+					Reason:   msg,
+					Examples: hints,
+				})
 			}
-			problem.Examples = suggestSteps(patterns, step.Text)
-			problems = append(problems, problem)
 		}
 	}
 
 	if len(problems) > 0 {
 		for _, p := range problems {
 			display := strings.TrimSpace(strings.Join([]string{p.Keyword, p.Text}, " "))
-			fmt.Fprintf(os.Stderr, "%s:%d undefined step: %s\n", p.File, p.Line, display)
+			reason := p.Reason
+			if reason == "" {
+				reason = "undefined step"
+			}
+			fmt.Fprintf(os.Stderr, "%s:%d %s: %s\n", p.File, p.Line, reason, display)
 			if len(p.Examples) > 0 {
 				fmt.Fprintln(os.Stderr, "  Did you mean:")
 				for _, ex := range p.Examples {
@@ -242,4 +260,121 @@ func similarityScore(tokens []string, info runner.StepInfo) int {
 		}
 	}
 	return score
+}
+
+var (
+	runFlowRe = regexp.MustCompile(`(?i)^i run flow ["']([^"']+)["']`)
+	callAPIRe = regexp.MustCompile(`(?i)^i call api ["']([^"']+)["']`)
+	setAuthRe = regexp.MustCompile(`(?i)^i set auth ["']([^"']+)["']`)
+)
+
+func semanticProblem(text string, cat loader.Catalog, flows map[string]loader.Flow) (string, []string) {
+	if m := runFlowRe.FindStringSubmatch(text); len(m) == 2 {
+		name := m[1]
+		if containsTemplate(name) {
+			return "", nil
+		}
+		if _, ok := flows[name]; !ok {
+			suggestions := suggestKeys(name, mapKeys(flows))
+			return fmt.Sprintf("unknown flow %q", name), suggestions
+		}
+		return "", nil
+	}
+	if m := callAPIRe.FindStringSubmatch(text); len(m) == 2 {
+		key := m[1]
+		if containsTemplate(key) {
+			return "", nil
+		}
+		if _, ok := cat.Endpoints[key]; !ok {
+			suggestions := suggestKeys(key, mapKeys(cat.Endpoints))
+			return fmt.Sprintf("unknown API endpoint %q", key), suggestions
+		}
+		return "", nil
+	}
+	if m := setAuthRe.FindStringSubmatch(text); len(m) == 2 {
+		name := m[1]
+		if containsTemplate(name) {
+			return "", nil
+		}
+		if _, ok := cat.Auth[name]; !ok {
+			suggestions := suggestKeys(name, mapKeys(cat.Auth))
+			return fmt.Sprintf("unknown auth profile %q", name), suggestions
+		}
+	}
+	return "", nil
+}
+
+func containsTemplate(s string) bool {
+	return strings.Contains(s, "{{") && strings.Contains(s, "}}")
+}
+
+func mapKeys[T any](m map[string]T) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+func suggestKeys(name string, keys []string) []string {
+	if len(keys) == 0 {
+		return nil
+	}
+	nameTokens := tokenize(name)
+	if len(nameTokens) == 0 {
+		nameTokens = []string{strings.ToLower(name)}
+	}
+	type cand struct {
+		score int
+		key   string
+	}
+	var cands []cand
+	for _, key := range keys {
+		score := keySimilarityScore(nameTokens, key)
+		if score > 0 {
+			cands = append(cands, cand{score: score, key: key})
+		}
+	}
+	if len(cands) == 0 {
+		return nil
+	}
+	sort.Slice(cands, func(i, j int) bool {
+		if cands[i].score == cands[j].score {
+			return cands[i].key < cands[j].key
+		}
+		return cands[i].score > cands[j].score
+	})
+	limit := 3
+	if len(cands) < limit {
+		limit = len(cands)
+	}
+	out := make([]string, 0, limit)
+	for _, c := range cands[:limit] {
+		out = append(out, c.key)
+	}
+	return out
+}
+
+func keySimilarityScore(tokens []string, key string) int {
+	lower := strings.ToLower(key)
+	score := 0
+	for _, tok := range tokens {
+		if len(tok) < 2 {
+			continue
+		}
+		if strings.Contains(lower, tok) {
+			score++
+		}
+	}
+	return score
+}
+
+func ensureStepCatalog(env loader.Env, cat loader.Catalog, flows map[string]loader.Flow) {
+	if len(runner.GetStepCatalog().List()) > 0 {
+		return
+	}
+	init := runner.InitializeScenario(env, cat, flows)
+	if init != nil {
+		init(nil)
+	}
 }

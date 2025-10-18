@@ -388,6 +388,17 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 			return nil
 		})
 
+		bind(sc, `^(?:And\s+)?the response body should be a valid JSON$`, "Assert response body is JSON", "And the response body should be a valid JSON", func() error {
+			if len(w.lastRes.Body) == 0 {
+				return errors.New("response body is empty")
+			}
+			var js any
+			if err := json.Unmarshal(w.lastRes.Body, &js); err != nil {
+				return fmt.Errorf("response body is not valid JSON: %w", err)
+			}
+			return nil
+		})
+
 		// response time should be <op> <ms>
 		bind(sc, `^response time should be (==|!=|>=|>|<=|<) (\d+)ms$`, "Assert response time", "response time should be <= 500ms", func(op string, want int64) error {
 			got := w.lastDurMs
