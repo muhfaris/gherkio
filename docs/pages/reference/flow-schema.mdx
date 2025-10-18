@@ -1,0 +1,30 @@
+---
+title: Flow Schema
+---
+
+# Flow Schema
+
+```yaml
+version: 1
+flows:
+  login:
+    params: [username, password]
+    steps:
+      - call: auth.login
+        body: |
+          {"username":"{{ .username }}","password":"{{ .password }}"}
+        save:
+          "$data.access_token": access_token
+      - setAuth: bearer
+```
+
+Step Fields | Meaning
+----------- | -------
+`call` | Reference to catalog endpoint (`endpoints.<key>`).
+`body` | Request payload (templated with params/store).
+`path/query/headers` | Optional overrides rendered via `renderMap`.
+`save` | JSONPath → store key mappings per step.
+`setAuth` | Switch auth profile for subsequent steps.
+`expect.status` | Inline assertion for this flow step.
+
+Params are optional when defaults exist in `store[param]` or `store[flow.param]` (via `env.vars`).

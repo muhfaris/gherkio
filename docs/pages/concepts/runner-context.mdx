@@ -1,0 +1,24 @@
+---
+title: Runner Context
+---
+
+# Runner Context
+
+`internal/runner/context.go` defines the execution context:
+
+```go
+type Context struct {
+  Env         loader.Env
+  Cat         loader.Catalog
+  HTTP        *http.Client
+  Store       map[string]any
+  CurrentAuth string
+}
+```
+
+- **Env**: Holds baseURL, headers, vars.
+- **Store**: Shared state across steps (IDs, payload snippets, auth tokens).
+- **CurrentAuth**: Controls which catalog auth profile to apply.
+- **Vars preload**: `env.vars` entries are injected at scenario start (and namespaced fallback for flows).
+
+The context resets per scenario; use flows or fixtures to rebuild state deterministically.

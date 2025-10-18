@@ -1,0 +1,29 @@
+---
+title: Installation
+---
+
+# Installation
+
+## Prerequisites
+
+- Go 1.23+
+- Git
+
+## Clone & Build
+
+```bash
+git clone https://github.com/muhfaris/gherkio.git
+cd gherkio
+# install Go deps
+go mod tidy
+# build the CLI
+go build -o gherkio ./cmd/gherkio
+```
+
+## Initialize Workspace
+
+```bash
+./gherkio init
+```
+
+This seeds the `gherkio/` directory with sample envs, APIs, flows, fixtures, and features.

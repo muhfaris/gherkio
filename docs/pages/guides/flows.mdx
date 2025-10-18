@@ -1,0 +1,46 @@
+---
+title: Flows
+---
+
+# Flows
+
+Flows let you compose reusable API sequences. Example (`gherkio/flows/auth.yaml`):
+
+```yaml
+version: 1
+flows:
+  login:
+    params: [username, password]
+    steps:
+      - call: auth.login
+        body: |
+          {"username":"{{ .username }}","password":"{{ .password }}"}
+        save:
+          "$data.access_token": access_token
+      - setAuth: bearer
+```
+
+## Parameter Fallback
+
+When you run:
+
+```gherkin
+When I run flow "login"
+```
+
+the runner checks parameters in this order:
+
+1. Table values supplied in the feature
+2. `store["username"]`
+3. `store["login.username"]` (auto-populated from `env.vars`)
+
+This makes it easy to keep secrets outside feature files while still customizing params when needed.
+
+## Why Flows?
+
+- Share setup/auth logic across scenarios
+- Chain API calls (e.g., create → verify → delete)
+- Enforce consistent saves (`save: "$data.id": order_id`)
+- Implement teardown routines
+
+Flows render templates using Sprig helpers and have access to the scenario store via `{{ .store.someKey }}`.

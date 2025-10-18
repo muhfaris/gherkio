@@ -1,0 +1,56 @@
+---
+title: Importing curl
+---
+
+# Importing curl
+
+Scaffold catalog + fixture + feature from an existing curl command:
+
+```bash
+./gherkio import \
+  --api meetingrooms.update \
+  --curl "curl https://api.example.com/meeting-rooms/123 \\
+    -X PUT \\
+    -H 'Content-Type: application/json' \\
+    -H 'Authorization: Bearer ****' \\
+    --data '{"name":"Room"}'"
+```
+
+Workflow:
+
+1. CLI parses the curl flags (headers, body, method, URL).
+2. Request is executed to preview the response.
+3. You choose whether to generate JSON assertions from the body.
+4. After final confirmation, files are written:
+   - Catalog entry (default `gherkio/apis/imported.yaml`)
+   - Fixture body (if payload detected)
+   - Feature scenario referencing the new API
+
+Use `--catalog/--fixture/--feature` to control paths, and `--title/--name` to customize scenario/feature titles.
+
+## Multipart uploads
+
+Commands that use `-F/--form` are imported as multipart fixtures. Gherkio copies the referenced files into `gherkio/fixtures/…` and generates a YAML payload that lists each part.
+
+```bash
+./gherkio import \
+  --api files.upload \
+  --curl "curl http://localhost:5069/api/files \\
+    -X POST \\
+    -H 'accept: */*' \\
+    -F 'file=@./fixtures/raw/2025-10-06_08-52.png;type=image/png'"
+```
+
+Resulting fixture (`.multipart.yaml`):
+
+```yaml
+type: multipart
+parts:
+  - name: file
+    file: files_upload/file.png
+    filename: 2025-10-06_08-52.png
+    contentType: image/png
+```
+
+You can still template values inside the YAML (e.g. `{{ .store.token }}`) and add additional `value:`-based form fields by editing the fixture.
+

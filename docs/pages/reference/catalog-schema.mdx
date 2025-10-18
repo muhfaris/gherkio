@@ -1,0 +1,29 @@
+---
+title: Catalog Schema
+---
+
+# Catalog Schema
+
+```yaml
+version: 1
+endpoints:
+  meetingrooms.update:
+    method: PUT
+    path: /api/meeting-rooms/{id}
+    headers:
+      Content-Type: application/json
+    auth: bearer
+    expect:
+      status: 204
+    save:
+      "$data.id": meeting_room_id
+```
+
+Field | Description
+----- | -----------
+`method` | HTTP verb.
+`path` | Relative path (supporting `{param}` placeholders).
+`headers` | Additional headers for this endpoint.
+`auth` | Auth profile name (picked from catalog `auth` section).
+`expect.status` | Optional status assertion executed inside flows.
+`save` | JSONPath → store key mappings for response bodies.

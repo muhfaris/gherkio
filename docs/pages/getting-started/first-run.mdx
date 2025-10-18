@@ -1,0 +1,16 @@
+---
+title: First Run
+---
+
+# First Run
+
+1. Ensure your environment file (`gherkio/envs/dev.yaml`) points to a reachable API or mock server.
+2. Execute the sample feature suite:
+
+```bash
+./gherkio run --env dev --feature gherkio/features/examples
+```
+
+3. Explore the generated reports (e.g., `reports/run.html` when you pass `--report html`).
+
+The CLI prints scenario results, and the HTML report offers a detailed drill-down with payload toggles when invoked with `html-debug`.

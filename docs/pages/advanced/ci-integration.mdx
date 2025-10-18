@@ -1,0 +1,25 @@
+---
+title: CI Integration
+---
+
+# CI Integration
+
+Example GitHub Actions job:
+
+```yaml
+- name: Run Gherkio tests
+  run: |
+    go build ./cmd/gherkio
+    ./gherkio run --env dev \
+      --report html:reports/run.html \
+      --report junit:reports/junit.xml
+  env:
+    LOGIN_USERNAME: ${{ secrets.LOGIN_USERNAME }}
+    LOGIN_PASSWORD: ${{ secrets.LOGIN_PASSWORD }}
+```
+
+Suggestions:
+
+- Template sensitive vars via environment injection (`env.vars` can read from env or use `gherkio call --header` to supply tokens).
+- Upload HTML/CSV reports as artifacts for debugging.
+- For parallel suites, shard feature paths through `--feature` or the `--parallel` flag.

@@ -1,0 +1,79 @@
+---
+title: Step Catalog
+---
+
+# Step Catalog
+
+Below is the current list of Gherkio step bindings. Each pattern includes a short description and example usage.
+
+| Pattern | Description | Example |
+| --- | --- | --- |
+| `^I call API ['"]([^'"]+)['"] using fixture ['"]([^'"]+)['"]$` | Call API using fixture file | `I call API 'users.create' using fixture 'user.json'` |
+| `^I call API ['"]([^'"]+)['"] with body:$` | Call API with structured body | <code>I call API 'auth.login' with body:<br/>&#124; username &#124; superadmin &#124;<br/>&#124; password &#124; Admin@123 &#124;</code> |
+| `^I call API ['"]([^'"]+)['"] with:$` | Call API with table as JSON body | <code>I call API 'auth.login' with:<br/>&#124; username &#124; superadmin &#124;<br/>&#124; password &#124; Admin@123 &#124;</code> |
+| `^I call API ['"]([^'"]+)['"]$` | Call API endpoint | `I call API 'users.getById'` |
+| `^I include feature ['"]([^'"]+)['"]$` | Include feature | `Include feature "users.feature"` |
+| `^I load env ['"]([^'"]+)['"]$` | Load env |  |
+| `^I load flows from ['"]([^'"]+)['"]$` | Load flows |  |
+| `^I run flow ['"]([^'"]+)['"] with:$` | Run flow with parameters | <code>I run flow 'login' with:<br/>&#124; username &#124; demo &#124;<br/>&#124; password &#124; secret &#124;</code> |
+| `^I run flow ['"]([^'"]+)['"]$` | Run flow without parameters | `I run flow 'auth'` |
+| `^I set auth ['"]([^'"]+)['"]$` | Set authentication profile | `I set auth 'bearer'` |
+| `^I set headers:$` | Set headers | <code>I set headers:<br/>&#124; Authorization &#124; Bearer token &#124;<br/>&#124; Content-Type &#124; application/json &#124;</code> |
+| `^I set path params:$` | Set path parameters | <code>I set path params:<br/>&#124; id &#124; 123 &#124;</code> |
+| `^I set query params:$` | Set query parameters | <code>I set query params:<br/>&#124; page &#124; 1 &#124;<br/>&#124; limit &#124; 10 &#124;</code> |
+| `^I wait (\d+)(ms\|s)$` | Wait for duration | `I wait 100ms` |
+| `^header ['"]([^'"]+)['"] should equal ['"]([^'"]+)['"]$` | Assert header value | `header 'Content-Type' should equal 'application/json'` |
+| `^header ['"]([^'"]+)['"] should exist$` | Assert header exists | `header 'Content-Type' should exist` |
+| `^json ['"]([^'"]+)['"] length should be (==\|!=\|>=\|>\|<=\|<) (\d+)$` | Assert JSON length | `json '$.items' length should be == 5` |
+| `^json ['"]([^'"]+)['"] should be (==\|!=\|>=\|>\|<=\|<) ([0-9.]+)$` | Assert JSON numeric value | `json '$.age' should be >= 18` |
+| `^json ['"]([^'"]+)['"] should be one of:$` | Assert JSON value in list | <code>json '$.status' should be one of:<br/>active<br/>inactive</code> |
+| `^json ['"]([^'"]+)['"] should equal ['"]([^'"]+)['"]$` | Assert JSON value equals | `json '$.status' should equal 'success'` |
+| `^json ['"]([^'"]+)['"] should equal store ['"]([^'"]+)['"] ignoring order$` | Assert JSON equals stored value (ignore order) | `json '$.data.tags' should equal store 'expected_tags' ignoring order` |
+| `^json ['"]([^'"]+)['"] should equal store ['"]([^'"]+)['"]$` | Assert JSON equals stored value | `json '$.data.id' should equal store 'resource_id'` |
+| `^json ['"]([^'"]+)['"] should exist$` | Assert JSON path exists | `json '$.data.id' should exist` |
+| `^json ['"]([^'"]+)['"] should match ['"]([^'"]+)['"]$` | Assert JSON value matches regex | `json '$.email' should match '[a-z]+@example.com'` |
+| `^json ['"]([^'"]+)['"] should match store request ['"]([^'"]+)['"]$` | Assert JSON equals stored request JSON | `json '$.data' should match store request 'meeting_room_payload'` |
+| `^json ['"]([^'"]+)['"] should not be empty$` | Assert JSON path is not empty | `json '$.data' should not be empty` |
+| `^json ['"]([^'"]+)['"] should not exist$` | Assert JSON path does not exist | `json '$.error' should not exist` |
+| `^print response$` | Print last response | `print response` |
+| `^response body should contain ['"]([^'"]+)['"]$` | Assert substring in response body | `response body should contain 'success'` |
+| `^response status should be (\d+)$` | Assert response status code | `response status should be 200` |
+| `^response status should be in (\d{3})-(\d{3})$` | Assert response status in range | `response status should be in 200-299` |
+| `^response time should be (==\|!=\|>=\|>\|<=\|<) (\d+)ms$` | Assert response time | `response time should be <= 500ms` |
+| `^save ['"]([^'"]+)['"] as ['"]([^'"]+)['"]$` | Save JSONPath to store | `save '$.access_token' as 'token'` |
+| `^save request body as ['"]([^'"]+)['"]$` | Save full request body | `save request body as 'request_payload'` |
+| `^save request json ['"]([^'"]+)['"] as ['"]([^'"]+)['"]$` | Save request JSONPath to store | `save request json '$.name' as 'room_name'` |
+| `^save response body to file ['"]([^'"]+)['"]$` | Save response to file | `save response body to file 'response.json'` |
+| `^set ['"]([^'"]+)['"] to ['"]([^'"]+)['"]$` | Set value in store | `set 'base_url' to 'https://api.example.com'` |
+| `^show variable ['"]([^'"]+)['"]$` | Print value from store | `show variable 'access_token'` |
+
+## JSON Payload Helpers
+
+Use either of the following steps when you need to post a request body:
+
+- `I call API "<key>" with body:` expects a docstring (the `""" … """` block). Whatever you place inside the docstring is sent verbatim after rendering any template expressions. This is ideal for structured payloads that need nesting or non-JSON formats.
+
+  ```gherkin
+  When I call API "documents.create" with body:
+    """
+    {
+      "code": "{{ .store.document_code }}",
+      "name": "{{ .store.document_name }}",
+      "description": "{{ .store.document_description }}"
+    }
+    """
+  ```
+
+  Each `{{ .store.* }}` placeholder resolves using the current scenario store, so you can reuse data captured in previous steps.
+
+- `I call API "<key>" with:` is a shortcut that converts a data table directly into JSON after rendering template expressions in each cell. It works well for flat key/value pairs.
+
+  ```gherkin
+  When I call API "auth.login" with:
+    | username | {{ .store.username }} |
+    | password | {{ .store.password }} |
+  ```
+
+Both variants now share the same templating engine, so choose whichever format matches the payload you want to send.
+
+> **Tip:** Any JSON path argument (e.g., `json '$.data.id' should exist`) also supports templating, so you can write expressions like `json '$.data.#(code=="{{ .store.document_file_code }}")' should exist` to match values saved in the store.

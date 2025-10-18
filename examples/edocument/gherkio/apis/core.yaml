@@ -14,36 +14,42 @@ endpoints:
   GetAnnouncements:
     method: GET
     path: /api/Announcements
+  GetAnnouncementsToday:
+    method: GET
+    path: /api/Announcements/today
   CreateAnnouncement:
     method: POST
     path: /api/Announcements
   GetAnnouncementByID:
     method: GET
-    path: /api/Announcements/{{.id}}
+    path: /api/Announcements/{{.store.announcementId}}
   UpdateAnnouncement:
     method: PUT
-    path: /api/Announcements/{{.id}}
+    path: /api/Announcements/{{.store.announcementId}}
   DeleteAnnouncement:
     method: DELETE
-    path: /api/Announcements/{{.id}}
+    path: /api/Announcements/{{.store.announcementId}}
   GetArticles:
     method: GET
     path: /api/Articles
+  GetArticlesToday:
+    method: GET
+    path: /api/Articles/today
   CreateArticle:
     method: POST
     path: /api/Articles
   GetArticleByID:
     method: GET
-    path: /api/Articles/{{.id}}
+    path: /api/Articles/{{.store.articleId}}
   UpdateArticle:
     method: PUT
-    path: /api/Articles/{{.id}}
+    path: /api/Articles/{{.store.articleId}}
   DeleteArticle:
     method: DELETE
-    path: /api/Articles/{{.id}}
+    path: /api/Articles/{{.store.articleId}}
   ChangeArticleStatus:
     method: PUT
-    path: /api/Articles/{{.id}}/status
+    path: /api/Articles/{{.store.articleId}}/status
   GetBookings:
     method: GET
     path: /api/bookings
@@ -52,31 +58,16 @@ endpoints:
     path: /api/bookings
   GetBookingByID:
     method: GET
-    path: /api/bookings/{{.id}}
+    path: /api/bookings/{{.store.bookingId}}
   ConfirmBooking:
     method: POST
-    path: /api/bookings/{{.id}}/confirm
+    path: /api/bookings/{{.store.bookingId}}/confirm
   RejectBooking:
     method: POST
-    path: /api/bookings/{{.id}}/reject
+    path: /api/bookings/{{.store.bookingId}}/reject
   CancelBooking:
     method: POST
-    path: /api/bookings/{{.id}}/cancel
-  GetCompanies:
-    method: GET
-    path: /api/Companies
-  CreateCompany:
-    method: POST
-    path: /api/Companies
-  GetCompanyByID:
-    method: GET
-    path: /api/Companies/{{.id}}
-  UpdateCompany:
-    method: PUT
-    path: /api/Companies/{{.id}}
-  DeleteCompany:
-    method: DELETE
-    path: /api/Companies/{{.id}}
+    path: /api/bookings/{{.store.bookingId}}/cancel
   GetUsers:
     method: GET
     path: /api/Users
@@ -85,13 +76,16 @@ endpoints:
     path: /api/Users
   GetUserByID:
     method: GET
-    path: /api/Users/{{.id}}
+    path: /api/Users/{{.store.userId}}
   UpdateUser:
     method: PUT
-    path: /api/Users/{{.id}}
+    path: /api/Users/{{.store.userId}}
   DeleteUser:
     method: DELETE
-    path: /api/Users/{{.id}}
+    path: /api/Users/{{.store.userId}}
+  ChangeUserStatus:
+    method: PUT
+    path: /api/Users/{{.store.userId}}/status
   GetDocuments:
     method: GET
     path: /api/documents
@@ -100,13 +94,40 @@ endpoints:
     path: /api/documents
   GetDocumentByID:
     method: GET
-    path: /api/documents/{{.id}}
+    path: /api/documents/{{.store.documentId}}
   UpdateDocument:
     method: PUT
-    path: /api/documents/{{.id}}
+    path: /api/documents/{{.store.documentId}}
   DeleteDocument:
     method: DELETE
-    path: /api/documents/{{.id}}
+    path: /api/documents/{{.store.documentId}}
+  GetDocumentFiles:
+    method: GET
+    path: /api/documents/files
+  GetAccessibleDocumentFiles:
+    method: GET
+    path: /api/documents/files/accessible
+  CreateDocumentFile:
+    method: POST
+    path: /api/documents/{{.store.documentId}}/files
+  GetDocumentFilesByDocumentID:
+    method: GET
+    path: /api/documents/{{.store.documentId}}/files
+  UpdateDocumentFiles:
+    method: PUT
+    path: /api/documents/{{.store.documentId}}/files
+  GetDocumentFileByID:
+    method: GET
+    path: /api/documents/{{.store.documentId}}/files/{{.store.fileId}}
+  DeleteDocumentFile:
+    method: DELETE
+    path: /api/documents/{{.store.documentId}}/files/{{.store.fileId}}
+  GetDocumentFileLogs:
+    method: GET
+    path: /api/documents/{{.store.documentId}}/files/{{.store.documentFileId}}/logs
+  GetDocumentFileHistories:
+    method: GET
+    path: /api/documents/{{.store.documentId}}/files/{{.store.documentFileId}}/histories
   GetDocumentTypes:
     method: GET
     path: /api/document-types
@@ -115,19 +136,167 @@ endpoints:
     path: /api/document-types
   GetDocumentTypeByID:
     method: GET
-    path: /api/document-types/{{.id}}
+    path: /api/document-types/{{.store.documentTypeId}}
   UpdateDocumentType:
     method: PUT
-    path: /api/document-types/{{.id}}
+    path: /api/document-types/{{.store.documentTypeId}}
   DeleteDocumentType:
     method: DELETE
-    path: /api/document-types/{{.id}}
+    path: /api/document-types/{{.store.documentTypeId}}
+  GetDocumentLocations:
+    method: GET
+    path: /api/document-locations
+  CreateDocumentLocation:
+    method: POST
+    path: /api/document-locations
+  GetDocumentLocationByID:
+    method: GET
+    path: /api/document-locations/{{.store.documentLocationId}}
+  UpdateDocumentLocation:
+    method: PUT
+    path: /api/document-locations/{{.store.documentLocationId}}
+  DeleteDocumentLocation:
+    method: DELETE
+    path: /api/document-locations/{{.store.documentLocationId}}
+  ChangeDocumentLocationStatus:
+    method: PUT
+    path: /api/document-locations/{{.store.documentLocationId}}/status
+  GetCompanyTypes:
+    method: GET
+    path: /api/company-types
+  CreateCompanyType:
+    method: POST
+    path: /api/company-types
+  GetCompanyTypeByID:
+    method: GET
+    path: /api/company-types/{{.store.companyTypeId}}
+  UpdateCompanyType:
+    method: PUT
+    path: /api/company-types/{{.store.companyTypeId}}
+  DeleteCompanyType:
+    method: DELETE
+    path: /api/company-types/{{.store.companyTypeId}}
+  GetOrganizationNodes:
+    method: GET
+    path: /api/companies/{{.store.companyId}}/organization-nodes
+  CreateOrganizationNode:
+    method: POST
+    path: /api/companies/{{.store.companyId}}/organization-nodes
+  GetOrganizationStructure:
+    method: GET
+    path: /api/companies/{{.store.companyId}}/organization-nodes/structure
+  GetOrganizationNodeByID:
+    method: GET
+    path: /api/companies/{{.store.companyId}}/organization-nodes/{{.store.organizationNodeId}}
+  UpdateOrganizationNode:
+    method: PUT
+    path: /api/companies/{{.store.companyId}}/organization-nodes/{{.store.organizationNodeId}}
+  DeleteOrganizationNode:
+    method: DELETE
+    path: /api/companies/{{.store.companyId}}/organization-nodes/{{.store.organizationNodeId}}
+  GetOrganizationLevels:
+    method: GET
+    path: /api/companies/{{.store.companyId}}/organization-levels
+  CreateOrganizationLevel:
+    method: POST
+    path: /api/companies/{{.store.companyId}}/organization-levels
+  GetOrganizationLevelByID:
+    method: GET
+    path: /api/companies/{{.store.companyId}}/organization-levels/{{.store.organizationLevelId}}
+  UpdateOrganizationLevel:
+    method: PUT
+    path: /api/companies/{{.store.companyId}}/organization-levels/{{.store.organizationLevelId}}
+  DeleteOrganizationLevel:
+    method: DELETE
+    path: /api/companies/{{.store.companyId}}/organization-levels/{{.store.organizationLevelId}}
+  GetFacilities:
+    method: GET
+    path: /api/Facilities
+  UploadFile:
+    method: POST
+    path: /api/files
+  GetFileByID:
+    method: GET
+    path: /api/files/{{.store.fileId}}
+  DeleteFileByID:
+    method: DELETE
+    path: /api/files/{{.store.fileId}}
+  HealthCheck:
+    method: GET
+    path: /api/health
+  GetMeetingRooms:
+    method: GET
+    path: /api/meeting-rooms
+  CreateMeetingRoom:
+    method: POST
+    path: /api/meeting-rooms
+  GetMeetingRoomByID:
+    method: GET
+    path: /api/meeting-rooms/{{.store.meetingRoomId}}
+  UpdateMeetingRoom:
+    method: PUT
+    path: /api/meeting-rooms/{{.store.meetingRoomId}}
+  DeleteMeetingRoom:
+    method: DELETE
+    path: /api/meeting-rooms/{{.store.meetingRoomId}}
+  GetMeetingRoomSchedules:
+    method: GET
+    path: /api/meeting-rooms/schedules
+  CreateMeetingRoomSchedule:
+    method: POST
+    path: /api/meeting-rooms/schedules
+  DeleteMeetingRoomSchedule:
+    method: DELETE
+    path: /api/meeting-rooms/schedules/{{.store.scheduleId}}
+  UpdateMeetingRoomSchedule:
+    method: PUT
+    path: /api/meeting-rooms/schedules/{{.store.scheduleId}}
+  GetPrivileges:
+    method: GET
+    path: /api/Privileges
+  GetDocumentReports:
+    method: GET
+    path: /api/reports/documents
+  GetMeetingRoomReports:
+    method: GET
+    path: /api/reports/meeting-rooms
+  GetRoles:
+    method: GET
+    path: /api/Roles
+  CreateRole:
+    method: POST
+    path: /api/Roles
+  GetRoleByID:
+    method: GET
+    path: /api/Roles/{{.store.roleId}}
+  UpdateRole:
+    method: PUT
+    path: /api/Roles/{{.store.roleId}}
+  DeleteRole:
+    method: DELETE
+    path: /api/Roles/{{.store.roleId}}
+  UpdateRolePrivileges:
+    method: PUT
+    path: /api/Roles/{{.store.roleId}}/privileges
   GetSettings:
     method: GET
     path: /api/Settings
-  CreateOrganizationLevel:
+  UpdateSettings:
+    method: PUT
+    path: /api/Settings
+  GetCompanies:
+    method: GET
+    path: /api/Companies
+  CreateCompany:
     method: POST
-    path: /api/companies/{{.companyId}}/organization-levels
-  CreateOrganizationNode:
-    method: POST
-    path: /api/companies/{{.companyId}}/organization-nodes
+    path: /api/Companies
+  GetCompanyByID:
+    method: GET
+    path: /api/Companies/{{.store.companyId}}
+  UpdateCompany:
+    method: PUT
+    path: /api/Companies/{{.store.companyId}}
+  DeleteCompany:
+    method: DELETE
+    path: /api/Companies/{{.store.companyId}}
+

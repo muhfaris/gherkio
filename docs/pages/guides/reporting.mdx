@@ -1,0 +1,29 @@
+---
+title: Reporting
+---
+
+# Reporting
+
+Gherkio supports multiple reporters via `--report kind[:path]`.
+
+## HTML (`--report html`)
+
+- Summary banner: totals, pass/fail, durations, filters.
+- Nested dropdowns: Feature → Scenario → anchor step groups (`call API`, `run flow`).
+- Debug mode: `html-debug` or `html:path?debug` exposes prettified request/response payloads beneath each anchor step.
+
+## CSV
+
+`--report csv:reports/run.csv` appends scenario rows (feature, scenario, status, duration).
+
+## JUnit / Cucumber
+
+Planned for full CI integration; see `docs/reference/cli-command` for current status.
+
+Tip: combine reporters, e.g.:
+
+```bash
+./gherkio run --env dev \
+  --report html:reports/run.html \
+  --report csv:reports/run.csv
+```

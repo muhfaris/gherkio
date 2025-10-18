@@ -1,0 +1,22 @@
+---
+title: Architecture
+---
+
+# Architecture
+
+```
+CLI (cmd/gherkio)
+   ↓ parse flags, load env/catalog
+Loader (internal/loader)
+   ↓ marshals YAML into structs
+Runner (internal/runner)
+   ↓ executes flows + steps via Godog
+Reporter (internal/report)
+   ↓ pretty console, CSV, HTML
+Output (reports/)
+```
+
+- **Context**: Holds env, catalog, store, HTTP client.
+- **Flows**: Execute a sequence of catalog calls with templated args.
+- **Steps**: Godog bindings map Gherkin sentences to Go functions.
+- **Reports**: Pluggable system for pretty/CSV/HTML; HTML consumes scenario logs (status, duration, debug payloads).

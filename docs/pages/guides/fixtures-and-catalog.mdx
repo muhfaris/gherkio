@@ -1,0 +1,113 @@
+---
+title: Fixtures & Catalogs
+---
+
+# Fixtures & Catalogs
+
+## Catalogs
+
+Define APIs under `gherkio/apis/*.yaml`:
+
+```yaml
+version: 1
+endpoints:
+  meetingrooms.update:
+    method: PUT
+    path: /api/meeting-rooms/{id}
+    headers:
+      Content-Type: application/json
+    auth: bearer
+    expect:
+      status: 204
+```
+
+## Fixtures
+
+Store request bodies under `gherkio/fixtures/` and reference them in features:
+
+```gherkin
+When I call API "meetingrooms.update" using fixture "meetingrooms.update.json"
+```
+
+Fixtures can contain templated values resolved from the store or params.
+
+### Template helpers
+
+Use helper functions inside fixtures, flows, or `set` steps to create dynamic values:
+
+- `fnRandomUnix()` – unique suffix based on current Unix timestamp (nanoseconds).
+- `fnToday(format, [location])` – current time formatted with optional IANA location; default `2006-01-02T15:04:05`.
+- `fnFutureDate(days, format, [location])` – shifts current time by `days` (negative for past).
+
+Example fixture snippet:
+
+```jsonc
+{
+  "name": "Announcement {{ fnRandomUnix }}",
+  "date": "{{ fnToday `2006-01-02` }}",
+  "untilDate": "{{ fnFutureDate 7 `2006-01-02T15:04:05` }}"
+}
+```
+
+All helpers can mix with `.store.*` values or `printf` for custom formatting.
+
+### Multipart fixtures
+
+When a fixture ends with `.multipart.yaml`, Gherkio treats it as a multipart/form-data payload. The YAML lists each part with either a `value` or a `file` reference:
+
+```yaml
+type: multipart
+parts:
+  - name: file
+    file: files_upload/file.png
+    filename: 2025-10-06_08-52.png
+    contentType: image/png
+  - name: note
+    value: Upload triggered from {{ .store.user }}
+```
+
+Files are resolved relative to the fixture directory (they're created automatically by the curl importer). Non-file parts can still use Go templates to pull data from the scenario store.
+
+### Scenario Outline
+
+Use `Scenario Outline` when the same scenario should run with multiple data sets. Define the steps once, then list the variations in an `Examples` table. Each row becomes a separate run.
+
+```gherkin
+Scenario Outline: Create document group
+  Given I prepare payload create document group
+  And set 'document_group_name' to '<name>'
+  And set 'document_group_code' to '<code>'
+  When I call API "documents.group.create" using fixture "documents_group_create.json"
+  Then response status should be 201
+
+Examples:
+  | name             | code |
+  | Document Group A | DGA  |
+  | Document Group B | DGB  |
+```
+
+Combining helper functions is allowed, e.g. `<name>` values can include `{{ fnRandomUnix }}` if you still want unique suffixes.
+
+### Scenario data helpers
+
+When you need a block of fixtures generated inside a scenario, reuse the built-in step:
+
+```gherkin
+Given I create 5 document groups
+```
+
+It loops from 1..N, calling the `documentGroups.create` API with names like `Document Group 1`, `Document Group 2`, and so on—handy for list/count assertions:
+
+```gherkin
+Given I create 10 document groups
+When I call API "documentGroups.list"
+Then json '$data' length should be >= 10
+```
+
+### Response assertions
+
+Use the step `json '<path>' should be empty` to assert that a node resolves to an empty value (`null`, empty string, array, or object). Pair it with the existing `json '<path>' should not be empty` when validating optional payloads.
+
+## Auto Generation
+
+`gherkio import` reverse-engineers a curl command into catalog entry, fixture, and feature skeleton. The CLI replays the curl, previews the response, asks whether to generate JSON assertions, and writes files once you confirm.

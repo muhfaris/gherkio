@@ -1,0 +1,32 @@
+---
+title: Environment Schema
+---
+
+# Environment Schema
+
+```yaml
+version: 1
+baseURL: https://api.example.com
+headers:
+  X-App: gherkio
+vars:
+  login.username: superadmin
+  login.password: Admin@123
+timeouts:
+  request: 20s
+retries:
+  max: 1
+  wait: 200ms
+redact:
+  headers: [Authorization, X-Api-Key]
+  json: ["$.password", "$.token"]
+```
+
+Field | Description
+----- | -----------
+`baseURL` | Default host for catalog paths.
+`headers` | Applied to every request unless overridden.
+`vars` | Preload key/value pairs into the scenario store (flows fallback to `flowName.param`).
+`timeouts.request` | HTTP client timeout (Go `time.ParseDuration`).
+`retries` | Optional retry policy (future use).
+`redact` | Fields hidden in logs/reporters.

@@ -1,0 +1,28 @@
+---
+title: Environment Configuration
+---
+
+# Environment Configuration
+
+`gherkio/envs/<name>.yaml` controls defaults for a run.
+
+```yaml
+version: 1
+baseURL: https://api.example.com
+headers:
+  X-App: gherkio
+vars:
+  login.username: superadmin
+  login.password: Admin@123
+timeouts:
+  request: 20s
+retries:
+  max: 1
+  wait: 200ms
+```
+
+- **vars**: Preloads values into the store. Flows fall back to `flowName.param` keys, so `login` automatically pulls credentials.
+- **headers**: Applied to every request unless overridden.
+- **timeouts/retries**: Used by the runner’s HTTP client.
+
+Keep secrets outside VCS (e.g., `.env` + template). You can point to alternate env files via `--env staging`.

@@ -1,0 +1,28 @@
+---
+title: Feature Style
+---
+
+# Feature Style
+
+```gherkin
+Feature: Meeting Room
+
+  Background:
+    Given I load env "dev"
+
+  Scenario: Create new meeting room
+    When I run flow "login"
+    And I call API "meetingrooms.create" using fixture "meetingrooms.create.json"
+    Then response status should be 201
+    And json '$data.id' should not be empty
+```
+
+Guidelines:
+
+- Use Background for shared setup (`load env`, flows).
+- Keep scenarios focused (happy path vs error path).
+- Prefer flows for reusable steps (login, seed data).
+- Save IDs to the store with `save '$data.id' as 'entity_id'` and reuse in later steps.
+- For tables, keep the first column as key, second as value.
+
+Run `./gherkio steps --format md` to see the full step catalog and examples.

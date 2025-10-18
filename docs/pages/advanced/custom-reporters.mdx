@@ -1,0 +1,13 @@
+---
+title: Custom Reporters
+---
+
+# Custom Reporters
+
+Built-in reporters live in `internal/report/` (pretty, CSV, HTML). To add more:
+
+1. Create a new struct implementing your desired interface (e.g., `RecordScenario`).
+2. Wire it via CLI flags (similar to how `run` handles `--report html`/`csv`).
+3. Use scenario sink subscriptions to access store data, durations, and step logs.
+
+The HTML reporter demonstrates consuming step-level debug information, grouping by feature/scenario, and rendering MDX-friendly output.

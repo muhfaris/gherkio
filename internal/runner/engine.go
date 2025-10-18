@@ -3,6 +3,7 @@ package runner
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"net/textproto"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"text/template"
@@ -275,7 +277,7 @@ func GetFunctionTemplateInfo() map[string]FunctionTemplateInfo {
 		},
 		"fnRandomString": {
 			Func:        fnRandomString,
-			Description: "Generates a random string of a specified kind ('alpha', 'alphanum', 'numeric') and length.",
+			Description: "Generates a random string. Usage: {{ fnRandomString 12 }} (defaults to 'alphanum') or {{ fnRandomString \"numeric\" 8 }}.",
 			Example:     `{{ fnRandomString "alphanum" 16 }}`,
 			Result:      "A random string e.g., aKdeR29d0w3f4Gz",
 		},
@@ -400,12 +402,43 @@ const (
 	numeric  = "0123456789"
 )
 
-func fnRandomString(kind string, length int) (string, error) {
+func fnRandomString(args ...any) (string, error) {
+	if len(args) == 0 {
+		return "", fmt.Errorf("fnRandomString: length argument required")
+	}
+
+	kind := "alphanum"
+	var lengthVal any
+
+	if s, ok := args[0].(string); ok {
+		s = strings.TrimSpace(s)
+		if s != "" {
+			kind = s
+		}
+		if len(args) < 2 {
+			return "", fmt.Errorf("fnRandomString: length argument required")
+		}
+		if len(args) > 2 {
+			return "", fmt.Errorf("fnRandomString: unexpected extra arguments")
+		}
+		lengthVal = args[1]
+	} else {
+		if len(args) > 1 {
+			return "", fmt.Errorf("fnRandomString: unexpected extra arguments")
+		}
+		lengthVal = args[0]
+	}
+
+	length, err := intFromAny(lengthVal)
+	if err != nil {
+		return "", fmt.Errorf("fnRandomString: %w", err)
+	}
+
 	var chars string
 	switch strings.ToLower(kind) {
 	case "alpha":
 		chars = alpha
-	case "alphanum":
+	case "", "alphanum":
 		chars = alphaNum
 	case "numeric":
 		chars = numeric
@@ -424,6 +457,61 @@ func fnRandomString(kind string, length int) (string, error) {
 		b[i] = chars[randSrc.Intn(len(chars))]
 	}
 	return string(b), nil
+}
+
+func intFromAny(v any) (int, error) {
+	switch t := v.(type) {
+	case int:
+		return t, nil
+	case int8:
+		return int(t), nil
+	case int16:
+		return int(t), nil
+	case int32:
+		return int(t), nil
+	case int64:
+		return int(t), nil
+	case uint:
+		return int(t), nil
+	case uint8:
+		return int(t), nil
+	case uint16:
+		return int(t), nil
+	case uint32:
+		return int(t), nil
+	case uint64:
+		return int(t), nil
+	case float32:
+		i := int(t)
+		if float32(i) != t {
+			return 0, fmt.Errorf("expected integer, got %v", t)
+		}
+		return i, nil
+	case float64:
+		i := int(t)
+		if float64(i) != t {
+			return 0, fmt.Errorf("expected integer, got %v", t)
+		}
+		return i, nil
+	case json.Number:
+		i64, err := t.Int64()
+		if err != nil {
+			return 0, err
+		}
+		return int(i64), nil
+	case string:
+		s := strings.TrimSpace(t)
+		if s == "" {
+			return 0, fmt.Errorf("empty string")
+		}
+		i, err := strconv.Atoi(s)
+		if err != nil {
+			return 0, err
+		}
+		return i, nil
+	default:
+		return 0, fmt.Errorf("unsupported length argument of type %T", v)
+	}
 }
 
 func fnRandomEmail(domain ...string) (string, error) {

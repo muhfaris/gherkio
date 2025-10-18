@@ -1,0 +1,25 @@
+---
+title: Extending Steps
+---
+
+# Extending Steps
+
+Step bindings live in `internal/runner/steps_godog.go`.
+
+1. Add a new `bind` call in `InitializeScenario`.
+2. Implement logic using the `world` struct (access request/response/store).
+3. Run `go test ./...` and `./gherkio steps --format md` to validate.
+
+Example snippet:
+
+```go
+bind(sc, `^json "([^"]+)" should contain key "([^"]+)"$`, "Assert JSON has key", "json '$.data' should contain key 'id'", func(path, key string) error {
+  v := getJSONPath(w.lastRes.Body, path)
+  if !v.Get(key).Exists() {
+    return fmt.Errorf("json %s missing key %s", path, key)
+  }
+  return nil
+})
+```
+
+Remember to keep bindings idempotent and store-friendly.

@@ -1,0 +1,15 @@
+---
+title: CLI Commands
+---
+
+# CLI Commands
+
+| Command | Key Flags | Notes |
+| ------- | --------- | ----- |
+| `gherkio init` | — | Seed `gherkio/` directory. |
+| `gherkio call` | `--env`, `--api`, `--report` | Invoke single endpoint. |
+| `gherkio run` | `--env`, `--feature`, `--tags`, `--report` | Execute feature files (supports HTML debug). |
+| `gherkio steps` | `--format`, `--out` | List bindings as text/markdown. |
+| `gherkio import` | `--api`, `--curl`, `--catalog` | Convert curl (JSON or multipart) into catalog/fixture/feature scaffolding. |
+
+Use `--report kind[:path]` to emit CSV/HTML/JUnit outputs. Multiple `--report` flags are allowed.

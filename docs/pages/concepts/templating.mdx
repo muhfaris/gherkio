@@ -1,0 +1,24 @@
+---
+title: Templating
+---
+
+# Templating
+
+Gherkio uses Go templates (with Sprig) to render request bodies, headers, and fixtures.
+
+```yaml
+body: |
+  {
+    "username": "{{ .username }}",
+    "password": "{{ .password }}",
+    "api_token": "{{ .store.api_token }}"
+  }
+```
+
+Sources available inside templates:
+
+- Flow/map params (`{{ .username }}`)
+- `store` (`{{ .store.order_id }}`)
+- Functions from Sprig (`{{ now | date "2006-01-02" }}`)
+
+When a template fails to render, the raw expression is used as-is (helpful during authoring). Use `renderMap` + `mustExec` in custom code to apply the same semantics.
