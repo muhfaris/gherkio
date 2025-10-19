@@ -1,0 +1,5 @@
+type: multipart
+parts:
+  - name: file
+    file: dummy.txt
+    contentType: text/plain

@@ -1,5 +1,5 @@
 @e2e
-Feature: Document Type Management
+Feature: Document Management Workflows
 
   Scenario: Superadmin creates and verifies a new document type
     # 1. Login as superadmin
@@ -38,14 +38,17 @@ Feature: Document Type Management
     And json 'data.emailReceivers.0' should equal "akunsosmedx01@gmail.com"
 
     # 4. Verify the new document type also exists in the main list
+    Given I set query params:
+      | pageSize | 100 |
     When I call API "GetDocumentTypes"
     Then response status should be 200
     And json 'data.#(id=="{{.store.documentTypeId}}")' should exist
     And json 'data.#(id=="{{.store.documentTypeId}}").code' should equal store "documentTypeCode"
     And json 'data.#(id=="{{.store.documentTypeId}}").name' should equal store "documentTypeName"
+    And I clear query params
 
   Scenario: Superadmin manages document locations
-    # 1. Login is already done from the previous scenario, but we re-authenticate for idempotency
+    # 1. Re-authenticate for idempotency
     When I run flow "authenticate-superadmin"
     Then the store should contain "access_token"
     Given I set auth "bearer"
@@ -73,10 +76,13 @@ Feature: Document Type Management
     And json "data.description" should equal "Lokasi pusat untuk semua arsip fisik."
 
     # 4. Verify the new location exists in the main list
+    Given I set query params:
+      | pageSize | 100 |
     When I call API "GetDocumentLocations"
     Then response status should be 200
     And json 'data.#(id=="{{.store.documentLocationId}}").code' should equal store "documentLocationCode"
     And json 'data.#(id=="{{.store.documentLocationId}}").name' should equal store "documentLocationName"
+    And I clear query params
 
     # 5. Update the document location
     Given I set path params:
@@ -101,12 +107,15 @@ Feature: Document Type Management
     And json "data.code" should equal store "documentLocationCode"
 
     # 7. Verify the updated location in the main list
+    Given I set query params:
+      | pageSize | 100 |
     When I call API "GetDocumentLocations"
     Then response status should be 200
     And json 'data.#(id=="{{.store.documentLocationId}}").name' should equal store "updatedDocumentLocationName"
+    And I clear query params
 
   Scenario: Superadmin creates and verifies a new document
-    # 1. Login is already done from the previous scenario, but we re-authenticate for idempotency
+    # 1. Re-authenticate for idempotency
     When I run flow "authenticate-superadmin"
     Then the store should contain "access_token"
     Given I set auth "bearer"
@@ -136,10 +145,13 @@ Feature: Document Type Management
     And json "data.description" should equal "NDA standar untuk semua kontraktor."
 
     # 4. Verify the new document exists in the main list
+    Given I set query params:
+      | pageSize | 100 |
     When I call API "GetDocuments"
     Then response status should be 200
     And json 'data.#(id=="{{.store.documentId}}").code' should equal store "documentCode"
     And json 'data.#(id=="{{.store.documentId}}").name' should equal store "documentName"
+    And I clear query params
 
     # 5. Update the document
     Given I set path params:
@@ -164,6 +176,61 @@ Feature: Document Type Management
     And json "data.code" should equal store "documentCode"
 
     # 7. Verify the updated document in the main list
+    Given I set query params:
+      | pageSize | 100 |
     When I call API "GetDocuments"
     Then response status should be 200
     And json 'data.#(id=="{{.store.documentId}}").name' should equal store "updatedDocumentName"
+    And I clear query params
+
+#  Scenario: Superadmin creates a new document file
+#    # This scenario is temporarily disabled due to a bug in the Gherkio runner
+#    # that causes the Content-Type header from the multipart file upload
+#    # to leak into the subsequent JSON API call, causing a 415 error.
+#
+#    # 1. Login
+#    When I run flow "authenticate-superadmin"
+#    Then the store should contain "access_token"
+#    Given I set auth "bearer"
+#
+#    # 2. Get existing dependencies from lists
+#    Given I set query params:
+#      | pageSize | 1 |
+#    When I call API "GetDocuments"
+#    Then response status should be 200
+#    And save "data.0.id" as "documentId"
+#    When I call API "GetDocumentTypes"
+#    Then response status should be 200
+#    And save "data.0.id" as "existingDocumentTypeId"
+#    When I call API "GetDocumentLocations"
+#    Then response status should be 200
+#    And save "data.0.id" as "existingDocumentLocationId"
+#    And I clear query params
+#
+#    # 3. Upload a file
+#    When I call API "UploadFile" using fixture "file_upload.yaml"
+#    Then response status should be 200
+#    And save "$.data.id" as "uploadedFileId"
+#
+#    # 4. Create the document file (explicitly set headers to avoid context leak)
+#    Given I set headers:
+#      | Content-Type | application/json |
+#    And I set path params:
+#      | documentId | {{.store.documentId}} |
+#    When I call API "CreateDocumentFile" with body:
+#    """
+#    {
+#      "code": "FILE-{{fnRandomString 8}}",
+#      "name": "Versi Awal Kontrak {{fnRandomString 8}}",
+#      "documentTypeId": "{{.store.existingDocumentTypeId}}",
+#      "documentLocationId": "{{.store.existingDocumentLocationId}}",
+#      "fileId": "{{.store.uploadedFileId}}",
+#      "filename": "dummy.txt",
+#      "fileUrl": "http://example.com/dummy.txt",
+#      "startDate": "{{fnNow "2006-01-02T15:04:05Z"}}",
+#      "isDownloadable": true,
+#      "note": "Versi pertama yang diunggah."
+#    }
+#    """
+#    Then response status should be 201
+#    And json "$.data.id" should not be empty
