@@ -104,3 +104,66 @@ Feature: Document Type Management
     When I call API "GetDocumentLocations"
     Then response status should be 200
     And json 'data.#(id=="{{.store.documentLocationId}}").name' should equal store "updatedDocumentLocationName"
+
+  Scenario: Superadmin creates and verifies a new document
+    # 1. Login is already done from the previous scenario, but we re-authenticate for idempotency
+    When I run flow "authenticate-superadmin"
+    Then the store should contain "access_token"
+    Given I set auth "bearer"
+
+    # 2. Create a new document
+    When I call API "CreateDocument" with body:
+    """
+    {
+      "code": "DOC-LEGAL-{{fnRandomString 8}}",
+      "name": "Perjanjian Kerahasiaan (NDA) {{fnRandomString 8}}",
+      "description": "NDA standar untuk semua kontraktor."
+    }
+    """
+    Then response status should be 201
+    And json "$.data.id" should not be empty
+    And save "$.data.id" as "documentId"
+
+    # 3. Get the document by ID, save its dynamic values, and verify all details
+    Given I set path params:
+      | documentId | {{.store.documentId}} |
+    When I call API "GetDocumentByID"
+    Then response status should be 200
+    And save "$.data.code" as "documentCode"
+    And save "$.data.name" as "documentName"
+    And json "data.code" should equal store "documentCode"
+    And json "data.name" should equal store "documentName"
+    And json "data.description" should equal "NDA standar untuk semua kontraktor."
+
+    # 4. Verify the new document exists in the main list
+    When I call API "GetDocuments"
+    Then response status should be 200
+    And json 'data.#(id=="{{.store.documentId}}").code' should equal store "documentCode"
+    And json 'data.#(id=="{{.store.documentId}}").name' should equal store "documentName"
+
+    # 5. Update the document
+    Given I set path params:
+      | documentId | {{.store.documentId}} |
+    When I call API "UpdateDocument" with body:
+    """
+    {
+      "code": "{{.store.documentCode}}",
+      "name": "Perjanjian Kerahasiaan (NDA) - Diperbarui {{fnRandomString 4}}",
+      "description": "NDA standar untuk semua kontraktor dan karyawan."
+    }
+    """
+    Then response status should be 204
+
+    # 6. Get the document by ID again and verify the update
+    Given I set path params:
+      | documentId | {{.store.documentId}} |
+    When I call API "GetDocumentByID"
+    Then response status should be 200
+    And save "$.data.name" as "updatedDocumentName"
+    And json "data.description" should equal "NDA standar untuk semua kontraktor dan karyawan."
+    And json "data.code" should equal store "documentCode"
+
+    # 7. Verify the updated document in the main list
+    When I call API "GetDocuments"
+    Then response status should be 200
+    And json 'data.#(id=="{{.store.documentId}}").name' should equal store "updatedDocumentName"
