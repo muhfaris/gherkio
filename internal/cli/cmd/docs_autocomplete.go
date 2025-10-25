@@ -141,17 +141,23 @@ func convertToVsCodeSnippet(pattern string) string {
 	str = strings.TrimSpace(str)
 
 	placeholderIndex := 1
-	// This regex now specifically targets capturing groups, avoiding non-capturing ones.
-	re := regexp.MustCompile(`\((?!\?[:!]).*?\)`)
+	// The negative lookahead `(?!)` is not supported in Go's regexp engine, causing a panic.
+	// We replace it with a simpler regex that finds any parenthesized group, and then
+	// manually check if it's a non-capturing group within the replacement function.
+	re := regexp.MustCompile(`\([^)]+\)`)
 
 	body := re.ReplaceAllStringFunc(str, func(group string) string {
-		// Extract the content of the group for a better placeholder name
+		// Check if it's a non-capturing group (e.g., "(?:...)") and return it as is.
+		if strings.HasPrefix(group, "(?:") {
+			return group
+		}
+
+		// For capturing groups, convert them to VS Code snippet placeholders.
 		content := strings.Trim(group, "()")
-		// A simple heuristic for placeholder text
 		placeholderText := "value"
 		if strings.Contains(content, "d+") {
 			placeholderText = "number"
-		} else if strings.Contains(content, `[^\"']+`) {
+		} else if strings.Contains(content, `[^\"']+`) || strings.Contains(content, `[^"']+`) {
 			placeholderText = "string"
 		}
 
