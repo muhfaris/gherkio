@@ -109,17 +109,6 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 					normalizedVars = map[string]any{}
 				}
 				w.ctx.Store["vars"] = deepCopyMap(normalizedVars)
-				flat := flattenEnvVars(normalizedVars)
-				keys := make([]string, 0, len(flat))
-				for k := range flat {
-					keys = append(keys, k)
-				}
-				sort.Strings(keys)
-				for _, k := range keys {
-					rendered := mustExec(flat[k], w.templateCtx())
-					w.ctx.Store[k] = rendered
-					setNestedStoreValue(w.ctx.Store, strings.Split(k, "."), rendered)
-				}
 				return c, nil
 			})
 
@@ -1398,55 +1387,6 @@ func mustExec(tpl string, ctx map[string]any) string {
 		return tpl
 	}
 	return s
-}
-
-func flattenEnvVars(src map[string]any) map[string]string {
-	if len(src) == 0 {
-		return nil
-	}
-	out := map[string]string{}
-	for k, v := range src {
-		flattenEnvVar(out, k, v)
-	}
-	return out
-}
-
-func flattenEnvVar(out map[string]string, prefix string, val any) {
-	switch typed := val.(type) {
-	case map[string]any:
-		for k, v := range typed {
-			flattenEnvVar(out, joinKey(prefix, k), v)
-		}
-	case map[interface{}]any:
-		for rawKey, v := range typed {
-			strKey, ok := rawKey.(string)
-			if !ok {
-				continue
-			}
-			flattenEnvVar(out, joinKey(prefix, strKey), v)
-		}
-	case []any:
-		b, err := json.Marshal(typed)
-		if err != nil {
-			out[prefix] = fmt.Sprint(typed)
-			return
-		}
-		out[prefix] = string(b)
-	case nil:
-		out[prefix] = ""
-	default:
-		out[prefix] = fmt.Sprint(typed)
-	}
-}
-
-func joinKey(prefix, key string) string {
-	if prefix == "" {
-		return key
-	}
-	if key == "" {
-		return prefix
-	}
-	return prefix + "." + key
 }
 
 func normalizeEnvVars(src map[string]any) map[string]any {
