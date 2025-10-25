@@ -20,8 +20,8 @@ var callCmd = &cobra.Command{
 	Use:   "call",
 	Short: "Single-endpoint call using catalogs",
 	Long:  `Performs a single API call based on the defined catalogs and flags.`,
-	Example: `  # Get user by ID
-  gherkio call --env dev --api users.getById --path id=123
+	Example: `  # Get user by ID (defaults to env "dev")
+  gherkio call --api users.getById --path id=123
 
   # Create a new user from a fixture file
   gherkio call --env dev --api users.create --body @fixtures/new_user.json`,
@@ -32,7 +32,7 @@ var callCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(callCmd)
-	callCmd.Flags().String("env", "", "Environment name (must exist in gherkio/envs/<name>.yaml)")
+	callCmd.Flags().String("env", defaultEnvName, "Environment name (must exist in gherkio/envs/<name>.yaml, default: dev)")
 	callCmd.Flags().String("api", "", `Endpoint key from gherkio/apis/*.yaml (e.g. "users.getById")`)
 	callCmd.Flags().String("body", "", `Request body (JSON string or path to a fixture file, e.g. "@fixtures/user.json")`)
 	callCmd.Flags().String("expect-status", "", "Expected HTTP status code")
@@ -52,8 +52,8 @@ func runCall(cmd *cobra.Command, args []string) error {
 	headers, _ := cmd.Flags().GetStringArray("header")
 	reports, _ := cmd.Flags().GetStringArray("report")
 
-	if envName == "" || apiKey == "" {
-		return errors.New("--env and --api are required")
+	if apiKey == "" {
+		return errors.New("--api is required")
 	}
 
 	env, err := loader.LoadEnv("gherkio/envs", envName)

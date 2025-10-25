@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -26,8 +25,8 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run Gherkin features (journey)",
 	Long:  `Executes Gherkin feature files to run API journeys.`,
-	Example: `  # Run all features
-  gherkio run --env dev
+	Example: `  # Run all features (defaults to env "dev")
+  gherkio run
 
   # Run a specific feature file
   gherkio run --env dev --feature gherkio/features/users.feature
@@ -44,7 +43,7 @@ var runCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(runCmd)
-	runCmd.Flags().String("env", "", "Environment name (must exist in gherkio/envs/<name>.yaml)")
+	runCmd.Flags().String("env", defaultEnvName, "Environment name (must exist in gherkio/envs/<name>.yaml, default: dev)")
 	runCmd.Flags().Bool("debug", false, "Print request/response and include debug info in HTML report")
 	runCmd.Flags().String("tags", "", `Filter scenarios by tags (e.g. "@smoke and not @wip")`)
 	runCmd.Flags().String("name", "", "Filter scenarios by name using a regex pattern")
@@ -67,10 +66,6 @@ func runRun(cmd *cobra.Command, args []string) (err error) {
 	reports, _ := cmd.Flags().GetStringArray("report")
 	dryRun, _ := cmd.Flags().GetBool("dry-run")
 	varOverrides, _ := cmd.Flags().GetStringArray("vars")
-
-	if envName == "" {
-		return errors.New("--env is required")
-	}
 
 	env, err := loader.LoadEnv("gherkio/envs", envName)
 	if err != nil {

@@ -516,6 +516,7 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		// json "<path>" should equal "<value>"
 		bind(sc, `^json ["'](.+?)["'] should equal ["']([^"']+)["']$`, "Assert JSON value equals", "json '$.status' should equal 'success'", func(path, want string) error {
 			path = w.renderPath(path)
+			want = mustExec(want, w.templateCtx())
 			val := getJSONPath(w.lastRes.Body, path)
 			if !val.Exists() {
 				return fmt.Errorf("json path %q not found", path)
