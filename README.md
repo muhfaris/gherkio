@@ -147,22 +147,32 @@ endpoints:
 
 ### Custom Hosts & Base URLs
 
-- Configure the default host per environment via `baseURL`:
+- Configure the primary host per environment via `baseURL`:
 
   ```yaml
   # gherkio/envs/staging.yaml
   baseURL: https://staging-api.example.com
   headers:
     X-App: gherkio
+  vars:
+    api:
+      auth: https://auth.example.com
   ```
 
-- Catalog paths:
-  - Relative (`/v1/users`) → resolved against `baseURL`.
-  - Absolute (`https://auth.example.com/token`) → bypass `baseURL`.
-- Override the base URL on the fly:
-  - CLI: `./gherkio run --env staging --vars env.baseURL=https://mock.local`
-  - Scenario: `Given the base URL is "https://mock.local"`
-  - Flow customization: add a `setBaseURL` helper if certain flows must target alternate hosts.
+- Refer to alternate hosts through `vars` in catalog definitions:
+
+  ```yaml
+  endpoints:
+    auth.token:
+      method: GET
+      path: "{{ .vars.api.auth }}/v1/token"
+  ```
+
+- Relative catalog paths (e.g., `/v1/users`) resolve against `baseURL`; absolute URLs or templated host values override it.
+- Override hosts during execution:
+  - Scenario-level: `Given the base URL is "https://mock.local"`
+  - Service-specific vars: `./gherkio run --env staging --vars api.auth=https://mock.local/auth`
+  - Maintain separate env files per environment when the defaults differ drastically.
 
 ### Fixtures (`gherkio/fixtures/…`)
 
