@@ -1,0 +1,37 @@
+name: Generate Autocomplete Files
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  generate-autocomplete:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Build gherkio
+        run: go build -o gherkio cmd/gherkio/main.go
+
+      - name: Generate Autocomplete Files
+        run: ./gherkio docs generate-autocomplete --output-vim completions/gherkio.vim --output-vscode completions/gherkio.code-snippets
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add completions/
+          if ! git diff --staged --quiet; then
+            git commit -m "docs(autocomplete): auto-generate completion files"
+            git push
+          else
+            echo "No changes to commit."
+          fi
