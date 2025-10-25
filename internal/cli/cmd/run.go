@@ -43,7 +43,7 @@ var runCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(runCmd)
-	runCmd.Flags().String("env", defaultEnvName, "Environment name (must exist in gherkio/envs/<name>.yaml, default: dev)")
+	runCmd.Flags().String("env", "dev", "Environment name (must exist in gherkio/envs/<name>.yaml, default: dev)")
 	runCmd.Flags().Bool("debug", false, "Print request/response and include debug info in HTML report")
 	runCmd.Flags().String("tags", "", `Filter scenarios by tags (e.g. "@smoke and not @wip")`)
 	runCmd.Flags().String("name", "", "Filter scenarios by name using a regex pattern")
