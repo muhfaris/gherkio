@@ -32,7 +32,7 @@ var callCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(callCmd)
-	callCmd.Flags().String("env", defaultEnvName, "Environment name (must exist in gherkio/envs/<name>.yaml, default: dev)")
+	callCmd.Flags().String("env", "dev", "Environment name (must exist in gherkio/envs/<name>.yaml, default: dev)")
 	callCmd.Flags().String("api", "", `Endpoint key from gherkio/apis/*.yaml (e.g. "users.getById")`)
 	callCmd.Flags().String("body", "", `Request body (JSON string or path to a fixture file, e.g. "@fixtures/user.json")`)
 	callCmd.Flags().String("expect-status", "", "Expected HTTP status code")
