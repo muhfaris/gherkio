@@ -104,9 +104,21 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 					w.currentFeature = ""
 				}
 				w.scenarioStarted = time.Now()
-				for k, v := range w.ctx.Env.Vars {
-					rendered := mustExec(v, map[string]any{"store": w.ctx.Store})
+				normalizedVars := normalizeEnvVars(w.ctx.Env.Vars)
+				if normalizedVars == nil {
+					normalizedVars = map[string]any{}
+				}
+				w.ctx.Store["vars"] = deepCopyMap(normalizedVars)
+				flat := flattenEnvVars(normalizedVars)
+				keys := make([]string, 0, len(flat))
+				for k := range flat {
+					keys = append(keys, k)
+				}
+				sort.Strings(keys)
+				for _, k := range keys {
+					rendered := mustExec(flat[k], w.templateCtx())
 					w.ctx.Store[k] = rendered
+					setNestedStoreValue(w.ctx.Store, strings.Split(k, "."), rendered)
 				}
 				return c, nil
 			})
@@ -156,7 +168,7 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 
 		// Override base URL for the current scenario
 		bind(sc, `^(?:Given\s+)?the base URL is ["']([^"']*)["']$`, "Override base URL", "Given the base URL is 'https://api.example.com'", func(raw string) error {
-			rendered := mustExec(raw, map[string]any{"store": w.ctx.Store})
+			rendered := mustExec(raw, w.templateCtx())
 			w.ctx.Env.BaseURL = rendered
 			return nil
 		})
@@ -215,7 +227,7 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		bind(sc, `^I set query params:$`, "Set query parameters", "I set query params:\n| page | 1 |\n| limit | 10 |", func(table *godog.Table) error {
 			rendered := map[string]string{}
 			if table != nil {
-				ctx := map[string]any{"store": w.ctx.Store}
+				ctx := w.templateCtx()
 				for _, r := range table.Rows {
 					if len(r.Cells) < 2 {
 						continue
@@ -262,7 +274,7 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 					return errors.New("body is empty")
 				}
 
-				ctx := map[string]any{"store": w.ctx.Store}
+				ctx := w.templateCtx()
 				switch {
 				case arg.DocString != nil:
 					raw := arg.DocString.Content
@@ -310,7 +322,7 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		bind(sc, `^I call API [\"']([^\"']+)[\"'] with:$`, "Call API with table as JSON body", "I call API 'auth.login' with:\n| username | superadmin |\n| password | Admin@123 |", func(key string, table *godog.Table) error {
 			w.lastReq.APIKey = key
 			m := tableToMap(table)
-			ctx := map[string]any{"store": w.ctx.Store}
+			ctx := w.templateCtx()
 			m = renderMap(m, ctx)
 			b, err := json.Marshal(m)
 			if err != nil {
@@ -355,7 +367,7 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		// I run flow "<name>" with:
 		bind(sc, `^I run flow [\"']([^\"']+)[\"'] with:$`, "Run flow with parameters", "I run flow 'login' with:\n| username | demo |\n| password | secret |", func(name string, table *godog.Table) error {
 			args := tableToMap(table)
-			args = renderMap(args, map[string]any{"store": w.ctx.Store})
+			args = renderMap(args, w.templateCtx())
 			return w.runFlow(name, args)
 		})
 
@@ -424,7 +436,7 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 					start = 1
 				}
 			}
-			storeCtx := map[string]any{"store": w.ctx.Store}
+			storeCtx := w.templateCtx()
 			for i := start; i < len(rows); i++ {
 				cells := rows[i].Cells
 				if len(cells) == 0 {
@@ -828,11 +840,12 @@ func InitializeScenario(env loader.Env, cat loader.Catalog, flows map[string]loa
 		// set "<key>" to "<value>"
 		bind(sc, `^set [\"']([^\"']+)[\"'] to [\"'](.+)[\"']$`, "Set value in store", "set 'base_url' to 'https://api.example.com'",
 			func(k, v string) error {
-				rendered, err := execTemplate(v, map[string]any{"store": w.ctx.Store})
+				rendered, err := execTemplate(v, w.templateCtx())
 				if err != nil {
 					return fmt.Errorf("render value for %s: %w", k, err)
 				}
 				w.ctx.Store[k] = rendered
+				setNestedStoreValue(w.ctx.Store, strings.Split(k, "."), rendered)
 				return nil
 			})
 
@@ -1046,7 +1059,7 @@ func (w *world) runFlow(name string, args map[string]string) error {
 		}
 	}
 	// context for templating
-	ctxMap := map[string]any{"store": w.ctx.Store}
+	ctxMap := w.templateCtx()
 	for k, v := range args {
 		ctxMap[k] = v
 	}
@@ -1357,7 +1370,17 @@ func (w *world) renderPath(tpl string) string {
 	if w == nil || w.ctx == nil {
 		return tpl
 	}
-	return mustExec(tpl, map[string]any{"store": w.ctx.Store})
+	return mustExec(tpl, w.templateCtx())
+}
+
+func (w *world) templateCtx() map[string]any {
+	ctx := map[string]any{"store": w.ctx.Store}
+	if w != nil && w.ctx != nil {
+		if vars, ok := w.ctx.Store["vars"]; ok {
+			ctx["vars"] = vars
+		}
+	}
+	return ctx
 }
 
 func renderMap(in map[string]string, ctx map[string]any) map[string]string {
@@ -1374,4 +1397,160 @@ func mustExec(tpl string, ctx map[string]any) string {
 		return tpl
 	}
 	return s
+}
+
+func flattenEnvVars(src map[string]any) map[string]string {
+	if len(src) == 0 {
+		return nil
+	}
+	out := map[string]string{}
+	for k, v := range src {
+		flattenEnvVar(out, k, v)
+	}
+	return out
+}
+
+func flattenEnvVar(out map[string]string, prefix string, val any) {
+	switch typed := val.(type) {
+	case map[string]any:
+		for k, v := range typed {
+			flattenEnvVar(out, joinKey(prefix, k), v)
+		}
+	case map[interface{}]any:
+		for rawKey, v := range typed {
+			strKey, ok := rawKey.(string)
+			if !ok {
+				continue
+			}
+			flattenEnvVar(out, joinKey(prefix, strKey), v)
+		}
+	case []any:
+		b, err := json.Marshal(typed)
+		if err != nil {
+			out[prefix] = fmt.Sprint(typed)
+			return
+		}
+		out[prefix] = string(b)
+	case nil:
+		out[prefix] = ""
+	default:
+		out[prefix] = fmt.Sprint(typed)
+	}
+}
+
+func joinKey(prefix, key string) string {
+	if prefix == "" {
+		return key
+	}
+	if key == "" {
+		return prefix
+	}
+	return prefix + "." + key
+}
+
+func normalizeEnvVars(src map[string]any) map[string]any {
+	if len(src) == 0 {
+		return nil
+	}
+	out := map[string]any{}
+	for k, v := range src {
+		out[k] = normalizeEnvValue(v)
+	}
+	return out
+}
+
+func normalizeEnvValue(val any) any {
+	switch typed := val.(type) {
+	case map[string]any:
+		m := map[string]any{}
+		for k, v := range typed {
+			m[k] = normalizeEnvValue(v)
+		}
+		return m
+	case map[interface{}]any:
+		m := map[string]any{}
+		for k, v := range typed {
+			strKey, ok := k.(string)
+			if !ok {
+				continue
+			}
+			m[strKey] = normalizeEnvValue(v)
+		}
+		return m
+	case []any:
+		arr := make([]any, len(typed))
+		for i, v := range typed {
+			arr[i] = normalizeEnvValue(v)
+		}
+		return arr
+	case nil:
+		return ""
+	default:
+		return fmt.Sprint(typed)
+	}
+}
+
+func setNestedStoreValue(store map[string]any, path []string, value any) {
+	if len(path) == 0 {
+		return
+	}
+	if len(path) == 1 {
+		store[path[0]] = value
+		return
+	}
+	curr := store
+	for i := 0; i < len(path)-1; i++ {
+		key := path[i]
+		next, ok := curr[key]
+		if !ok {
+			child := map[string]any{}
+			curr[key] = child
+			curr = child
+			continue
+		}
+		if child, ok := next.(map[string]any); ok {
+			curr = child
+			continue
+		}
+		child := map[string]any{}
+		curr[key] = child
+		curr = child
+	}
+	curr[path[len(path)-1]] = value
+}
+
+func deepCopyMap(src map[string]any) map[string]any {
+	if src == nil {
+		return map[string]any{}
+	}
+	out := make(map[string]any, len(src))
+	for k, v := range src {
+		out[k] = deepCopyValue(v)
+	}
+	return out
+}
+
+func deepCopyValue(val any) any {
+	switch typed := val.(type) {
+	case map[string]any:
+		return deepCopyMap(typed)
+	case map[interface{}]any:
+		m := map[string]any{}
+		for k, v := range typed {
+			strKey, ok := k.(string)
+			if !ok {
+				continue
+			}
+			m[strKey] = deepCopyValue(v)
+		}
+		return m
+	case []any:
+		arr := make([]any, len(typed))
+		for i, v := range typed {
+			arr[i] = deepCopyValue(v)
+		}
+		return arr
+	default:
+		return typed
+	}
 }

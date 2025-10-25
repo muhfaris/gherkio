@@ -73,8 +73,13 @@ func buildHTTPRequest(ctx *Context, req Request) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	url := strings.TrimRight(ctx.Env.BaseURL, "/") + path
-	// TODO: query params
+	path = strings.TrimSpace(path)
+	var url string
+	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
+		url = path
+	} else {
+		url = strings.TrimRight(ctx.Env.BaseURL, "/") + path
+	}
 
 	var (
 		bodyReader          io.Reader
@@ -139,6 +144,13 @@ func buildHTTPRequest(ctx *Context, req Request) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(req.Query) > 0 {
+		q := httpReq.URL.Query()
+		for k, v := range req.Query {
+			q.Set(k, v)
+		}
+		httpReq.URL.RawQuery = q.Encode()
+	}
 	for k, v := range ctx.Env.Headers {
 		httpReq.Header.Set(k, v)
 	}
@@ -171,6 +183,9 @@ func render(tpl string, pathParams map[string]string, store map[string]any) (str
 		return "", err
 	}
 	ctx := map[string]any{"store": store}
+	if vars, ok := store["vars"]; ok {
+		ctx["vars"] = vars
+	}
 	for k, v := range pathParams {
 		ctx[k] = v
 	}
@@ -195,7 +210,11 @@ func applyAuth(ctx *Context, r *http.Request, profile string) {
 		if tpl == "" {
 			tpl = "{{ .value }}"
 		}
-		out, err := execTemplate(tpl, map[string]any{"value": val, "store": ctx.Store})
+		execCtx := map[string]any{"value": val, "store": ctx.Store}
+		if vars, ok := ctx.Store["vars"]; ok {
+			execCtx["vars"] = vars
+		}
+		out, err := execTemplate(tpl, execCtx)
 		if err == nil && ap.Header != "" {
 			r.Header.Set(ap.Header, out)
 		}

@@ -57,6 +57,10 @@ func sampleEnv() string {
 baseURL: https://jsonplaceholder.typicode.com
 headers:
   X-App: gherkio
+vars:
+  # Seeds default credentials into the store so flows can reuse them.
+  login.username: demo_user
+  login.password: secret123
 timeouts:
   request: 20s
 retries:

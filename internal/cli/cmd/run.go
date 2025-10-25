@@ -33,7 +33,10 @@ var runCmd = &cobra.Command{
   gherkio run --env dev --feature gherkio/features/users.feature
 
   # Run scenarios with a specific tag
-  gherkio run --env dev --tags @smoke`,
+  gherkio run --env dev --tags @smoke
+
+  # Override env variables at runtime
+  gherkio run --env dev --vars awb=ABC123 --vars user.id=42`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runRun(cmd, args)
 	},
@@ -50,6 +53,7 @@ func init() {
 	runCmd.Flags().StringArray("exclude-feature", []string{}, "Exclude specific feature files (path or glob pattern)")
 	runCmd.Flags().StringArray("report", []string{}, `Generate report in a specific format: kind[:path] (e.g. "html:report.html")`)
 	runCmd.Flags().Bool("dry-run", false, "Validate feature files and step bindings without executing requests")
+	runCmd.Flags().StringArray("vars", []string{}, "Override env vars (key=value)")
 }
 
 func runRun(cmd *cobra.Command, args []string) (err error) {
@@ -62,6 +66,7 @@ func runRun(cmd *cobra.Command, args []string) (err error) {
 	excludes, _ := cmd.Flags().GetStringArray("exclude-feature")
 	reports, _ := cmd.Flags().GetStringArray("report")
 	dryRun, _ := cmd.Flags().GetBool("dry-run")
+	varOverrides, _ := cmd.Flags().GetStringArray("vars")
 
 	if envName == "" {
 		return errors.New("--env is required")
@@ -69,6 +74,9 @@ func runRun(cmd *cobra.Command, args []string) (err error) {
 
 	env, err := loader.LoadEnv("gherkio/envs", envName)
 	if err != nil {
+		return err
+	}
+	if err := applyVarOverrides(&env, varOverrides); err != nil {
 		return err
 	}
 	cat, err := loader.LoadCatalogs("gherkio/apis")
@@ -322,6 +330,77 @@ func classifyReports(specs []string) (csvPaths []string, htmlSpecs []htmlSpec, u
 		}
 	}
 	return
+}
+
+func applyVarOverrides(env *loader.Env, overrides []string) error {
+	if len(overrides) == 0 {
+		return nil
+	}
+	if env.Vars == nil {
+		env.Vars = map[string]any{}
+	}
+	for _, pair := range overrides {
+		pair = strings.TrimSpace(pair)
+		if pair == "" {
+			continue
+		}
+		key, val, ok := strings.Cut(pair, "=")
+		if !ok {
+			return fmt.Errorf("invalid --vars value %q (expected key=value)", pair)
+		}
+		key = strings.TrimSpace(key)
+		val = strings.TrimSpace(val)
+		if key == "" {
+			return fmt.Errorf("invalid --vars value %q (empty key)", pair)
+		}
+		if strings.Contains(key, ".") {
+			assignNestedVar(env.Vars, key, val)
+			continue
+		}
+		env.Vars[key] = val
+	}
+	return nil
+}
+
+func assignNestedVar(vars map[string]any, path, value string) {
+	parts := strings.Split(path, ".")
+	current := vars
+	for i, raw := range parts {
+		part := strings.TrimSpace(raw)
+		if part == "" {
+			continue
+		}
+		if i == len(parts)-1 {
+			current[part] = value
+			return
+		}
+		next, ok := current[part]
+		if !ok {
+			child := map[string]any{}
+			current[part] = child
+			current = child
+			continue
+		}
+		switch typed := next.(type) {
+		case map[string]any:
+			current = typed
+		case map[interface{}]any:
+			child := map[string]any{}
+			for k, v := range typed {
+				strKey, ok := k.(string)
+				if !ok {
+					continue
+				}
+				child[strKey] = v
+			}
+			current[part] = child
+			current = child
+		default:
+			child := map[string]any{}
+			current[part] = child
+			current = child
+		}
+	}
 }
 
 type scenarioAggregator struct {

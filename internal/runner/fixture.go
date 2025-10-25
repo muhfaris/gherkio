@@ -33,7 +33,11 @@ func LoadFixtureFile(path string, store map[string]any) (FixturePayload, error) 
 		return FixturePayload{}, err
 	}
 
-	rendered, err := execTemplate(string(data), map[string]any{"store": store})
+	ctx := map[string]any{"store": store}
+	if vars, ok := store["vars"]; ok {
+		ctx["vars"] = vars
+	}
+	rendered, err := execTemplate(string(data), ctx)
 	if err != nil {
 		return FixturePayload{}, err
 	}
