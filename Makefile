@@ -1,7 +1,10 @@
-.PHONY: build install docs lint test clean
+.PHONY: build build-mcp install docs lint test clean
 
 build:
 	go build -o bin/gherkio ./cmd/gherkio
+
+build-mcp:
+	cd gherkio-mcp && go build -o ../bin/gherkio-mcp ./cmd/gherkio-mcp
 
 install:
 	go install ./cmd/gherkio
