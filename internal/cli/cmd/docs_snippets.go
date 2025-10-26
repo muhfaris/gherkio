@@ -12,19 +12,18 @@ import (
 )
 
 var (
-	outputVim    string
-	outputVscode string
+	output string
 )
 
-var docsAutocompleteCmd = &cobra.Command{
-	Use:   "generate-autocomplete",
-	Short: "Generate autocomplete files for editors",
-	Long:  `Generate autocomplete files for various editors based on Gherkin steps.`,
-	Example: `  # Generate for Vim and VS Code
-  gherkio docs generate-autocomplete --output-vim completions.vim --output-vscode gherkin.json`,
+var docsSnippetsCmd = &cobra.Command{
+	Use:   "generate-snippets",
+	Short: "Generate snippets for editors",
+	Long:  `Generate snippets for various editors based on Gherkin steps.`,
+	Example: `  # Generate for VS Code
+  gherkio docs generate-snippets --output vscode.json`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if outputVim == "" && outputVscode == "" {
-			return fmt.Errorf("at least one output format must be specified")
+		if output == "" {
+			return fmt.Errorf("output format must be specified")
 		}
 
 		steps, err := extractGherkinSteps("internal/runner/steps_godog.go")
@@ -32,26 +31,15 @@ var docsAutocompleteCmd = &cobra.Command{
 			return fmt.Errorf("failed to extract gherkin steps: %w", err)
 		}
 
-		if outputVim != "" {
-			content := generateVimAutocomplete(steps)
-			err := os.WriteFile(outputVim, []byte(content), 0644)
-			if err != nil {
-				return fmt.Errorf("failed to write vim autocomplete file: %w", err)
-			}
-			fmt.Printf("Successfully generated Vim autocomplete file at: %s\n", outputVim)
+		content, err := generateSnippets(steps)
+		if err != nil {
+			return fmt.Errorf("failed to generate vscode snippets: %w", err)
 		}
-
-		if outputVscode != "" {
-			content, err := generateVscodeSnippets(steps)
-			if err != nil {
-				return fmt.Errorf("failed to generate vscode snippets: %w", err)
-			}
-			err = os.WriteFile(outputVscode, content, 0644)
-			if err != nil {
-				return fmt.Errorf("failed to write vscode snippets file: %w", err)
-			}
-			fmt.Printf("Successfully generated VS Code snippets file at: %s\n", outputVscode)
+		err = os.WriteFile(output, content, 0644)
+		if err != nil {
+			return fmt.Errorf("failed to write vscode snippets file: %w", err)
 		}
+		fmt.Printf("Successfully generated VS Code snippets file at: %s\n", output)
 
 		return nil
 	},
@@ -83,26 +71,16 @@ func extractGherkinSteps(filePath string) ([]string, error) {
 	return steps, nil
 }
 
-func generateVimAutocomplete(steps []string) string {
-	var builder strings.Builder
-	for _, step := range steps {
-		cleanStep := cleanGherkinRegex(step)
-		builder.WriteString(cleanStep)
-		builder.WriteString("\n")
-	}
-	return builder.String()
-}
-
-func generateVscodeSnippets(steps []string) ([]byte, error) {
+func generateSnippets(steps []string) ([]byte, error) {
 	snippets := make(map[string]interface{})
-	for i, step := range steps {
+	for _, step := range steps {
 		cleanStep := cleanGherkinRegex(step)
 		snippet := map[string]interface{}{
 			"prefix":      cleanStep,
 			"body":        convertToVsCodeSnippet(step),
 			"description": cleanStep,
 		}
-		snippets[fmt.Sprintf("Gherkin Step %d", i+1)] = snippet
+		snippets[cleanStep] = snippet
 	}
 
 	return json.MarshalIndent(snippets, "", "  ")
@@ -174,7 +152,6 @@ func convertToVsCodeSnippet(pattern string) string {
 }
 
 func init() {
-	docsCmd.AddCommand(docsAutocompleteCmd)
-	docsAutocompleteCmd.Flags().StringVar(&outputVim, "output-vim", "", "Output file for Vim autocomplete")
-	docsAutocompleteCmd.Flags().StringVar(&outputVscode, "output-vscode", "", "Output file for VS Code snippets")
+	docsCmd.AddCommand(docsSnippetsCmd)
+	docsSnippetsCmd.Flags().StringVar(&output, "output", "", "Output file for snippets")
 }
