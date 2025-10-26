@@ -22,6 +22,7 @@ type StepDebug struct {
 	RequestBody    string
 	ResponseBody   string
 	ResponseStatus int
+	RequestCurl    string
 }
 
 var (

@@ -450,6 +450,7 @@ func (a *scenarioAggregator) RecordScenario(feature, scenario, status string, du
 					RequestBody:    st.Debug.RequestBody,
 					ResponseBody:   st.Debug.ResponseBody,
 					ResponseStatus: st.Debug.ResponseStatus,
+					RequestCurl:    st.Debug.RequestCurl,
 				}
 			}
 			stepDetails[i] = detail
