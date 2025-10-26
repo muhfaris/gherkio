@@ -1182,18 +1182,13 @@ func (w *world) captureDebug(req Request, res Response, httpReq *http.Request) {
 	}
 	reqBody := formatDebugBody(req.Body)
 	resBody := formatDebugBody(res.Body)
+	curlCmd := formatAsCurl(httpReq, req.Body)
+
 	if isDebugConsole() {
-		fmt.Printf("\n[debug] API: %s (%s %s) -> %d\n", req.APIKey, method, url, res.Status)
-		if headers == "<none>" {
-			fmt.Println("[debug] request headers: <none>")
-		} else {
-			fmt.Println("[debug] request headers:")
-			for _, line := range strings.Split(headers, "\n") {
-				fmt.Printf("[debug]   %s\n", line)
-			}
-		}
-		fmt.Printf("[debug] request body:\n%s\n", reqBody)
-		fmt.Printf("[debug] response body:\n%s\n", resBody)
+		fmt.Printf("\n[debug] API: %s\n", req.APIKey)
+		fmt.Println("[debug] request (cURL):")
+		fmt.Println(curlCmd)
+		fmt.Printf("[debug] response (status %d):\n%s\n", res.Status, resBody)
 	}
 	if !isDebugCapture() {
 		w.pendingDebug = nil
@@ -1207,7 +1202,53 @@ func (w *world) captureDebug(req Request, res Response, httpReq *http.Request) {
 		RequestBody:    reqBody,
 		ResponseBody:   resBody,
 		ResponseStatus: res.Status,
+		RequestCurl:    curlCmd,
 	}
+}
+
+func formatAsCurl(r *http.Request, body []byte) string {
+	if r == nil || r.URL == nil {
+		return "<no request>"
+	}
+
+	var b strings.Builder
+	b.WriteString("curl '")
+	b.WriteString(r.URL.String())
+	b.WriteString("'")
+
+	if r.Method != "" && r.Method != http.MethodGet {
+		b.WriteString(" -X ")
+		b.WriteString(r.Method)
+	}
+
+	keys := make([]string, 0, len(r.Header))
+	for k := range r.Header {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		// Skip auth header for security
+		if strings.EqualFold(k, "Authorization") {
+			b.WriteString(" -H 'Authorization: [REDACTED]'")
+			continue
+		}
+		for _, v := range r.Header[k] {
+			b.WriteString(" -H '")
+			b.WriteString(k)
+			b.WriteString(": ")
+			b.WriteString(strings.ReplaceAll(v, "'", `'\''`))
+			b.WriteString("'")
+		}
+	}
+
+	if len(body) > 0 {
+		b.WriteString(" --data-binary '")
+		b.WriteString(strings.ReplaceAll(string(body), "'", `'\''`))
+		b.WriteString("'")
+	}
+
+	return b.String()
 }
 
 func formatDebugBody(body []byte) string {

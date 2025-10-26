@@ -24,6 +24,7 @@ type DebugInfo struct {
 	RequestBody    string
 	ResponseBody   string
 	ResponseStatus int
+	RequestCurl    string
 }
 
 type SummaryMeta struct {
