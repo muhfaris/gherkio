@@ -113,7 +113,7 @@ func registerTools(host *Server, mcpServer *mcp.Server) error {
 
 func registerCallTool(host *Server, mcpServer *mcp.Server) {
 	mcp.AddTool[callInput, commandResult](mcpServer, &mcp.Tool{
-		Name:        "gherkio.call",
+		Name:        "gherkio_call",
 		Description: "Execute a single API endpoint using the gherkio CLI",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input callInput) (*mcp.CallToolResult, commandResult, error) {
 		if strings.TrimSpace(input.Env) == "" || strings.TrimSpace(input.API) == "" {
@@ -158,7 +158,7 @@ func registerCallTool(host *Server, mcpServer *mcp.Server) {
 
 func registerRunTool(host *Server, mcpServer *mcp.Server) {
 	mcp.AddTool[runInput, commandResult](mcpServer, &mcp.Tool{
-		Name:        "gherkio.run",
+		Name:        "gherkio_run",
 		Description: "Execute feature journeys via the gherkio CLI",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input runInput) (*mcp.CallToolResult, commandResult, error) {
 		cliArgs := []string{"run"}
@@ -194,7 +194,7 @@ func registerRunTool(host *Server, mcpServer *mcp.Server) {
 
 func registerFeatureWriteTool(host *Server, mcpServer *mcp.Server) {
 	mcp.AddTool[featureWriteInput, featureWriteResult](mcpServer, &mcp.Tool{
-		Name:        "gherkio.feature.write",
+		Name:        "gherkio_feature_write",
 		Description: "Create or overwrite a feature file inside gherkio/features",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input featureWriteInput) (*mcp.CallToolResult, featureWriteResult, error) {
 		if strings.TrimSpace(input.Path) == "" {
@@ -283,7 +283,7 @@ type featurePreviewResult struct {
 
 func registerFeaturePreviewTool(host *Server, mcpServer *mcp.Server) {
 	mcp.AddTool[featurePreviewInput, featurePreviewResult](mcpServer, &mcp.Tool{
-		Name:        "gherkio.feature.preview",
+		Name:        "gherkio_feature_preview",
 		Description: "Render a feature file preview without writing to disk",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input featurePreviewInput) (*mcp.CallToolResult, featurePreviewResult, error) {
 		gherkin, err := renderFeatureContent(input.Content, input.Title, input.Description, input.Tags, input.Scenarios)
@@ -305,7 +305,7 @@ func registerFeaturePreviewTool(host *Server, mcpServer *mcp.Server) {
 
 func registerScenarioSuggestTool(host *Server, mcpServer *mcp.Server) {
 	mcp.AddTool[scenarioSuggestInput, scenarioSuggestResult](mcpServer, &mcp.Tool{
-		Name:        "gherkio.scenario.suggest",
+		Name:        "gherkio_scenario_suggest",
 		Description: "Generate a structured Gherkin scenario skeleton for an API call",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input scenarioSuggestInput) (*mcp.CallToolResult, scenarioSuggestResult, error) {
 		scenarioName := deriveScenarioName(input)
