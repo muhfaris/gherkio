@@ -208,6 +208,9 @@ func registerFeatureWriteTool(host *Server, mcpServer *mcp.Server) {
 
 		cleaned := filepath.Clean(filepath.FromSlash(input.Path))
 		target := filepath.Join(featuresBase, cleaned)
+		if strings.HasPrefix(cleaned, "features") {
+			target = filepath.Join(host.resourcesDir, cleaned)
+		}
 		rel, err := filepath.Rel(featuresBase, target)
 		if err != nil || strings.HasPrefix(rel, "..") {
 			return nil, featureWriteResult{}, fmt.Errorf("path escapes features directory: %s", input.Path)
@@ -308,8 +311,17 @@ func registerScenarioSuggestTool(host *Server, mcpServer *mcp.Server) {
 		Name:        "gherkio.scenario.suggest",
 		Description: "Generate a structured Gherkin scenario skeleton for an API call",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input scenarioSuggestInput) (*mcp.CallToolResult, scenarioSuggestResult, error) {
+		envs, err := resolveGlobs(host.resourcesDir, "envs/*.y*ml")
+		if err != nil {
+			return nil, scenarioSuggestResult{}, fmt.Errorf("resolve envs: %w", err)
+		}
+		flows, err := resolveGlobs(host.resourcesDir, "flows/*.y*ml")
+		if err != nil {
+			return nil, scenarioSuggestResult{}, fmt.Errorf("resolve flows: %w", err)
+		}
+
 		scenarioName := deriveScenarioName(input)
-		scenarioSteps := buildScenarioSteps(input)
+		scenarioSteps := buildScenarioSteps(input, envs, flows)
 		scenario := featureWriteScenario{
 			Name:  scenarioName,
 			Steps: scenarioSteps,
@@ -377,10 +389,10 @@ func renderFeatureContent(content, title, description string, tags []string, sce
 		return content, nil
 	}
 	if strings.TrimSpace(title) == "" {
-		return "", fmt.Errorf("title is required when content is empty")
+		return "", fmt.Errorf("`title` is required when `content` is empty")
 	}
 	if len(scenarios) == 0 {
-		return "", fmt.Errorf("at least one scenario is required when content is empty")
+		return "", fmt.Errorf("at least one scenario is required when `content` is not provided")
 	}
 	return buildFeatureContent(title, description, tags, scenarios), nil
 }
@@ -561,19 +573,26 @@ func deriveFeatureTitle(input scenarioSuggestInput) string {
 	return "API validation"
 }
 
-func buildScenarioSteps(input scenarioSuggestInput) []string {
+func buildScenarioSteps(input scenarioSuggestInput, envs, flows []string) []string {
 	var steps []string
 	var givens []string
 
 	if env := strings.TrimSpace(input.Env); env != "" {
-		givens = append(givens, fmt.Sprintf("the \"%s\" environment is configured", env))
+		givens = append(givens, fmt.Sprintf("I load the \"%s\" environment", env))
+	} else if len(envs) > 0 {
+		givens = append(givens, fmt.Sprintf("I load the \"%s\" environment", envs[0]))
 	}
+
 	for _, pre := range input.Preconditions {
 		pre = strings.TrimSpace(pre)
 		if pre == "" {
 			continue
 		}
-		givens = append(givens, pre)
+		if flow, ok := matchFlow(pre, flows); ok {
+			givens = append(givens, fmt.Sprintf("I run the \"%s\" flow", flow))
+		} else {
+			givens = append(givens, pre)
+		}
 	}
 	for i, g := range givens {
 		keyword := "Given"
@@ -702,4 +721,29 @@ func slugify(in string) string {
 	slug := slugPattern.ReplaceAllString(in, "-")
 	slug = strings.Trim(slug, "-")
 	return slug
+}
+
+func resolveGlobs(base, pattern string) ([]string, error) {
+	matches, err := filepath.Glob(filepath.Join(base, pattern))
+	if err != nil {
+		return nil, err
+	}
+	var out []string
+	for _, m := range matches {
+		out = append(out, strings.TrimSuffix(filepath.Base(m), filepath.Ext(m)))
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
+func matchFlow(precondition string, flows []string) (string, bool) {
+	if len(flows) == 0 || strings.TrimSpace(precondition) == "" {
+		return "", false
+	}
+	for _, flow := range flows {
+		if strings.Contains(precondition, flow) {
+			return flow, true
+		}
+	}
+	return "", false
 }
