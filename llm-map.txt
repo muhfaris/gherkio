@@ -374,7 +374,30 @@ This file is the single source of truth for AI context. Keeping it current ensur
 
 ---
 
-## Build & Run Commands
+### Init Scaffolding (`gherkio init`)
+
+Creates:
+```
+.gherkio/
+├── config.yaml                 # Project configuration
+├── environments/
+│   └── local.yaml              # Default env (DummyJSON)
+├── tests/
+│   └── example/
+│       └── login.yaml          # Example test to get started
+├── reports/
+│   ├── latest/
+│   └── archive/
+└── schemas/
+```
+
+After init, you can immediately run:
+```bash
+gherkio run example/login.yaml
+gherkio run example/login.yaml --verbose
+```
+
+### Build & Run Commands
 
 ```bash
 go build -o gherkio .                   # Build binary

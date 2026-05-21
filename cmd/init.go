@@ -12,6 +12,33 @@ const (
 	dirPerm os.FileMode = 0755
 )
 
+// defaultLocalEnvTemplate is the default environment file content.
+const defaultLocalEnvTemplate = `baseUrl: https://dummyjson.com
+services:
+  auth:
+    baseUrl: http://localhost:3001
+`
+
+// defaultExampleTestTemplate is the default example test file content.
+const defaultExampleTestTemplate = `scenario: login example
+
+steps:
+  - request:
+      method: POST
+      url: /auth/login
+
+      body:
+        username: emilys
+        password: emilyspass
+
+    expect:
+      status: 200
+      body.accessToken: exists
+
+    save:
+      token: body.accessToken
+`
+
 // defaultConfigTemplate is the default config.yaml template content.
 const defaultConfigTemplate = `# Gherkio Configuration
 project:
@@ -93,6 +120,30 @@ func runInit() error {
 	}
 	fmt.Printf("  📄  %s\n", configPath)
 
+	// Create default environment file
+	envPath := filepath.Join(baseDir, "environments", "local.yaml")
+	if err := os.WriteFile(envPath, []byte(defaultLocalEnvTemplate), 0644); err != nil {
+		return fmt.Errorf("failed to write environment file: %w", err)
+	}
+	fmt.Printf("  📄  %s\n", envPath)
+
+	// Create example test file
+	exampleDir := filepath.Join(baseDir, "tests", "example")
+	if err := os.MkdirAll(exampleDir, dirPerm); err != nil {
+		return fmt.Errorf("failed to create example tests directory: %w", err)
+	}
+	fmt.Printf("  📁  %s\n", exampleDir)
+
+	testPath := filepath.Join(exampleDir, "login.yaml")
+	if err := os.WriteFile(testPath, []byte(defaultExampleTestTemplate), 0644); err != nil {
+		return fmt.Errorf("failed to write example test file: %w", err)
+	}
+	fmt.Printf("  📄  %s\n", testPath)
+
 	fmt.Println("\n✨ Gherkio project initialized successfully!")
+	fmt.Println("")
+	fmt.Println("  Quick start:")
+	fmt.Println("    gherkio run example/login.yaml")
+	fmt.Println("    gherkio run example/login.yaml --verbose")
 	return nil
 }
