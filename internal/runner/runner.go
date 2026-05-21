@@ -127,7 +127,7 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 		url := resolveURL(env, interpolatedRequest)
 
 		// Execute HTTP request
-		resp, err := executeRequest(step.Request.Method, url, step.Request.Headers, step.Request.Body)
+		resp, err := executeRequest(interpolatedRequest.Method, url, interpolatedRequest.Headers, interpolatedRequest.Body)
 		if err != nil {
 			stepResult.Error = err.Error()
 			stepResults = append(stepResults, stepResult)
@@ -136,15 +136,15 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 		}
 
 		stepResult.Request = &RequestInfo{
-			Method:  step.Request.Method,
+			Method:  interpolatedRequest.Method,
 			URL:     url,
-			Headers: step.Request.Headers,
+			Headers: interpolatedRequest.Headers,
 		}
-		if step.Request.Body != nil {
-			if bodyJSON, err := json.Marshal(step.Request.Body); err == nil {
+		if interpolatedRequest.Body != nil {
+			if bodyJSON, err := json.Marshal(interpolatedRequest.Body); err == nil {
 				stepResult.Request.Body = string(bodyJSON)
 			} else {
-				stepResult.Request.Body = fmt.Sprintf("%v", step.Request.Body)
+				stepResult.Request.Body = fmt.Sprintf("%v", interpolatedRequest.Body)
 			}
 		}
 
