@@ -1,0 +1,16 @@
+
+✓ advanced matchers test
+
+1. GET https://dummyjson.com/users/1
+   ✓ success
+   ✓ status = 200
+   ✓ body.id = valid UUID format
+   ✓ body.email = valid email format
+   ✓ body.count = number (actual: 3)
+   ✓ body.name contains substring "Laptop" (actual: "Laptop Baru")
+   ✓ count(body.tags) = exactly 3 items (actual: 3)
+
+✓ PASS
+6 passed, 0 failed, 6 total
+Duration: 150ms
+

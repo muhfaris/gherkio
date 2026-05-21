@@ -43,6 +43,7 @@ A CLI tool that executes declarative YAML-based integration test scenarios again
 
 ```
 gherkio/
+├── README.md                       # Project README
 ├── main.go                          # Entry point — calls cmd.Execute()
 ├── go.mod / go.sum                  # Module definitions
 ├── .goreleaser.yml                  # GoReleaser config (for releases)
@@ -409,3 +410,5 @@ go run . run <test-file> -v             # Shorthand
 go run . init                           # Scaffold a project
 go test ./...                           # Run Go unit tests (when they exist)
 ```
+Collection matchers (`count()`, `all()`) are implemented in `evaluateAssertion()` in `executor.go`, which calls `evaluateMatcher()` for each element internally.
+

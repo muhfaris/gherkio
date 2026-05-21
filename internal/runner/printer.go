@@ -221,12 +221,20 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 					} else if isTiming {
 						fmt.Printf("  %s %s = %s (actual: %s)\n", icon, a.Path, a.Expected, a.Actual)
 					} else {
-						fmt.Printf("  %s %s = %s\n", icon, a.Path, a.Expected)
+						if strings.HasPrefix(a.Expected, "contains ") || strings.HasPrefix(a.Expected, "startsWith ") || strings.HasPrefix(a.Expected, "endsWith ") || strings.HasPrefix(a.Expected, "pattern ") {
+							fmt.Printf("  %s %s %s (actual: %s)\n", icon, a.Path, a.Expected, a.Actual)
+						} else if strings.HasPrefix(a.Expected, "exactly") || strings.HasPrefix(a.Expected, "all elements") {
+							fmt.Printf("  %s %s = %s (actual: %s)\n", icon, a.Path, a.Expected, a.Actual)
+						} else if isMatcherKeyword(a.Expected) || a.Reason != "" {
+							fmt.Printf("  %s %s = %s (actual: %s)\n", icon, a.Path, a.Expected, a.Actual)
+						} else {
+							fmt.Printf("  %s %s = %s\n", icon, a.Path, a.Expected)
+						}
 					}
 
 					if !a.Passed {
 						if strings.HasPrefix(a.Actual, "(not found)") || a.Actual == "(unresolved)" {
-							fmt.Printf("    └─ path not found\n")
+							fmt.Printf("      └─ path not found\n")
 							if len(a.Suggestions) > 0 {
 								fmt.Println()
 								fmt.Println("Available fields:")
@@ -235,7 +243,13 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 								}
 							}
 						} else {
-							fmt.Printf("    └─ got: %s\n", a.Actual)
+							if a.Reason != "" {
+								fmt.Printf("      └─ actual: %s\n", a.Actual)
+								fmt.Printf("      └─ expected: %s\n", a.Expected)
+								fmt.Printf("      └─ reason: %s\n", a.Reason)
+							} else {
+								fmt.Printf("      └─ got: %s\n", a.Actual)
+							}
 						}
 					}
 				}
@@ -261,12 +275,20 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 					} else if isTiming {
 						fmt.Printf("%s%s %s = %s (actual: %s)\n", statusIndent, icon, a.Path, a.Expected, a.Actual)
 					} else {
-						fmt.Printf("%s%s %s = %s\n", statusIndent, icon, a.Path, a.Expected)
+						if strings.HasPrefix(a.Expected, "contains ") || strings.HasPrefix(a.Expected, "startsWith ") || strings.HasPrefix(a.Expected, "endsWith ") || strings.HasPrefix(a.Expected, "pattern ") {
+							fmt.Printf("%s%s %s %s (actual: %s)\n", statusIndent, icon, a.Path, a.Expected, a.Actual)
+						} else if strings.HasPrefix(a.Expected, "exactly") || strings.HasPrefix(a.Expected, "all elements") {
+							fmt.Printf("%s%s %s = %s (actual: %s)\n", statusIndent, icon, a.Path, a.Expected, a.Actual)
+						} else if isMatcherKeyword(a.Expected) || a.Reason != "" {
+							fmt.Printf("%s%s %s = %s (actual: %s)\n", statusIndent, icon, a.Path, a.Expected, a.Actual)
+						} else {
+							fmt.Printf("%s%s %s = %s\n", statusIndent, icon, a.Path, a.Expected)
+						}
 					}
 
 					// Inline failure info in summary
 					if !a.Passed {
-						failureIndent := statusIndent + "  "
+						failureIndent := statusIndent + "    "
 						if strings.HasPrefix(a.Actual, "(not found)") || a.Actual == "(unresolved)" {
 							fmt.Printf("%s└─ path not found", failureIndent)
 							if len(a.Suggestions) > 0 {
@@ -274,7 +296,13 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 							}
 							fmt.Println()
 						} else {
-							fmt.Printf("%s└─ got: %s\n", failureIndent, a.Actual)
+							if a.Reason != "" {
+								fmt.Printf("%s└─ actual: %s\n", failureIndent, a.Actual)
+								fmt.Printf("%s└─ expected: %s\n", failureIndent, a.Expected)
+								fmt.Printf("%s└─ reason: %s\n", failureIndent, a.Reason)
+							} else {
+								fmt.Printf("%s└─ got: %s\n", failureIndent, a.Actual)
+							}
 						}
 					}
 				}
