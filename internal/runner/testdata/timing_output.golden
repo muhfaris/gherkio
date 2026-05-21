@@ -1,0 +1,12 @@
+
+✓ timing test
+
+1. GET https://dummyjson.com/health
+   ✓ success
+   ✓ status = 200
+   ✓ timing.max = max 500ms (actual: 312ms)
+
+✓ PASS
+2 passed, 0 failed, 2 total
+Duration: 312ms
+

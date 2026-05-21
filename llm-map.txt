@@ -43,6 +43,7 @@ A CLI tool that executes declarative YAML-based integration test scenarios again
 
 ```
 gherkio/
+├── README.md                       # Project README
 ├── main.go                          # Entry point — calls cmd.Execute()
 ├── go.mod / go.sum                  # Module definitions
 ├── .goreleaser.yml                  # GoReleaser config (for releases)
@@ -409,12 +410,5 @@ go run . run <test-file> -v             # Shorthand
 go run . init                           # Scaffold a project
 go test ./...                           # Run Go unit tests (when they exist)
 ```
+Collection matchers (`count()`, `all()`) are implemented in `evaluateAssertion()` in `executor.go`, which calls `evaluateMatcher()` for each element internally.
 
-### 11. Advanced Matchers (RFC-2)
-The assertion engine supports structured matchers beyond equality checking. This provides built-in type and format validations. Matchers are processed by `evaluateMatcher` in `internal/runner/matchers.go`.
-
-**Type Matchers:** `uuid`, `email`, `datetime`, `number`, `string`, `boolean`, `array`, `object`, `null`, `true`, `false`.
-**String Matchers (Case-sensitive):** `contains <text>`, `startsWith <prefix>`, `endsWith <suffix>`, `regex <pattern>`.
-**Collection Matchers:**
-- `count(<path>): <number>` — checks the length of an array.
-- `all(<path>): <matcher>` — checks that every element in an array satisfies the condition. Handles nested assertions out-of-the-box.
