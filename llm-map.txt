@@ -1,0 +1,386 @@
+# Gherkio — AI Context Map
+
+> **What this is**: A reference file for AI agents and LLMs to understand the Gherkio project structure, architecture, conventions, and design philosophy. Read this before making changes.
+
+---
+
+## Project Identity
+
+- **Name**: Gherkio
+- **Tagline**: Declarative Integration Testing Platform
+- **Language**: Go 1.25.0
+- **Module**: `github.com/muhfaris/gherkio`
+- **Author**: Faris (muhfaris)
+- **License**: Not yet specified
+
+### What Gherkio Is
+
+A CLI tool that executes declarative YAML-based integration test scenarios against HTTP APIs. Users describe requests, assertions, and variable extractions in YAML — no imperative code required.
+
+### What Gherkio Is NOT
+
+- A general-purpose programming language
+- A unit testing framework
+- A browser/E2E testing tool
+- A BDD/Gherkin natural language parser
+
+---
+
+## Key Dependencies
+
+| Dependency | Usage |
+|------------|-------|
+| `github.com/spf13/cobra` v1.10.2 | CLI framework (root + subcommands) |
+| `github.com/spf13/pflag` v1.0.9 | Flag parsing (via cobra) |
+| `gopkg.in/yaml.v3` v3.0.1 | YAML parsing for test and environment files |
+| Standard library `net/http` | HTTP request execution |
+| Standard library `encoding/json` | JSON body parsing |
+| Standard library `regexp` | Variable interpolation (`$var` / `${var}`) |
+
+---
+
+## Project Structure
+
+```
+gherkio/
+├── main.go                          # Entry point — calls cmd.Execute()
+├── go.mod / go.sum                  # Module definitions
+├── .goreleaser.yml                  # GoReleaser config (for releases)
+├── install.sh                       # Installation script
+├── llm-map.txt                      # ← This file
+├── cmd/                             # CLI command definitions
+│   ├── root.go                      # Base cobra command
+│   ├── init.go                      # `gherkio init` — scaffold project
+│   └── run.go                       # `gherkio run <file>` — execute tests
+├── internal/
+│   ├── model/                       # Data model / YAML structs
+│   │   ├── test.go                  # TestFile, Step, Request, Expect
+│   │   └── environment.go           # Environment, Service
+│   └── runner/                      # Execution engine
+│       ├── runner.go                # Orchestrator: load → execute → assert
+│       ├── executor.go              # HTTP client, JWT decoder, path resolver, assertions
+│       ├── interpolator.go          # Variable interpolation ($var / ${var})
+│       └── printer.go               # Console output formatter
+├── docs/
+│   ├── prd.md                       # Product Requirements Document
+│   ├── technical.md                 # File structure notes
+│   └── note.md                      # Development progress notes
+├── example/
+│   └── tests/
+│       ├── sample1.yaml             # Example: login with assertions + save
+│       └── sample2.yaml             # Example: variable interpolation across steps
+└── .gherkio/                        # Default project scaffold (created by `gherkio init`)
+    ├── config.yaml                  # Project configuration
+    ├── environments/
+    │   └── local.yaml               # Environment: baseUrl, services, env vars
+    ├── tests/
+    │   └── dummyjson/
+    │       └── login.yaml           # Example test against dummyjson.com
+    ├── reports/
+    │   ├── latest/
+    │   └── archive/
+    └── schemas/
+```
+
+---
+
+## Architecture & Data Flow
+
+### Execution Flow (`runner.Run()`)
+
+```
+Load YAML test file  ──→  Load environment YAML  ──→  For each step:
+    │
+    ├── 1. Interpolate request variables ($var / ${var})
+    ├── 2. Resolve URL (via env.baseUrl or env.services[].baseUrl)
+    ├── 3. Execute HTTP request
+    ├── 4. Auto-decode JWT from response.token or response.access_token
+    ├── 5. Run assertions (status + body/JWT matchers)
+    ├── 6. Extract & save variables
+    └── 7. Collect results
+```
+
+### Key Types
+
+```go
+// internal/model/test.go
+type TestFile struct {
+    Scenario string
+    Steps    []Step
+}
+type Step struct {
+    Request Request           // HTTP request definition
+    Expect  Expect            // Assertions
+    Save    map[string]string // Variable extraction (e.g. {"token": "body.accessToken"})
+    Timing  TimingConfig      // Timing expectations (e.g. max: 500ms)
+}
+
+type TimingConfig struct {
+    Max string // e.g. "500ms", "1s"
+}
+type Request struct {
+    Service string            // Named service from environment
+    Method  string            // HTTP method
+    URL     string            // Path (appended to baseUrl)
+    Headers map[string]string
+    Body    interface{}       // Free-form map or string
+}
+type Expect struct {
+    Status int                    // Expected HTTP status code
+    Extra  map[string]interface{} // Everything else (path → matcher)
+}
+
+// internal/model/environment.go
+type Environment struct {
+    BaseURL  string
+    Services map[string]Service   // Named service overrides
+}
+type Service struct {
+    BaseURL string
+}
+
+// internal/runner/runner.go
+type RunConfig struct {
+    TestPath   string   // Path to the test YAML file
+    EnvName    string   // Environment name
+    ProjectDir string   // Root project directory
+    Verbose    bool     // Show full request/response payloads
+    MaskFields []string // Sensitive field names to mask (nil = use defaults)
+}
+type RunResult struct {
+    Scenario  string
+    Steps     []StepResult
+    TotalPass int
+    TotalFail int
+    Duration  time.Duration
+    Passed    bool
+}
+
+// internal/runner/executor.go
+type StepResult struct {
+    Request    *RequestInfo
+    Response   *ResponseInfo
+    Assertions []AssertionResult
+    Duration   time.Duration
+    Error      string
+}
+type AssertionResult struct {
+    Path        string
+    Expected    string
+    Actual      string
+    Passed      bool
+    Suggestions []string   // Available fields when path not found
+}
+```
+
+---
+
+## Key Design Patterns & Conventions
+
+### 1. Cobra CLI Pattern
+
+- Root command in `cmd/root.go`
+- Subcommands in `cmd/<name>.go` with `init()` registering via `rootCmd.AddCommand()`
+- Each subcommand's `RunE` calls a private function (e.g. `runInit()`, `runTest()`)
+
+### 2. Explicit Error Handling
+
+- All errors are wrapped with `fmt.Errorf("context: %w", err)` 
+- No panics in production paths
+- CLI commands return errors (not `os.Exit`) so cobra handles exit codes
+
+### 3. YAML Model Pattern
+
+- Models use `yaml` struct tags
+- `Expect` has a custom `UnmarshalYAML` to handle mixed-type inline fields:
+  - `status` → integer field
+  - Everything else → `map[string]interface{}` via `,inline`
+
+### 4. Path Syntax (Canonical)
+
+Assertion and save paths follow dot-notation:
+
+| Prefix | Context | Description |
+|--------|---------|-------------|
+| `body.<field>` | expect / save | Response JSON body field (canonical) |
+| `headers.<name>` | expect / save | Response header |
+| `status` | expect only | HTTP status code |
+| `jwt.<claim>` | expect / save | Decoded JWT claim (auto-decoded from `body.token` or `body.accessToken`) |
+| `timing.max` | auto (from `timing:` block) | Step duration must be ≤ max (e.g. `500ms`, `1s`) |
+
+**Backward-compatible aliases** (still work but not recommended for new tests):
+- `response.<field>` → same as `body.<field>`
+- `response.body.<field>` → same as `body.<field>`
+- `response.headers.<name>` → same as `headers.<name>`
+- Bare `<field>` → fallback, tries response body directly
+
+**Rule of thumb:** In expect, use `body.X`. In save, use `body.X`. Always explicit, never ambiguous.
+
+### 5. Matchers
+
+| Matcher | Behavior |
+|---------|----------|
+| `exists` | Field must exist (any value) |
+| Literal value (e.g. `admin`, `200`) | Equality comparison (string) |
+
+### 6. Variable Interpolation
+
+- Syntax: `$var` or `${var}` or `${var:default}`
+- Applied to: URL, headers, body (recursive string/map/array)
+- See `internal/runner/interpolator.go`
+- Variables are stored in `map[string]interface{}` and passed between steps
+
+### 7. JWT Auto-Decoding
+
+If `response.token` or `response.access_token` exists and is a string, it's automatically decoded (no signature verification) into a `map[string]interface{}` available via `jwt.<claim>` assertions.
+
+### 8. Sensitive Field Masking
+
+When displaying request/response bodies in the console, sensitive field values are automatically masked as `***masked***`.
+
+**Built-in default fields:** `token`, `accessToken`, `access_token`, `refreshToken`, `refresh_token`, `password`, `secret`, `clientSecret`, `client_secret`, `apiKey`, `api_key`, `authorization`.
+
+Matching is **case-insensitive**. The masking happens at the display layer (`printer.go`) — raw data remains intact for reporting.
+
+**Configurable** via `.gherkio/config.yaml`:
+```yaml
+security:
+  mask:
+    enabled: true
+    fields:
+      - customField
+      - anotherSecret
+```
+When `fields` is empty, the built-in defaults are used.
+
+### 9. Timing Assertions
+
+Steps can specify a maximum duration:
+
+```yaml
+- request:
+    method: POST
+    url: /auth/login
+    ...
+
+  timing:
+    max: 500ms
+```
+
+- Uses Go duration format: `500ms`, `1s`, `250ms`
+- Generates an assertion with path `timing.max`
+- Actual duration is always shown inline (both pass and fail)
+- Implemented in `executor.go` via `evaluateTiming()`
+- Duration is measured per-step from start to completion
+
+### 10. Failure UX — Contextual Diagnostics
+
+When an assertion fails, the output is designed for debugging, not just pass/fail:
+
+**Path not found** — Instead of a generic "(not found)", shows:
+```
+✗ response.accessToken exists
+    └─ path not found
+
+Available fields:
+  - message
+  - statusCode
+```
+
+**Response body on error** — When any assertion in a step fails, the full response status + body is displayed automatically:
+```
+Response:
+Status: 400
+
+Body:
+{
+  "message": "Invalid credentials"
+}
+```
+
+This behavior is implemented in `internal/runner/printer.go`. The `Suggestions` field on `AssertionResult` (populated by `getAvailableFields()` in `executor.go`) drives the available-fields listing.
+
+---
+
+## Testing Philosophy (from PRD)
+
+- **Declarative-first**: Tests describe behavior, not implementation
+- **Readability matters**: Scenarios should be readable after 1-2 years
+- **Observability**: Every execution produces structured results (request, response, assertions)
+- **Constrained DSL**: No loops, no branching, no arbitrary code in the DSL
+- **Assertion-centric**: The assertion engine is "the heart" of Gherkio
+- **Capability system** (future): Controlled extensibility via plugins, not inline scripting
+
+---
+
+## CLI Interface
+
+```
+gherkio init                                  # Scaffold .gherkio/ directory
+gherkio run <test-file>                       # Execute a test scenario (summary output)
+gherkio run <test-file> --env <environment>   # Run with specific environment
+gherkio run <test-file> --verbose             # Show full request/response payloads
+gherkio run <test-file> -v                    # Shorthand for --verbose
+```
+
+Test file resolution order:
+1. Absolute path as-is
+2. Relative to current working directory
+3. Relative to `.gherkio/tests/` in the project root
+
+Project root detection: walks up from cwd looking for `.gherkio/` directory.
+
+---
+
+## Current Development Status
+
+- ✅ Core runner working (HTTP, assertions, JWT, saves)
+- ✅ Variable interpolation working ($var, ${var}, ${var:default})
+- ✅ Contextual failure UX (available field suggestions + response body on error)
+- ✅ Summary/verbose output modes (default: summary, --verbose for full payloads)
+- ✅ Sensitive field masking (tokens, passwords, secrets masked in output)
+- ✅ Timing assertions (`timing: { max: 500ms }`)
+- ✅ CLI commands (init, run)
+- ⏳ Reporting (HTML, JSON) — planned but not MVP
+- ⏳ Capability system — future
+- ⏳ Plugin system — future
+- ⏳ Go unit tests — not yet written
+- ⏳ CI/CD — not yet configured
+
+---
+
+## Conventions for AI Agents
+
+### 🔄 Self-Update Rule
+**Every change to this codebase MUST also update `llm-map.txt`** if the change affects:
+- Project structure (new files, directories, or packages)
+- Dependencies (new or removed)
+- Architecture or data flow (new execution paths, changed types)
+- CLI interface (new commands, flags, or behaviors)
+- Key types or their fields
+- Design patterns or conventions
+
+This file is the single source of truth for AI context. Keeping it current ensures that every agent working on Gherkio has an accurate mental model of the project without having to re-read the entire codebase.
+
+**Exception**: Cosmetic or trivial changes (typo fixes, minor refactors that don't alter structure/behavior) don't require an update.
+
+- When adding new features, maintain the **declarative DSL philosophy** — no arbitrary code execution in the DSL layer
+- Keep the `internal/model/` types clean — they represent the YAML schema
+- Keep `internal/runner/` focused on orchestration — break large files into focused ones
+- Use the `cmd/` pattern (cobra `RunE` → private function) for new subcommands
+- All user-facing output goes through `printer.go` or the cmd layer
+- Prefer explicit error wrapping over generic error messages
+- When in doubt, check `docs/prd.md` for product philosophy guidance
+
+---
+
+## Build & Run Commands
+
+```bash
+go build -o gherkio .                   # Build binary
+go run . run <test-file>                # Run without building (summary)
+go run . run <test-file> --verbose      # Run with full request/response payloads
+go run . run <test-file> -v             # Shorthand
+go run . init                           # Scaffold a project
+go test ./...                           # Run Go unit tests (when they exist)
+```
