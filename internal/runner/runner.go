@@ -73,7 +73,9 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 
 	for _, step := range steps {
 		stepStart := time.Now()
-		stepResult := StepResult{}
+		stepResult := StepResult{
+			Original: step,
+		}
 
 		// Handle 'use' step recursively
 		if step.Use != "" {

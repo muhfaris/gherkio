@@ -109,7 +109,13 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 		if step.Request != nil {
 			stepLabel = fmt.Sprintf("%s %s", step.Request.Method, step.Request.URL)
 		} else {
-			stepLabel = "Nested Step"
+			if step.Original.Use != "" {
+				stepLabel = fmt.Sprintf("use: %s", step.Original.Use)
+			} else if step.Original.Request.URL != "" {
+				stepLabel = fmt.Sprintf("%s %s (failed before execution)", step.Original.Request.Method, step.Original.Request.URL)
+			} else {
+				stepLabel = "Unknown Step"
+			}
 		}
 		fmt.Printf("%d. %s\n", stepNum, stepLabel)
 		if stepPassed {
