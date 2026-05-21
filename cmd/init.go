@@ -30,13 +30,51 @@ steps:
       body:
         username: emilys
         password: emilyspass
+        expiresInMins: 30
 
     expect:
       status: 200
       body.accessToken: exists
+      body.refreshToken: exists
 
     save:
-      token: body.accessToken
+      accessToken: body.accessToken
+      refreshToken: body.refreshToken
+`
+
+// defaultExampleMeTemplate is the default example test for auth/me.
+const defaultExampleMeTemplate = `scenario: get current user profile
+
+steps:
+  - use: login.yaml
+  - request:
+      method: GET
+      url: /auth/me
+      headers:
+        Authorization: Bearer $accessToken
+    expect:
+      status: 200
+      body.id: exists
+      body.username: emilys
+`
+
+// defaultExampleRefreshTemplate is the default example test for auth/refresh.
+const defaultExampleRefreshTemplate = `scenario: refresh token
+
+steps:
+  - use: me.yaml
+  - request:
+      method: POST
+      url: /auth/refresh
+      headers:
+        Content-Type: application/json
+      body:
+        refreshToken: $refreshToken
+        expiresInMins: 30
+    expect:
+      status: 200
+      body.accessToken: exists
+      body.refreshToken: exists
 `
 
 // defaultConfigTemplate is the default config.yaml template content.
@@ -128,7 +166,7 @@ func runInit() error {
 	fmt.Printf("  📄  %s\n", envPath)
 
 	// Create example test file
-	exampleDir := filepath.Join(baseDir, "tests", "example")
+	exampleDir := filepath.Join(baseDir, "tests", "example", "auth")
 	if err := os.MkdirAll(exampleDir, dirPerm); err != nil {
 		return fmt.Errorf("failed to create example tests directory: %w", err)
 	}
@@ -140,10 +178,23 @@ func runInit() error {
 	}
 	fmt.Printf("  📄  %s\n", testPath)
 
+	mePath := filepath.Join(exampleDir, "me.yaml")
+	if err := os.WriteFile(mePath, []byte(defaultExampleMeTemplate), 0644); err != nil {
+		return fmt.Errorf("failed to write me test file: %w", err)
+	}
+	fmt.Printf("  📄  %s\n", mePath)
+
+	refreshPath := filepath.Join(exampleDir, "refresh.yaml")
+	if err := os.WriteFile(refreshPath, []byte(defaultExampleRefreshTemplate), 0644); err != nil {
+		return fmt.Errorf("failed to write refresh test file: %w", err)
+	}
+	fmt.Printf("  📄  %s\n", refreshPath)
+
 	fmt.Println("\n✨ Gherkio project initialized successfully!")
 	fmt.Println("")
 	fmt.Println("  Quick start:")
-	fmt.Println("    gherkio run example/login.yaml")
-	fmt.Println("    gherkio run example/login.yaml --verbose")
+	fmt.Println("    gherkio run example/auth/me.yaml")
+	fmt.Println("    gherkio run example/auth/refresh.yaml")
+	fmt.Println("    gherkio run example/auth/me.yaml --verbose")
 	return nil
 }

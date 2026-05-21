@@ -52,18 +52,92 @@ func Run(cfg RunConfig) (*RunResult, error) {
 	}
 
 	vars := make(map[string]interface{})
+	currentDir := filepath.Dir(cfg.TestPath)
+	steps, passes, fails, passed := executeSteps(testFile.Steps, env, vars, cfg.ProjectDir, currentDir, 0)
 
-	for _, step := range testFile.Steps {
+	result.Steps = steps
+	result.TotalPass = passes
+	result.TotalFail = fails
+	result.Passed = passed
+
+	result.Duration = time.Since(start)
+
+	return result, nil
+}
+
+func executeSteps(steps []model.Step, env *model.Environment, vars map[string]interface{}, projectDir string, currentDir string, depth int) ([]StepResult, int, int, bool) {
+	var stepResults []StepResult
+	totalPass := 0
+	totalFail := 0
+	allPassed := true
+
+	for _, step := range steps {
 		stepStart := time.Now()
-		stepResult := StepResult{}
+		stepResult := StepResult{
+			Original: step,
+			Depth:    depth,
+		}
+
+		// Handle 'use' step recursively
+		if step.Use != "" {
+			useStartStep := StepResult{
+				Original:   step,
+				Depth:      depth,
+				IsUseStart: true,
+				UseFile:    step.Use,
+			}
+			stepResults = append(stepResults, useStartStep)
+			if depth > 10 {
+				stepResult.Error = fmt.Sprintf("circular reference or max depth exceeded for use: %s", step.Use)
+				stepResults = append(stepResults, stepResult)
+				allPassed = false
+				continue
+			}
+
+			resolvedPath, err := resolveUsePath(currentDir, projectDir, step.Use)
+			if err != nil {
+				stepResult.Error = fmt.Sprintf("failed to resolve use step '%s': %v", step.Use, err)
+				stepResults = append(stepResults, stepResult)
+				allPassed = false
+				continue
+			}
+
+			usedTest, err := loadTestFile(resolvedPath)
+			if err != nil {
+				stepResult.Error = fmt.Sprintf("failed to load used test file '%s': %v", resolvedPath, err)
+				stepResults = append(stepResults, stepResult)
+				allPassed = false
+				continue
+			}
+
+			usedCurrentDir := filepath.Dir(resolvedPath)
+			nestedSteps, nestedPass, nestedFail, _ := executeSteps(usedTest.Steps, env, vars, projectDir, usedCurrentDir, depth+1)
+
+			// Flatten the results
+			stepResults = append(stepResults, nestedSteps...)
+			// add a dummy end step for 'use'
+			useEndStep := StepResult{
+				Original: step,
+				Depth:    depth,
+				IsUseEnd: true,
+				UseFile:  step.Use,
+			}
+			stepResults = append(stepResults, useEndStep)
+			totalPass += nestedPass
+			totalFail += nestedFail
+			if nestedFail > 0 {
+				allPassed = false
+			}
+			continue
+		}
 
 		// Resolve URL using service or global baseUrl
 		// Interpolate variables in the request
 		interpolatedRequest, err := InterpolateRequest(step.Request, vars)
 		if err != nil {
 			stepResult.Error = fmt.Sprintf("Variable interpolation failed: %v", err)
-			result.Steps = append(result.Steps, stepResult)
-			result.Passed = false
+			stepResults = append(stepResults, stepResult)
+			allPassed = false
 			continue
 		}
 
@@ -71,24 +145,24 @@ func Run(cfg RunConfig) (*RunResult, error) {
 		url := resolveURL(env, interpolatedRequest)
 
 		// Execute HTTP request
-		resp, err := executeRequest(step.Request.Method, url, step.Request.Headers, step.Request.Body)
+		resp, err := executeRequest(interpolatedRequest.Method, url, interpolatedRequest.Headers, interpolatedRequest.Body)
 		if err != nil {
 			stepResult.Error = err.Error()
-			result.Steps = append(result.Steps, stepResult)
-			result.Passed = false
+			stepResults = append(stepResults, stepResult)
+			allPassed = false
 			continue
 		}
 
 		stepResult.Request = &RequestInfo{
-			Method:  step.Request.Method,
+			Method:  interpolatedRequest.Method,
 			URL:     url,
-			Headers: step.Request.Headers,
+			Headers: interpolatedRequest.Headers,
 		}
-		if step.Request.Body != nil {
-			if bodyJSON, err := json.Marshal(step.Request.Body); err == nil {
+		if interpolatedRequest.Body != nil {
+			if bodyJSON, err := json.Marshal(interpolatedRequest.Body); err == nil {
 				stepResult.Request.Body = string(bodyJSON)
 			} else {
-				stepResult.Request.Body = fmt.Sprintf("%v", step.Request.Body)
+				stepResult.Request.Body = fmt.Sprintf("%v", interpolatedRequest.Body)
 			}
 		}
 
@@ -116,9 +190,9 @@ func Run(cfg RunConfig) (*RunResult, error) {
 		// Count pass/fail
 		for _, a := range stepResult.Assertions {
 			if a.Passed {
-				result.TotalPass++
+				totalPass++
 			} else {
-				result.TotalFail++
+				totalFail++
 			}
 		}
 
@@ -132,19 +206,17 @@ func Run(cfg RunConfig) (*RunResult, error) {
 			timingResult := evaluateTiming(stepResult.Duration, step.Timing.Max)
 			stepResult.Assertions = append(stepResult.Assertions, timingResult)
 			if timingResult.Passed {
-				result.TotalPass++
+				totalPass++
 			} else {
-				result.TotalFail++
+				totalFail++
 			}
 		}
 
-		result.Steps = append(result.Steps, stepResult)
+		stepResults = append(stepResults, stepResult)
 	}
 
-	result.Duration = time.Since(start)
-	result.Passed = result.TotalFail == 0
-
-	return result, nil
+	allPassed = totalFail == 0
+	return stepResults, totalPass, totalFail, allPassed
 }
 
 // loadTestFile reads and parses a test YAML file.
@@ -189,4 +261,28 @@ func resolveURL(env *model.Environment, req model.Request) string {
 	}
 
 	return baseURL + req.URL
+}
+
+// resolveUsePath tries to find the file referenced in a 'use' step.
+// It checks relative to the current file's directory first, then relative to projectDir/.gherkio/tests/
+func resolveUsePath(currentFileDir, projectDir, usePath string) (string, error) {
+	// Ensure the usePath has a .yaml extension
+	if !filepath.IsAbs(usePath) && filepath.Ext(usePath) == "" {
+		usePath += ".yaml"
+	}
+
+	// 1. Try relative to the current file's directory
+	fullPath := filepath.Join(currentFileDir, usePath)
+	if _, err := os.Stat(fullPath); err == nil {
+		return fullPath, nil
+	}
+
+	// 2. Try relative to .gherkio/tests/
+	fullPath = filepath.Join(projectDir, ".gherkio", "tests", usePath)
+	if _, err := os.Stat(fullPath); err == nil {
+		return fullPath, nil
+
+	}
+
+	return "", fmt.Errorf("file not found (checked relative to '%s' and '.gherkio/tests/')", currentFileDir)
 }

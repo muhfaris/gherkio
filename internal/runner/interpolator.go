@@ -42,9 +42,6 @@ func InterpolateRequest(req model.Request, vars map[string]interface{}) (model.R
 	}
 	interpolated.Body = interpolatedBody
 
-	for k, v := range req.Headers {
-		interpolated.Headers[k] = v
-	}
 	return interpolated, nil
 }
 

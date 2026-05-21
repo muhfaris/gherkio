@@ -13,7 +13,8 @@ type TimingConfig struct {
 
 // Step represents a single step in a scenario.
 type Step struct {
-	Request Request           `yaml:"request"`
+	Use     string            `yaml:"use,omitempty"`
+	Request Request           `yaml:"request,omitempty"`
 	Expect  Expect            `yaml:"expect,omitempty"`
 	Save    map[string]string `yaml:"save,omitempty"`
 	Timing  TimingConfig      `yaml:"timing,omitempty"`
