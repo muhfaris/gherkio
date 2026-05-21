@@ -297,8 +297,35 @@ Failing response:
 
 ---
 
-## 7. Open Questions
+## 7. Decisions
 
-1. Should matchers support case-insensitive matching for `contains`, `startsWith`, `endsWith`?
-2. Should custom matchers be configurable (part of the capability system)?
-3. Should `all()` support nested matchers (e.g., `all(items.price): number`)?
+### 7.1 Case Sensitivity
+
+String matchers (`contains`, `startsWith`, `endsWith`) are **case-sensitive by default**. This is the predictable default — if the API returns `"Active"` and the test expects `contains active`, the mismatch is surfaced clearly rather than silently hidden.
+
+Case-insensitive matching can be added later as an explicit modifier if needed (e.g., `contains (case-insensitive) active`), but the default remains strict.
+
+### 7.2 Nested `all()` Matchers
+
+`all()` reuses the same matching/evaluation logic for each element. This means any matcher works inside `all()`:
+
+```yaml
+expect:
+  all(items.status): exists
+  all(items.price): number
+  all(items.email): email
+  all(items.code): regex ^[A-Z]{3}$
+  all(items.name): contains Laptop
+```
+
+The implementation is:
+1. Resolve the array path from the response
+2. For each element, apply the matcher value to that element
+3. Collect all failures with their indices
+
+No special handling needed — the same `evaluateMatcher()` function applies.
+
+## 8. Open Questions
+
+1. Should custom matchers be configurable (part of the capability system)?
+2. Should `count()` support comparison operators (e.g., `count(items) > 3` or `count(items) <= 10`) or only exact equality?
