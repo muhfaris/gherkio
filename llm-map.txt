@@ -127,6 +127,24 @@ type Request struct {
     Headers map[string]string
     Body    interface{}       // Free-form map or string
 }
+// internal/model/schema.go
+type Schema struct {
+    Type       string
+    Required   []string
+    Properties map[string]*Schema
+    Items      *Schema
+    Format     string
+    Enum       []interface{}
+    Pattern    string
+    MinLength  *int
+    MaxLength  *int
+    Minimum    *float64
+    Maximum    *float64
+    MinItems   *int
+    MaxItems   *int
+    Nullable   bool
+}
+
 type Expect struct {
     Status int                    // Expected HTTP status code
     Extra  map[string]interface{} // Everything else (path → matcher)
@@ -140,6 +158,11 @@ type Environment struct {
 type Service struct {
     BaseURL string
 }
+
+// internal/runner/schema.go
+// LoadSchema loads a schema by name from the project schemas directory.
+// internal/runner/validator.go
+// ValidateSchema validates parsed response data against a schema.
 
 // internal/runner/runner.go
 type RunConfig struct {
@@ -209,6 +232,7 @@ Assertion and save paths follow dot-notation:
 | `status` | expect only | HTTP status code |
 | `jwt.<claim>` | expect / save | Decoded JWT claim (auto-decoded from `body.token` or `body.accessToken`) |
 | `timing.max` | auto (from `timing:` block) | Step duration must be ≤ max (e.g. `500ms`, `1s`) |
+| `schema` | expect only | Validates full parsed response body against a YAML schema |
 
 **Backward-compatible aliases** (still work but not recommended for new tests):
 - `response.<field>` → same as `body.<field>`
@@ -345,6 +369,7 @@ Project root detection: walks up from cwd looking for `.gherkio/` directory.
 - ✅ Scenario Composition / use-steps (Phase 1 MVP: recursion, merging, depth check)
 - ✅ CLI commands (init, run)
 - ⏳ Reporting (HTML, JSON) — planned but not MVP
+- ✅ Schema Assertions (Phase 1)
 - ⏳ Capability system — future
 - ⏳ Plugin system — future
 - ⏳ Go unit tests — not yet written

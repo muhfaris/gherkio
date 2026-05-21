@@ -1,0 +1,8 @@
+✗ schema = users/user-response
+    └─ actual: "not-an-email"
+    └─ expected: field body.email format email
+    └─ reason: validation failed
+
+    └─ actual: (missing)
+    └─ expected: field body.id is required
+    └─ reason: validation failed

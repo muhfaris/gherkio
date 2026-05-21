@@ -107,6 +107,23 @@ security:
     fields: []
 `
 
+// defaultExampleUserSchemaTemplate is the default example schema file content.
+const defaultExampleUserSchemaTemplate = `type: object
+required:
+  - id
+  - username
+  - email
+properties:
+  id:
+    type: integer
+  username:
+    type: string
+  email:
+    type: string
+    format: email
+`
+
+
 // initCmd represents the gherkio init command.
 var initCmd = &cobra.Command{
 	Use:   "init",
@@ -189,6 +206,19 @@ func runInit() error {
 		return fmt.Errorf("failed to write refresh test file: %w", err)
 	}
 	fmt.Printf("  📄  %s\n", refreshPath)
+
+	// Create example schema file
+	schemaExampleDir := filepath.Join(baseDir, "schemas", "example")
+	if err := os.MkdirAll(schemaExampleDir, dirPerm); err != nil {
+		return fmt.Errorf("failed to create example schema directory: %w", err)
+	}
+	fmt.Printf("  📁  %s\n", schemaExampleDir)
+
+	schemaPath := filepath.Join(schemaExampleDir, "user-response.yaml")
+	if err := os.WriteFile(schemaPath, []byte(defaultExampleUserSchemaTemplate), 0644); err != nil {
+		return fmt.Errorf("failed to write example schema file: %w", err)
+	}
+	fmt.Printf("  📄  %s\n", schemaPath)
 
 	fmt.Println("\n✨ Gherkio project initialized successfully!")
 	fmt.Println("")

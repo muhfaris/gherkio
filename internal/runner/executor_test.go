@@ -203,7 +203,7 @@ func TestEvaluateAssertion_BodyMatchers(t *testing.T) {
 
 	for path, expected := range typeMatchers {
 		t.Run(path+"="+expected, func(t *testing.T) {
-			result := evaluateAssertion(path, expected, resp, nil)
+			result := evaluateAssertion(path, expected, resp, nil, "")
 			if !result.Passed {
 				t.Errorf("evaluateAssertion(%q, %q) failed: %+v", path, expected, result)
 			}
@@ -245,7 +245,7 @@ func TestEvaluateAssertion_BodyMatchers_Failing(t *testing.T) {
 
 	for path, expected := range typeMatchers {
 		t.Run(path+"="+expected, func(t *testing.T) {
-			result := evaluateAssertion(path, expected, resp, nil)
+			result := evaluateAssertion(path, expected, resp, nil, "")
 			if result.Passed {
 				t.Errorf("evaluateAssertion(%q, %q) should have failed but passed: %+v", path, expected, result)
 			}
@@ -277,7 +277,7 @@ func TestEvaluateAssertion_Exists(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
-			result := evaluateAssertion(tt.path, "exists", resp, nil)
+			result := evaluateAssertion(tt.path, "exists", resp, nil, "")
 			if result.Passed != tt.wantPass {
 				t.Errorf("evaluateAssertion(%q, 'exists') passed = %v, want %v\n  result: %+v", tt.path, result.Passed, tt.wantPass, result)
 			}
@@ -308,7 +308,7 @@ func TestEvaluateAssertion_Equality(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.path+"="+tt.expected, func(t *testing.T) {
-			result := evaluateAssertion(tt.path, tt.expected, resp, nil)
+			result := evaluateAssertion(tt.path, tt.expected, resp, nil, "")
 			if result.Passed != tt.wantPass {
 				t.Errorf("evaluateAssertion(%q, %q) passed = %v, want %v\n  result: %+v", tt.path, tt.expected, result.Passed, tt.wantPass, result)
 			}
@@ -345,7 +345,7 @@ func TestEvaluateAssertion_StringMatchers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := evaluateAssertion(tt.path, tt.expected, resp, nil)
+			result := evaluateAssertion(tt.path, tt.expected, resp, nil, "")
 			if result.Passed != tt.wantPass {
 				t.Errorf("evaluateAssertion(%q, %q) passed = %v, want %v\n  result: %+v", tt.path, tt.expected, result.Passed, tt.wantPass, result)
 			}
@@ -382,7 +382,7 @@ func TestEvaluateAssertion_CollectionCount(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.path+"="+tt.expected, func(t *testing.T) {
-			result := evaluateAssertion(tt.path, tt.expected, resp, nil)
+			result := evaluateAssertion(tt.path, tt.expected, resp, nil, "")
 			if result.Passed != tt.wantPass {
 				t.Errorf("evaluateAssertion(%q, %q) passed = %v, want %v\n  result: %+v", tt.path, tt.expected, result.Passed, tt.wantPass, result)
 			}
@@ -422,7 +422,7 @@ func TestEvaluateAssertion_CollectionAll(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := evaluateAssertion(tt.path, tt.expected, resp, nil)
+			result := evaluateAssertion(tt.path, tt.expected, resp, nil, "")
 			if result.Passed != tt.wantPass {
 				t.Errorf("evaluateAssertion(%q, %q) passed = %v, want %v\n  result: %+v", tt.path, tt.expected, result.Passed, tt.wantPass, result)
 			}
@@ -451,7 +451,7 @@ func TestEvaluateAssertion_Headers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.path+"="+tt.expected, func(t *testing.T) {
-			result := evaluateAssertion(tt.path, tt.expected, resp, nil)
+			result := evaluateAssertion(tt.path, tt.expected, resp, nil, "")
 			if result.Passed != tt.wantPass {
 				t.Errorf("evaluateAssertion(%q, %q) passed = %v, want %v\n  result: %+v", tt.path, tt.expected, result.Passed, tt.wantPass, result)
 			}
@@ -483,7 +483,7 @@ func TestEvaluateAssertion_JWT(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.path+"="+tt.expected, func(t *testing.T) {
-			result := evaluateAssertion(tt.path, tt.expected, resp, jwtClaims)
+			result := evaluateAssertion(tt.path, tt.expected, resp, jwtClaims, "")
 			if result.Passed != tt.wantPass {
 				t.Errorf("evaluateAssertion(%q, %q) passed = %v, want %v\n  result: %+v", tt.path, tt.expected, result.Passed, tt.wantPass, result)
 			}
@@ -518,7 +518,7 @@ func TestEvaluateAssertion_JWTMatchers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := evaluateAssertion(tt.path, tt.expected, resp, jwtClaims)
+			result := evaluateAssertion(tt.path, tt.expected, resp, jwtClaims, "")
 			if !result.Passed {
 				t.Errorf("evaluateAssertion(%q, %q) failed: %+v", tt.path, tt.expected, result)
 			}
@@ -548,7 +548,7 @@ func TestEvaluateAssertion_BackwardCompatResponse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
-			result := evaluateAssertion(tt.path, tt.expected, resp, nil)
+			result := evaluateAssertion(tt.path, tt.expected, resp, nil, "")
 			if result.Passed != tt.wantPass {
 				t.Errorf("evaluateAssertion(%q, %q) passed = %v, want %v\n  result: %+v", tt.path, tt.expected, result.Passed, tt.wantPass, result)
 			}
@@ -565,7 +565,7 @@ func TestEvaluateAssertion_NotFoundSuggestions(t *testing.T) {
 		},
 	}
 
-	result := evaluateAssertion("body.accessToken", "exists", resp, nil)
+	result := evaluateAssertion("body.accessToken", "exists", resp, nil, "")
 	if result.Passed {
 		t.Error("expected not found but got pass")
 	}

@@ -185,7 +185,7 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 		}
 
 		// Run assertions
-		stepResult.Assertions = runAssertions(resp.Status, resp, jwtClaims, step.Expect.Status, step.Expect.Extra)
+		stepResult.Assertions = runAssertions(resp.Status, resp, jwtClaims, step.Expect.Status, step.Expect.Extra, projectDir)
 
 		// Count pass/fail
 		for _, a := range stepResult.Assertions {

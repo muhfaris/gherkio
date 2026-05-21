@@ -161,7 +161,7 @@ func evaluateTiming(actual time.Duration, maxStr string) AssertionResult {
 }
 
 // runAssertions executes all assertions against the response.
-func runAssertions(status int, resp *ResponseInfo, jwtClaims map[string]interface{}, expectStatus int, extra map[string]interface{}) []AssertionResult {
+func runAssertions(status int, resp *ResponseInfo, jwtClaims map[string]interface{}, expectStatus int, extra map[string]interface{}, projectDir string) []AssertionResult {
 	var results []AssertionResult
 
 	// Status assertion
@@ -177,7 +177,7 @@ func runAssertions(status int, resp *ResponseInfo, jwtClaims map[string]interfac
 
 	// Extra assertions (e.g. response.token: exists, jwt.role: admin)
 	for path, expectedVal := range extra {
-		result := evaluateAssertion(path, expectedVal, resp, jwtClaims)
+		result := evaluateAssertion(path, expectedVal, resp, jwtClaims, projectDir)
 		results = append(results, result)
 	}
 
@@ -185,8 +185,58 @@ func runAssertions(status int, resp *ResponseInfo, jwtClaims map[string]interfac
 }
 
 // evaluateAssertion evaluates a single assertion at the given path.
-func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jwtClaims map[string]interface{}) AssertionResult {
+func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jwtClaims map[string]interface{}, projectDir string) AssertionResult {
 	expectedStr := fmt.Sprintf("%v", expected)
+	if path == "schema" {
+		expectedStr, ok := expected.(string)
+		if !ok {
+			return AssertionResult{
+				Path:     "schema",
+				Expected: "string (schema name)",
+				Actual:   fmt.Sprintf("%T", expected),
+				Passed:   false,
+				Reason:   "schema name must be a string",
+			}
+		}
+
+		schema, err := LoadSchema(expectedStr, projectDir)
+		if err != nil {
+			return AssertionResult{
+				Path:     "schema",
+				Expected: expectedStr,
+				Actual:   "(schema file not found)",
+				Passed:   false,
+				Reason:   err.Error(),
+			}
+		}
+
+		violations := ValidateSchema(resp.Parsed, schema, "body")
+
+		if len(violations) == 0 {
+			return AssertionResult{
+				Path:     "schema",
+				Expected: expectedStr,
+				Actual:   "valid",
+				Passed:   true,
+			}
+		}
+
+		var reasonBuilder strings.Builder
+		for i, v := range violations {
+			if i > 0 {
+				reasonBuilder.WriteString("\n\n")
+			}
+			reasonBuilder.WriteString(fmt.Sprintf("actual: %s\nexpected: field %s %s %s\nreason: %s", v.Actual, v.Field, v.Rule, v.Expected, "validation failed"))
+		}
+
+		return AssertionResult{
+			Path:     "schema",
+			Expected: expectedStr,
+			Actual:   "invalid",
+			Passed:   false,
+			Reason:   reasonBuilder.String(),
+		}
+	}
 
 	// Collection Matchers: count(path)
 	if strings.HasPrefix(path, "count(") && strings.HasSuffix(path, ")") {
