@@ -1,6 +1,9 @@
 package runner
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -585,4 +588,114 @@ func TestEvaluateAssertion_NotFoundSuggestions(t *testing.T) {
 	if !hasMessage || !hasStatusCode {
 		t.Errorf("expected suggestions to include 'message' and 'statusCode', got %v", result.Suggestions)
 	}
+}
+
+func TestEvaluateAssertion_Schema(t *testing.T) {
+	projectDir := t.TempDir()
+	schemasDir := filepath.Join(projectDir, ".gherkio", "schemas", "users")
+	err := os.MkdirAll(schemasDir, 0755)
+	if err != nil {
+		t.Fatalf("failed to create schemas dir: %v", err)
+	}
+
+	schemaYAML := `type: object
+required:
+  - id
+  - email
+properties:
+  id:
+    type: integer
+  email:
+    type: string
+    format: email
+  name:
+    type: string`
+
+	err = os.WriteFile(filepath.Join(schemasDir, "user-response.yaml"), []byte(schemaYAML), 0644)
+	if err != nil {
+		t.Fatalf("failed to write schema file: %v", err)
+	}
+
+	t.Run("passing schema", func(t *testing.T) {
+		resp := &ResponseInfo{
+			Parsed: map[string]interface{}{
+				"id":    1,
+				"email": "user@example.com",
+				"name":  "Alice",
+			},
+		}
+
+		result := evaluateAssertion("schema", "users/user-response", resp, nil, projectDir)
+		if !result.Passed {
+			t.Errorf("expected schema to pass but failed: %+v", result)
+		}
+		if result.Actual != "valid" {
+			t.Errorf("expected actual='valid', got %q", result.Actual)
+		}
+	})
+
+	t.Run("failing schema - type mismatch", func(t *testing.T) {
+		resp := &ResponseInfo{
+			Parsed: map[string]interface{}{
+				"id":    "not-a-number",
+				"email": "user@example.com",
+			},
+		}
+
+		result := evaluateAssertion("schema", "users/user-response", resp, nil, projectDir)
+		if result.Passed {
+			t.Error("expected schema to fail but passed")
+		}
+		if result.Actual != "invalid" {
+			t.Errorf("expected actual='invalid', got %q", result.Actual)
+		}
+		if result.Reason == "" {
+			t.Error("expected reason to contain violations")
+		}
+	})
+
+	t.Run("failing schema - missing required + invalid format", func(t *testing.T) {
+		resp := &ResponseInfo{
+			Parsed: map[string]interface{}{
+				"id":    1,
+				"email": "not-an-email",
+			},
+		}
+
+		result := evaluateAssertion("schema", "users/user-response", resp, nil, projectDir)
+		if result.Passed {
+			t.Error("expected schema to fail but passed")
+		}
+		if !strings.Contains(result.Reason, "format email") {
+			t.Errorf("expected reason to mention format email, got: %s", result.Reason)
+		}
+	})
+
+	t.Run("schema file not found", func(t *testing.T) {
+		resp := &ResponseInfo{
+			Parsed: map[string]interface{}{"id": 1},
+		}
+
+		result := evaluateAssertion("schema", "nonexistent/schema", resp, nil, projectDir)
+		if result.Passed {
+			t.Error("expected schema to fail when file not found")
+		}
+		if !strings.Contains(result.Reason, "schema file not found") {
+			t.Errorf("expected reason to mention 'schema file not found', got: %s", result.Reason)
+		}
+	})
+
+	t.Run("schema value is not a string", func(t *testing.T) {
+		resp := &ResponseInfo{
+			Parsed: map[string]interface{}{"id": 1},
+		}
+
+		result := evaluateAssertion("schema", 42, resp, nil, projectDir)
+		if result.Passed {
+			t.Error("expected schema to fail when value is not a string")
+		}
+		if !strings.Contains(result.Reason, "schema name must be a string") {
+			t.Errorf("expected reason to mention 'schema name must be a string', got: %s", result.Reason)
+		}
+	})
 }

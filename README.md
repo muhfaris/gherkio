@@ -394,7 +394,7 @@ Shows full request and response payloads, including headers and bodies (with sen
 | Multiple environments | ✅ |
 | Reporting (HTML, JSON) | ⏳ Planned |
 | Plugin/capability system | ⏳ Future |
-| Go unit tests | ⏳ Not yet written |
+| Go unit tests | ✅ Matchers, executor, printer (golden file snapshots) |
 | CI/CD | ⏳ Not yet configured |
 
 ---
@@ -414,6 +414,18 @@ go run . run <test-file> --verbose      # Run with full payloads
 go run . run <test-file> -v             # Shorthand
 go run . init                           # Scaffold project
 go test ./...                           # Run unit tests
+
+### Golden file snapshots
+
+Printer output tests use golden file snapshots for byte-exact comparison:
+
+```bash
+# Normal run — compares output against golden files
+go test ./internal/runner/
+
+# After intentionally changing printer output — regenerate golden files
+go test ./internal/runner/ -update
+```
 ```
 
 ### Project structure
@@ -432,12 +444,21 @@ gherkio/
 │   └── runner/                  # Execution engine
 │       ├── runner.go            # Orchestrator
 │       ├── executor.go          # HTTP client, assertions, path resolution
+│       ├── executor_test.go     # Tests: resolvePath, evaluateAssertion, timing, etc.
 │       ├── interpolator.go      # Variable interpolation
-│       ├── matchers.go          # Advanced matchers
-│       └── printer.go           # Console output
+│       ├── matchers.go          # Advanced matchers (uuid, email, contains, etc.)
+│       ├── matchers_test.go     # Tests: all matchers with pass/fail cases
+│       ├── printer.go           # Console output
+│       ├── printer_test.go      # Tests: golden file snapshots + helpers
+│       └── testdata/            # Golden files for snapshot testing
+│           ├── summary_output.golden
+│           ├── verbose_output.golden
+│           ├── advanced_matchers_output.golden
+│           └── timing_output.golden
 ├── docs/                        # Documentation
 │   ├── prd.md                   # Product requirements
 │   ├── rfcs/                    # RFC proposals
+│   ├── handoffs/                # Agent handoff documents
 │   └── note.md                  # Dev notes
 ├── example/                     # Example test files
 └── .gherkio/                    # Default project scaffold
