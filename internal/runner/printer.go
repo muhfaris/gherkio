@@ -105,7 +105,12 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 		}
 
 		// Step header with number and status
-		stepLabel := fmt.Sprintf("%s %s", step.Request.Method, step.Request.URL)
+		var stepLabel string
+		if step.Request != nil {
+			stepLabel = fmt.Sprintf("%s %s", step.Request.Method, step.Request.URL)
+		} else {
+			stepLabel = "Nested Step"
+		}
 		fmt.Printf("%d. %s\n", stepNum, stepLabel)
 		if stepPassed {
 			fmt.Printf("   ✓ success\n")

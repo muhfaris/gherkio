@@ -109,6 +109,7 @@ type TestFile struct {
     Steps    []Step
 }
 type Step struct {
+    Use     string            // References another scenario file to execute
     Request Request           // HTTP request definition
     Expect  Expect            // Assertions
     Save    map[string]string // Variable extraction (e.g. {"token": "body.accessToken"})
@@ -340,6 +341,7 @@ Project root detection: walks up from cwd looking for `.gherkio/` directory.
 - ✅ Summary/verbose output modes (default: summary, --verbose for full payloads)
 - ✅ Sensitive field masking (tokens, passwords, secrets masked in output)
 - ✅ Timing assertions (`timing: { max: 500ms }`)
+- ✅ Scenario Composition / use-steps (Phase 1 MVP: recursion, merging, depth check)
 - ✅ CLI commands (init, run)
 - ⏳ Reporting (HTML, JSON) — planned but not MVP
 - ⏳ Capability system — future
