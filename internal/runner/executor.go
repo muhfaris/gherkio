@@ -16,6 +16,10 @@ import (
 // StepResult holds the result of a single step execution.
 type StepResult struct {
 	Original   model.Step        `json:"original"`
+	Depth      int               `json:"depth"`
+	IsUseStart bool              `json:"isUseStart"`
+	IsUseEnd   bool              `json:"isUseEnd"`
+	UseFile    string            `json:"useFile,omitempty"`
 	Request    *RequestInfo      `json:"request"`
 	Response   *ResponseInfo     `json:"response"`
 	Assertions []AssertionResult `json:"assertions"`

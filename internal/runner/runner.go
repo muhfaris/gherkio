@@ -75,10 +75,18 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 		stepStart := time.Now()
 		stepResult := StepResult{
 			Original: step,
+			Depth:    depth,
 		}
 
 		// Handle 'use' step recursively
 		if step.Use != "" {
+			useStartStep := StepResult{
+				Original:   step,
+				Depth:      depth,
+				IsUseStart: true,
+				UseFile:    step.Use,
+			}
+			stepResults = append(stepResults, useStartStep)
 			if depth > 10 {
 				stepResult.Error = fmt.Sprintf("circular reference or max depth exceeded for use: %s", step.Use)
 				stepResults = append(stepResults, stepResult)
@@ -107,6 +115,14 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 
 			// Flatten the results
 			stepResults = append(stepResults, nestedSteps...)
+			// add a dummy end step for 'use'
+			useEndStep := StepResult{
+				Original: step,
+				Depth:    depth,
+				IsUseEnd: true,
+				UseFile:  step.Use,
+			}
+			stepResults = append(stepResults, useEndStep)
 			totalPass += nestedPass
 			totalFail += nestedFail
 			if nestedFail > 0 {

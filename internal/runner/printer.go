@@ -92,8 +92,30 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 
 	fmt.Printf("\n%s %s\n\n", statusIcon, result.Scenario)
 
+	stepCounter := 1
 	for i, step := range result.Steps {
-		stepNum := i + 1
+		indent := strings.Repeat("   │", step.Depth)
+
+		if step.IsUseStart {
+			prefix := fmt.Sprintf("%d. └─ ", stepCounter)
+			if step.Depth > 0 {
+				prefix = indent[:len(indent)-4] + "   ├ └─ "
+			} else {
+				stepCounter++
+			}
+			fmt.Printf("%suse: %s\n%s   │\n", prefix, step.UseFile, indent)
+			continue
+		}
+		if step.IsUseEnd {
+			// Determine if the use block succeeded
+			// (This is tricky since we flattened it, but let's just assume if there's no error it succeeded - actually we shouldn't print success for the block, the individual steps show it)
+			if step.Depth > 0 {
+               fmt.Printf("%s\n", indent[:len(indent)-4])
+            } else {
+			   fmt.Printf("\n")
+            }
+			continue
+		}
 
 		// Determine step-level pass/fail
 		stepPassed := step.Error == ""
@@ -109,19 +131,25 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 		if step.Request != nil {
 			stepLabel = fmt.Sprintf("%s %s", step.Request.Method, step.Request.URL)
 		} else {
-			if step.Original.Use != "" {
-				stepLabel = fmt.Sprintf("use: %s", step.Original.Use)
-			} else if step.Original.Request.URL != "" {
+			if step.Original.Request.URL != "" {
 				stepLabel = fmt.Sprintf("%s %s (failed before execution)", step.Original.Request.Method, step.Original.Request.URL)
 			} else {
 				stepLabel = "Unknown Step"
 			}
 		}
-		fmt.Printf("%d. %s\n", stepNum, stepLabel)
-		if stepPassed {
-			fmt.Printf("   ✓ success\n")
+
+		prefix := fmt.Sprintf("%d. ", stepCounter)
+		if step.Depth > 0 {
+			prefix = indent[:len(indent)-4] + "   ├ "
 		} else {
-			fmt.Printf("   ✗ failed\n")
+			stepCounter++
+		}
+
+		fmt.Printf("%s%s\n", prefix, stepLabel)
+		if stepPassed {
+			fmt.Printf("%s   ✓ success\n", indent)
+		} else {
+			fmt.Printf("%s   ✗ failed\n", indent)
 		}
 
 		if verbose {
@@ -203,26 +231,26 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 
 					if a.Expected == "exists" {
 						if isTiming {
-							fmt.Printf("   %s %s %s (actual: %s)\n", icon, a.Path, a.Expected, a.Actual)
+							fmt.Printf("%s   %s %s %s (actual: %s)\n", indent, icon, a.Path, a.Expected, a.Actual)
 						} else {
-							fmt.Printf("   %s %s %s\n", icon, a.Path, a.Expected)
+							fmt.Printf("%s   %s %s %s\n", indent, icon, a.Path, a.Expected)
 						}
 					} else if isTiming {
-						fmt.Printf("   %s %s = %s (actual: %s)\n", icon, a.Path, a.Expected, a.Actual)
+						fmt.Printf("%s   %s %s = %s (actual: %s)\n", indent, icon, a.Path, a.Expected, a.Actual)
 					} else {
-						fmt.Printf("   %s %s = %s\n", icon, a.Path, a.Expected)
+						fmt.Printf("%s   %s %s = %s\n", indent, icon, a.Path, a.Expected)
 					}
 
 					// Inline failure info in summary
 					if !a.Passed {
 						if strings.HasPrefix(a.Actual, "(not found)") || a.Actual == "(unresolved)" {
-							fmt.Printf("     └─ path not found")
+							fmt.Printf("%s     └─ path not found", indent)
 							if len(a.Suggestions) > 0 {
 								fmt.Printf(" (available: %s)", strings.Join(a.Suggestions, ", "))
 							}
 							fmt.Println()
 						} else {
-							fmt.Printf("     └─ got: %s\n", a.Actual)
+							fmt.Printf("%s     └─ got: %s\n", indent, a.Actual)
 						}
 					}
 				}
@@ -234,12 +262,17 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 			}
 
 			if step.Error != "" {
-				fmt.Printf("   ✗ Error: %s\n", step.Error)
+				fmt.Printf("%s   ✗ Error: %s\n", indent, step.Error)
 			}
 		}
 
+		// Separator only if this is a top-level step and not the last one, or if it's the end of a top level block.
+		// To keep it simple, we just print the separator if the next step is a top level step.
 		if i < len(result.Steps)-1 {
-			fmt.Println(strings.Repeat("─", 40))
+			nextStep := result.Steps[i+1]
+			if nextStep.Depth == 0 && !step.IsUseStart && !step.IsUseEnd {
+				fmt.Println(strings.Repeat("─", 40))
+			}
 		}
 	}
 
@@ -254,7 +287,6 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 	fmt.Printf("Duration: %s\n", formatDuration(result.Duration))
 	fmt.Println()
 }
-
 func formatDuration(d time.Duration) string {
 	if d < time.Second {
 		return fmt.Sprintf("%dms", d.Milliseconds())
