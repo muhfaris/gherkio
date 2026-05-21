@@ -84,6 +84,26 @@ func evaluateMatcher(path string, expected string, actual interface{}) (Assertio
 			Reason:   reason,
 		}, true
 
+	case "uri":
+		actualStr := fmt.Sprintf("%v", actual)
+		matched, _ := regexp.MatchString(`^[a-zA-Z][a-zA-Z0-9+.-]*://[^\s]*$`, actualStr)
+		reason := ""
+		if !matched {
+			if _, ok := actual.(string); !ok {
+				reason = "value is not a string"
+			} else {
+				reason = "string does not match URI format"
+			}
+		}
+		return AssertionResult{
+			Path:     path,
+			Expected: "valid URI format",
+			Actual:   actualStr,
+			Passed:   matched,
+			Reason:   reason,
+		}, true
+
+
 	case "number":
 		passed := false
 		reason := ""
@@ -308,7 +328,7 @@ func formatActual(actual interface{}) string {
 func isMatcherKeyword(expected string) bool {
     parts := strings.SplitN(expected, " ", 2)
     switch parts[0] {
-    case "exists", "uuid", "email", "datetime", "number", "string", "boolean", "array", "object", "null", "true", "false":
+    case "exists", "uuid", "email", "datetime", "uri", "number", "string", "boolean", "array", "object", "null", "true", "false":
         return true
     case "contains", "startsWith", "endsWith", "regex":
         return len(parts) == 2

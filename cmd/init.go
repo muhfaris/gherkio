@@ -36,6 +36,8 @@ steps:
       status: 200
       body.accessToken: exists
       body.refreshToken: exists
+      body.email: email
+      schema: example/login-response
 
     save:
       accessToken: body.accessToken
@@ -56,6 +58,7 @@ steps:
       status: 200
       body.id: exists
       body.username: emilys
+      schema: example/user-response
 `
 
 // defaultExampleRefreshTemplate is the default example test for auth/refresh.
@@ -106,6 +109,61 @@ security:
     enabled: true
     fields: []
 `
+
+// defaultExampleLoginSchemaTemplate is the default example schema for login response.
+const defaultExampleLoginSchemaTemplate = `type: object
+required:
+  - accessToken
+  - refreshToken
+  - id
+  - username
+  - email
+properties:
+  accessToken:
+    type: string
+  refreshToken:
+    type: string
+  id:
+    type: integer
+  username:
+    type: string
+  email:
+    type: string
+    format: email
+  firstName:
+    type: string
+  lastName:
+    type: string
+  gender:
+    type: string
+  image:
+    type: string
+`
+
+// defaultExampleUserSchemaTemplate is the default example schema for user response.
+const defaultExampleUserSchemaTemplate = `type: object
+required:
+  - id
+  - username
+  - email
+properties:
+  id:
+    type: integer
+  username:
+    type: string
+  email:
+    type: string
+    format: email
+  firstName:
+    type: string
+  lastName:
+    type: string
+  gender:
+    type: string
+  image:
+    type: string
+`
+
 
 // initCmd represents the gherkio init command.
 var initCmd = &cobra.Command{
@@ -189,6 +247,25 @@ func runInit() error {
 		return fmt.Errorf("failed to write refresh test file: %w", err)
 	}
 	fmt.Printf("  📄  %s\n", refreshPath)
+
+	// Create example schema files
+	schemaExampleDir := filepath.Join(baseDir, "schemas", "example")
+	if err := os.MkdirAll(schemaExampleDir, dirPerm); err != nil {
+		return fmt.Errorf("failed to create example schema directory: %w", err)
+	}
+	fmt.Printf("  📁  %s\n", schemaExampleDir)
+
+	loginSchemaPath := filepath.Join(schemaExampleDir, "login-response.yaml")
+	if err := os.WriteFile(loginSchemaPath, []byte(defaultExampleLoginSchemaTemplate), 0644); err != nil {
+		return fmt.Errorf("failed to write login-response schema file: %w", err)
+	}
+	fmt.Printf("  📄  %s\n", loginSchemaPath)
+
+	userSchemaPath := filepath.Join(schemaExampleDir, "user-response.yaml")
+	if err := os.WriteFile(userSchemaPath, []byte(defaultExampleUserSchemaTemplate), 0644); err != nil {
+		return fmt.Errorf("failed to write user-response schema file: %w", err)
+	}
+	fmt.Printf("  📄  %s\n", userSchemaPath)
 
 	fmt.Println("\n✨ Gherkio project initialized successfully!")
 	fmt.Println("")

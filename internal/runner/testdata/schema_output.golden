@@ -1,0 +1,30 @@
+
+✗ schema validation
+
+1. GET https://api.example.com/users
+   ✗ failed
+   ✓ status = 200
+   ✗ schema = users/user-response (actual: invalid)
+       └─ actual: invalid
+       └─ expected: users/user-response
+       └─ reason: actual: "not-an-email"
+expected: field body.email format email
+reason: validation failed
+
+actual: (missing)
+expected: field body.id is required
+reason: validation failed
+
+Response:
+Status: 200
+
+Body:
+{
+  "email": "not-an-email",
+  "id": "abc"
+}
+
+✗ FAIL
+1 passed, 1 failed, 2 total
+Duration: 50ms
+

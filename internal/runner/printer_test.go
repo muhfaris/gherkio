@@ -243,6 +243,48 @@ func TestPrintResult_WithTimingAssertion(t *testing.T) {
 
 // Tests for helper functions
 
+func TestPrintResult_SchemaAssertion(t *testing.T) {
+	schemaReason := "actual: \"not-an-email\"\nexpected: field body.email format email\nreason: validation failed\n\nactual: (missing)\nexpected: field body.id is required\nreason: validation failed"
+
+	result := &RunResult{
+		Scenario: "schema validation",
+		Steps: []StepResult{
+			{
+				Request: &RequestInfo{
+					Method: "GET",
+					URL:    "https://api.example.com/users",
+				},
+				Response: &ResponseInfo{
+					Status: 200,
+					Body:   `{"id":"abc","email":"not-an-email"}`,
+					Parsed: map[string]interface{}{
+						"id":    "abc",
+						"email": "not-an-email",
+					},
+				},
+				Assertions: []AssertionResult{
+					{Path: "status", Expected: "200", Actual: "200", Passed: true},
+					{Path: "schema", Expected: "users/user-response", Actual: "invalid", Passed: false, Reason: schemaReason},
+				},
+				Duration: 50 * time.Millisecond,
+			},
+		},
+		TotalPass: 1,
+		TotalFail: 1,
+		Duration:  50 * time.Millisecond,
+		Passed:    false,
+	}
+
+	output := captureStdout(func() {
+		PrintResult(result, false, nil)
+	})
+
+	expected := loadGolden(t, "schema_output", output)
+	if output != expected {
+		t.Errorf("output mismatch\n\n=== GOT ===\n%s\n\n=== EXPECTED ===\n%s", output, expected)
+	}
+}
+
 func TestMaskSensitiveData(t *testing.T) {
 	tests := []struct {
 		name   string
