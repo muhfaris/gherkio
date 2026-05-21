@@ -310,3 +310,32 @@ Schema validation counts as **a single assertion** — one pass/fail for the ent
 
 1. Should schema validation report **all** violations or stop at the first? (Proposal: report all, as shown in examples)
 2. Should the schema assertion output include a **total violations count**? (e.g., `3 violations found`)
+
+## 9. Updated
+
+** RFC-3 is fully implemented.** Here's the status against the RFC:
+
+| Phase | Item | Status |
+|-------|------|--------|
+| **1** | Schema model (`internal/model/schema.go`) | ✅ |
+| **1** | Schema loader (`internal/runner/schema.go`) | ✅ |
+| **1** | Type validation (string, integer, number, boolean, array, object, null) | ✅ |
+| **1** | Required field validation | ✅ |
+| **1** | Properties validation with nested objects | ✅ |
+| **1** | `schema:` keyword in assertion engine | ✅ |
+| **2** | Format validation (email, uuid, datetime, **uri**) | ✅ |
+| **2** | Enum validation | ✅ |
+| **2** | String constraints (minLength, maxLength, pattern) | ✅ |
+| **2** | Numeric constraints (minimum, maximum) | ✅ |
+| **2** | Array constraints (minItems, maxItems, items) | ✅ |
+| **3** | Schema not found / parse error handling | ✅ |
+| **3** | Detailed failure output with field paths | ✅ |
+| **3** | Schema caching | ⏳ Deferred (Phase 3 nice-to-have) |
+| — | Collection (array) schemas | ✅ |
+| — | Mixing schema + individual assertions | ✅ |
+| — | Init scaffold with examples + `schema:` usage | ✅ |
+| — | Tests (validator, loader, integration, golden file) | ✅ |
+
+The only item not done is **schema caching** — the RFC lists it as Phase 3, and it's an optimization, not a functional gap. Every time `schema:` is referenced, the YAML file is re-read from disk. For MVP this is fine.
+
+
