@@ -62,7 +62,7 @@ steps:
 const defaultExampleRefreshTemplate = `scenario: refresh token
 
 steps:
-  - use: login.yaml
+  - use: me.yaml
   - request:
       method: POST
       url: /auth/refresh
