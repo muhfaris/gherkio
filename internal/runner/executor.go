@@ -49,6 +49,7 @@ type AssertionResult struct {
 	Expected    string   `json:"expected"`
 	Actual      string   `json:"actual"`
 	Passed      bool     `json:"passed"`
+	Reason      string   `json:"reason,omitempty"`
 	Suggestions []string `json:"suggestions,omitempty"`
 }
 
@@ -187,6 +188,372 @@ func runAssertions(status int, resp *ResponseInfo, jwtClaims map[string]interfac
 func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jwtClaims map[string]interface{}) AssertionResult {
 	expectedStr := fmt.Sprintf("%v", expected)
 
+	// Collection Matchers: count(path)
+	if strings.HasPrefix(path, "count(") && strings.HasSuffix(path, ")") {
+		innerPath := path[6 : len(path)-1]
+		actualVal, found := resolvePath(resp.Parsed, innerPath)
+		if !found {
+			return AssertionResult{
+				Path:     path,
+				Expected: fmt.Sprintf("exactly %s items", expectedStr),
+				Actual:   "(not found)",
+				Passed:   false,
+			}
+		}
+
+		arrVal, ok := actualVal.([]interface{})
+		if !ok {
+			return AssertionResult{
+				Path:     path,
+				Expected: fmt.Sprintf("exactly %s items", expectedStr),
+				Actual:   fmt.Sprintf("%v", actualVal),
+				Passed:   false,
+				Reason:   "value is not an array",
+			}
+		}
+
+		actualLen := len(arrVal)
+		expectedLen, err := strconv.Atoi(expectedStr)
+		if err != nil {
+			return AssertionResult{
+				Path:     path,
+				Expected: expectedStr,
+				Actual:   fmt.Sprintf("%d", actualLen),
+				Passed:   false,
+				Reason:   "invalid expected count format",
+			}
+		}
+
+		reason := ""
+		if actualLen != expectedLen {
+			reason = fmt.Sprintf("array has %d items", actualLen)
+		}
+
+		return AssertionResult{
+			Path:     path,
+			Expected: fmt.Sprintf("exactly %d items", expectedLen),
+			Actual:   fmt.Sprintf("%d", actualLen),
+			Passed:   actualLen == expectedLen,
+			Reason:   reason,
+		}
+	}
+
+	// Collection Matchers: all(path)
+	if strings.HasPrefix(path, "all(") && strings.HasSuffix(path, ")") {
+		innerPath := path[4 : len(path)-1]
+
+		// Determine base array path and the field to check
+		lastDot := strings.LastIndex(innerPath, ".")
+		var arrayPath, fieldName string
+		if lastDot != -1 {
+			arrayPath = innerPath[:lastDot]
+			fieldName = innerPath[lastDot+1:]
+		} else {
+			arrayPath = innerPath
+			fieldName = "" // Check array elements directly
+		}
+
+		actualArrVal, found := resolvePath(resp.Parsed, arrayPath)
+		if !found {
+			return AssertionResult{
+				Path:     path,
+				Expected: fmt.Sprintf("all elements match %q", expectedStr),
+				Actual:   "(not found)",
+				Passed:   false,
+			}
+		}
+
+		arrVal, ok := actualArrVal.([]interface{})
+		if !ok {
+			return AssertionResult{
+				Path:     path,
+				Expected: fmt.Sprintf("all elements match %q", expectedStr),
+				Actual:   fmt.Sprintf("%v", actualArrVal),
+				Passed:   false,
+				Reason:   "value is not an array",
+			}
+		}
+
+		if len(arrVal) == 0 {
+			dummyResult, used := evaluateMatcher("", expectedStr, nil)
+			expectedDesc := expectedStr
+			if used {
+				expectedDesc = dummyResult.Expected
+			}
+			return AssertionResult{
+				Path:     path,
+				Expected: expectedDesc,
+				Actual:   "[]",
+				Passed:   true,
+			}
+		}
+
+		var formattedActuals []string
+		var expectedDesc string
+		var failedReason string
+		passed := true
+
+		for i, elem := range arrVal {
+			var valToCheck interface{} = elem
+			if fieldName != "" {
+				mapVal, isMap := elem.(map[string]interface{})
+				if !isMap {
+					passed = false
+					failedReason = fmt.Sprintf("failed at index %d (element is not an object)", i)
+					formattedActuals = append(formattedActuals, fmt.Sprintf("%v", elem))
+					break
+				}
+				val, valFound := mapVal[fieldName]
+				if !valFound {
+					passed = false
+					failedReason = fmt.Sprintf("failed at index %d (field %q missing)", i, fieldName)
+					formattedActuals = append(formattedActuals, "(missing)")
+					break
+				}
+				valToCheck = val
+			}
+
+			// Try Matcher first
+			res, used := evaluateMatcher("", expectedStr, valToCheck)
+			if used {
+				expectedDesc = res.Expected
+				if !res.Passed {
+					passed = false
+					failedReason = fmt.Sprintf("failed at index %d (got %s)", i, formatActual(valToCheck))
+					formattedActuals = append(formattedActuals, formatActual(valToCheck))
+					break
+				}
+			} else {
+				// Fallback to Equality
+				expectedDesc = fmt.Sprintf("all elements equal %q", expectedStr)
+				actualStr := fmt.Sprintf("%v", valToCheck)
+				if actualStr != expectedStr {
+					passed = false
+					failedReason = fmt.Sprintf("failed at index %d (got %q)", i, actualStr)
+					formattedActuals = append(formattedActuals, actualStr)
+					break
+				}
+			}
+			formattedActuals = append(formattedActuals, formatActual(valToCheck))
+		}
+
+		// If failed, populate the rest of formattedActuals quickly for display
+		if !passed {
+			for j := len(formattedActuals); j < len(arrVal); j++ {
+				elem := arrVal[j]
+				if fieldName != "" {
+					if mapVal, isMap := elem.(map[string]interface{}); isMap {
+						if val, valFound := mapVal[fieldName]; valFound {
+							formattedActuals = append(formattedActuals, formatActual(val))
+							continue
+						}
+					}
+				}
+				formattedActuals = append(formattedActuals, formatActual(elem))
+			}
+		}
+
+		if expectedDesc == "" {
+			dummyResult, used := evaluateMatcher("", expectedStr, nil)
+			if used {
+				expectedDesc = dummyResult.Expected
+			} else {
+				expectedDesc = fmt.Sprintf("all elements equal %q", expectedStr)
+			}
+		}
+
+		return AssertionResult{
+			Path:     path,
+			Expected: expectedDesc,
+			Actual:   "[" + strings.Join(formattedActuals, ", ") + "]",
+			Passed:   passed,
+			Reason:   failedReason,
+		}
+	}
+
+	// Collection Matchers: count(path)
+	if strings.HasPrefix(path, "count(") && strings.HasSuffix(path, ")") {
+		innerPath := path[6 : len(path)-1]
+		actualVal, found := resolvePath(resp.Parsed, innerPath)
+		if !found {
+			return AssertionResult{
+				Path:     path,
+				Expected: fmt.Sprintf("exactly %s items", expectedStr),
+				Actual:   "(not found)",
+				Passed:   false,
+			}
+		}
+
+		arrVal, ok := actualVal.([]interface{})
+		if !ok {
+			return AssertionResult{
+				Path:     path,
+				Expected: fmt.Sprintf("exactly %s items", expectedStr),
+				Actual:   fmt.Sprintf("%v", actualVal),
+				Passed:   false,
+				Reason:   "value is not an array",
+			}
+		}
+
+		actualLen := len(arrVal)
+		expectedLen, err := strconv.Atoi(expectedStr)
+		if err != nil {
+			return AssertionResult{
+				Path:     path,
+				Expected: expectedStr,
+				Actual:   fmt.Sprintf("%d", actualLen),
+				Passed:   false,
+				Reason:   "invalid expected count format",
+			}
+		}
+
+		reason := ""
+		if actualLen != expectedLen {
+			reason = fmt.Sprintf("array has %d items", actualLen)
+		}
+
+		return AssertionResult{
+			Path:     path,
+			Expected: fmt.Sprintf("exactly %d items", expectedLen),
+			Actual:   fmt.Sprintf("%d", actualLen),
+			Passed:   actualLen == expectedLen,
+			Reason:   reason,
+		}
+	}
+
+	// Collection Matchers: all(path)
+	if strings.HasPrefix(path, "all(") && strings.HasSuffix(path, ")") {
+		innerPath := path[4 : len(path)-1]
+
+		// Determine base array path and the field to check
+		lastDot := strings.LastIndex(innerPath, ".")
+		var arrayPath, fieldName string
+		if lastDot != -1 {
+			arrayPath = innerPath[:lastDot]
+			fieldName = innerPath[lastDot+1:]
+		} else {
+			arrayPath = innerPath
+			fieldName = "" // Check array elements directly
+		}
+
+		actualArrVal, found := resolvePath(resp.Parsed, arrayPath)
+		if !found {
+			return AssertionResult{
+				Path:     path,
+				Expected: fmt.Sprintf("all elements match %q", expectedStr),
+				Actual:   "(not found)",
+				Passed:   false,
+			}
+		}
+
+		arrVal, ok := actualArrVal.([]interface{})
+		if !ok {
+			return AssertionResult{
+				Path:     path,
+				Expected: fmt.Sprintf("all elements match %q", expectedStr),
+				Actual:   fmt.Sprintf("%v", actualArrVal),
+				Passed:   false,
+				Reason:   "value is not an array",
+			}
+		}
+
+		if len(arrVal) == 0 {
+			dummyResult, used := evaluateMatcher("", expectedStr, nil)
+			expectedDesc := expectedStr
+			if used {
+				expectedDesc = dummyResult.Expected
+			}
+			return AssertionResult{
+				Path:     path,
+				Expected: expectedDesc,
+				Actual:   "[]",
+				Passed:   true,
+			}
+		}
+
+		var formattedActuals []string
+		var expectedDesc string
+		var failedReason string
+		passed := true
+
+		for i, elem := range arrVal {
+			var valToCheck interface{} = elem
+			if fieldName != "" {
+				mapVal, isMap := elem.(map[string]interface{})
+				if !isMap {
+					passed = false
+					failedReason = fmt.Sprintf("failed at index %d (element is not an object)", i)
+					formattedActuals = append(formattedActuals, fmt.Sprintf("%v", elem))
+					break
+				}
+				val, valFound := mapVal[fieldName]
+				if !valFound {
+					passed = false
+					failedReason = fmt.Sprintf("failed at index %d (field %q missing)", i, fieldName)
+					formattedActuals = append(formattedActuals, "(missing)")
+					break
+				}
+				valToCheck = val
+			}
+
+			// Try Matcher first
+			res, used := evaluateMatcher("", expectedStr, valToCheck)
+			if used {
+				expectedDesc = res.Expected
+				if !res.Passed {
+					passed = false
+					failedReason = fmt.Sprintf("failed at index %d (got %q)", i, formatActual(valToCheck))
+					formattedActuals = append(formattedActuals, formatActual(valToCheck))
+					break
+				}
+			} else {
+				// Fallback to Equality
+				expectedDesc = fmt.Sprintf("all elements equal %q", expectedStr)
+				actualStr := fmt.Sprintf("%v", valToCheck)
+				if actualStr != expectedStr {
+					passed = false
+					failedReason = fmt.Sprintf("failed at index %d (got %q)", i, actualStr)
+					formattedActuals = append(formattedActuals, actualStr)
+					break
+				}
+			}
+			formattedActuals = append(formattedActuals, formatActual(valToCheck))
+		}
+
+		// If failed, populate the rest of formattedActuals quickly for display
+		if !passed {
+			for j := len(formattedActuals); j < len(arrVal); j++ {
+				elem := arrVal[j]
+				if fieldName != "" {
+					if mapVal, isMap := elem.(map[string]interface{}); isMap {
+						if val, valFound := mapVal[fieldName]; valFound {
+							formattedActuals = append(formattedActuals, formatActual(val))
+							continue
+						}
+					}
+				}
+				formattedActuals = append(formattedActuals, formatActual(elem))
+			}
+		}
+
+		if expectedDesc == "" {
+			dummyResult, used := evaluateMatcher("", expectedStr, nil)
+			if used {
+				expectedDesc = dummyResult.Expected
+			} else {
+				expectedDesc = fmt.Sprintf("all elements equal %q", expectedStr)
+			}
+		}
+
+		return AssertionResult{
+			Path:     path,
+			Expected: expectedDesc,
+			Actual:   "[" + strings.Join(formattedActuals, ", ") + "]",
+			Passed:   passed,
+			Reason:   failedReason,
+		}
+	}
+
 	// JWT assertions
 	if strings.HasPrefix(path, "jwt.") {
 		claimPath := strings.TrimPrefix(path, "jwt.")
@@ -201,14 +568,9 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 			}
 		}
 
-		// "exists" matcher
-		if expectedStr == "exists" {
-			return AssertionResult{
-				Path:     path,
-				Expected: "exists",
-				Actual:   fmt.Sprintf("%v", actualVal),
-				Passed:   true,
-			}
+		// Try Matchers
+		if result, used := evaluateMatcher(path, expectedStr, actualVal); used {
+			return result
 		}
 
 		// Equality check
@@ -239,8 +601,9 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 				Suggestions: available,
 			}
 		}
-		if expectedStr == "exists" {
-			return AssertionResult{Path: path, Expected: "exists", Actual: actualVal, Passed: true}
+		// Try Matchers
+		if result, used := evaluateMatcher(path, expectedStr, actualVal); used {
+			return result
 		}
 		return AssertionResult{Path: path, Expected: expectedStr, Actual: actualVal, Passed: actualVal == expectedStr}
 	}
@@ -269,13 +632,9 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 			}
 		}
 
-		if expectedStr == "exists" {
-			return AssertionResult{
-				Path:     path,
-				Expected: "exists",
-				Actual:   fmt.Sprintf("%v", actualVal),
-				Passed:   true,
-			}
+		// Try Matchers
+		if result, used := evaluateMatcher(path, expectedStr, actualVal); used {
+			return result
 		}
 
 		actualStr := fmt.Sprintf("%v", actualVal)
@@ -343,8 +702,9 @@ func evaluateResponseAssertion(path, expected string, resp *ResponseInfo) Assert
 				Suggestions: available,
 			}
 		}
-		if expected == "exists" {
-			return AssertionResult{Path: path, Expected: "exists", Actual: actualVal, Passed: true}
+		// Try Matchers
+		if result, used := evaluateMatcher(path, expected, actualVal); used {
+			return result
 		}
 		return AssertionResult{Path: path, Expected: expected, Actual: actualVal, Passed: actualVal == expected}
 	}

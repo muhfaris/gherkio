@@ -409,3 +409,12 @@ go run . run <test-file> -v             # Shorthand
 go run . init                           # Scaffold a project
 go test ./...                           # Run Go unit tests (when they exist)
 ```
+
+### 11. Advanced Matchers (RFC-2)
+The assertion engine supports structured matchers beyond equality checking. This provides built-in type and format validations. Matchers are processed by `evaluateMatcher` in `internal/runner/matchers.go`.
+
+**Type Matchers:** `uuid`, `email`, `datetime`, `number`, `string`, `boolean`, `array`, `object`, `null`, `true`, `false`.
+**String Matchers (Case-sensitive):** `contains <text>`, `startsWith <prefix>`, `endsWith <suffix>`, `regex <pattern>`.
+**Collection Matchers:**
+- `count(<path>): <number>` — checks the length of an array.
+- `all(<path>): <matcher>` — checks that every element in an array satisfies the condition. Handles nested assertions out-of-the-box.
