@@ -15,16 +15,18 @@ import (
 
 // StepResult holds the result of a single step execution.
 type StepResult struct {
-	Original   model.Step        `json:"original"`
-	Depth      int               `json:"depth"`
-	IsUseStart bool              `json:"isUseStart"`
-	IsUseEnd   bool              `json:"isUseEnd"`
-	UseFile    string            `json:"useFile,omitempty"`
-	Request    *RequestInfo      `json:"request"`
-	Response   *ResponseInfo     `json:"response"`
-	Assertions []AssertionResult `json:"assertions"`
-	Duration   time.Duration     `json:"duration"`
-	Error      string            `json:"error,omitempty"`
+	Original     model.Step        `json:"original"`
+	Depth        int               `json:"depth"`
+	IsUseStart   bool              `json:"isUseStart"`
+	IsUseEnd     bool              `json:"isUseEnd"`
+	UseFile      string            `json:"useFile,omitempty"`
+	ScenarioName string            `json:"scenarioName,omitempty"`
+	TestFile     string            `json:"testFile,omitempty"`
+	Request      *RequestInfo      `json:"request"`
+	Response     *ResponseInfo     `json:"response"`
+	Assertions   []AssertionResult `json:"assertions"`
+	Duration     time.Duration     `json:"duration"`
+	Error        string            `json:"error,omitempty"`
 }
 
 // RequestInfo captures the executed request details.

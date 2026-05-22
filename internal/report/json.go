@@ -10,7 +10,26 @@ import (
 	"github.com/muhfaris/gherkio/internal/runner"
 )
 
-// RenderJSON generates the JSON report string.
+// RenderJSONSuite generates a JSON report for a suite of multiple scenarios.
+func RenderJSONSuite(results []*runner.RunResult, cfg ReportConfig, env string) (string, error) {
+	var maskFields []string
+	if cfg.MaskSensitive {
+		maskFields = cfg.MaskFields
+	} else {
+		maskFields = []string{}
+	}
+
+	data := MapResultsToSuiteReportData(results, env, maskFields, !cfg.MaskSensitive)
+
+	jsonData, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal JSON suite report: %w", err)
+	}
+
+	return string(jsonData), nil
+}
+
+// RenderJSON generates the JSON report string for a single scenario.
 func RenderJSON(result *runner.RunResult, cfg ReportConfig, env string) (string, error) {
 	// If --report-raw is set, we bypass masking (empty maskFields slice) for the data itself.
 	// However, note that cURL generation always applies default masking internally if we don't pass fields.

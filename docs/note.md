@@ -154,7 +154,25 @@ Body:
 }
 ```
 
-### Ready for Step 4?
-**Step 2** would be **Variable Interpolation** — so you can use `$token` in subsequent request headers/body. Want me to continue, or would you like to adjust anything in Step 1 first?
+### Step 5 Complete — Multi-Scenario Report Grouping
 
+**Problem:** When running multiple scenarios (`gherkio run` with no args or a directory), all steps from all scenarios were flattened into a single report with `Scenario: "Test Suite Run"`. There was no way to tell which steps belonged to which scenario.
 
+**Solution:** Each step now carries `ScenarioName` and `TestFile` fields. The report rendering distinguishes between single-scenario and multi-scenario runs:
+
+- **Single scenario** (`gherkio run <file>`): Uses `ReportData.Steps` directly (existing behavior, unchanged)
+- **Multi scenario** (`gherkio run` or `gherkio run dir/`): Uses `ReportData.Scenarios []ScenarioData`, each with its own name, test file, duration, pass/fail counts, and grouped steps
+
+**Changes made:**
+- `internal/runner/executor.go` — Added `ScenarioName` and `TestFile` fields to `StepResult`
+- `internal/runner/runner.go` — Added `TestFile` field to `RunResult`; propagates scenario/file info to each step after execution
+- `internal/report/types.go` — Added `ScenarioData` struct; `ReportData` now has optional `Scenarios` field
+- `internal/report/html.go` — Added `MapResultsToSuiteReportData()`, `RenderHTMLSuite()`, extracted `renderHTMLTemplate()` helper
+- `internal/report/json.go` — Added `RenderJSONSuite()`
+- `cmd/run.go` — `runAllInDir()` now collects individual `RunResult`s per file instead of flattening steps; added `handleSuiteReport()`
+- `internal/report/template.html` — Added `{{if .Scenarios}}...{{else}}...{{end}}` conditional with scenario-grouped step rendering; all step/section IDs in multi-scenario branch prefixed with `s{{$sIdx}}-` to avoid duplicate ID collisions
+
+**Usage:**
+```bash
+gherkio run --report html  # All scenarios grouped in single report
+gherkio run --report json  # JSON with scenario array```

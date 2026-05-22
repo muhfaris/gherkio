@@ -16,6 +16,61 @@ import (
 //go:embed template.html
 var reportTemplateStr string
 
+// MapResultsToSuiteReportData converts multiple RunResults into a single suite-level ReportData.
+func MapResultsToSuiteReportData(results []*runner.RunResult, env string, maskFields []string, forceCurlMasking bool) ReportData {
+	suiteTotalPass := 0
+	suiteTotalFail := 0
+	suiteTotalSteps := 0
+	var suiteDuration time.Duration
+	var scenarios []ScenarioData
+
+	for _, result := range results {
+		scData := MapResultToReportData(result, env, maskFields, forceCurlMasking)
+
+		// Create a scenario entry from the per-result data
+		scenario := ScenarioData{
+			Name:          result.Scenario,
+			TestFile:      result.TestFile,
+			TotalDuration: runner.FormatDuration(result.Duration),
+			TotalSteps:    scData.TotalSteps,
+			PassCount:     scData.PassCount,
+			FailCount:     scData.FailCount,
+			Steps:         scData.Steps,
+		}
+		if scData.TotalSteps > 0 {
+			scenario.PassPercent = float64(scData.PassCount) / float64(scData.TotalSteps) * 100
+			scenario.FailPercent = float64(scData.FailCount) / float64(scData.TotalSteps) * 100
+		}
+
+		suiteTotalPass += scData.PassCount
+		suiteTotalFail += scData.FailCount
+		suiteTotalSteps += scData.TotalSteps
+		suiteDuration += result.Duration
+
+		scenarios = append(scenarios, scenario)
+	}
+
+	passPercent := 0.0
+	failPercent := 0.0
+	if suiteTotalSteps > 0 {
+		passPercent = float64(suiteTotalPass) / float64(suiteTotalSteps) * 100
+		failPercent = float64(suiteTotalFail) / float64(suiteTotalSteps) * 100
+	}
+
+	return ReportData{
+		ScenarioName:  "Test Suite",
+		Environment:   env,
+		Timestamp:     time.Now().Format(time.RFC1123),
+		TotalDuration: runner.FormatDuration(suiteDuration),
+		TotalSteps:    suiteTotalSteps,
+		PassCount:     suiteTotalPass,
+		FailCount:     suiteTotalFail,
+		PassPercent:   passPercent,
+		FailPercent:   failPercent,
+		Scenarios:     scenarios,
+	}
+}
+
 // MapResultToReportData converts a runner.RunResult to ReportData.
 func MapResultToReportData(result *runner.RunResult, env string, maskFields []string, forceCurlMasking bool) ReportData {
 	totalPass := 0
@@ -144,10 +199,14 @@ func MapResultToReportData(result *runner.RunResult, env string, maskFields []st
 	}
 }
 
-// RenderHTML generates the HTML report string.
-func RenderHTML(result *runner.RunResult, cfg ReportConfig, env string) (string, error) {
-	data := MapResultToReportData(result, env, cfg.MaskFields, true)
+// RenderHTMLSuite generates an HTML report for a suite of multiple scenarios.
+func RenderHTMLSuite(results []*runner.RunResult, cfg ReportConfig, env string) (string, error) {
+	data := MapResultsToSuiteReportData(results, env, cfg.MaskFields, true)
+	return renderHTMLTemplate(data)
+}
 
+// renderHTMLTemplate executes the HTML template with the given data.
+func renderHTMLTemplate(data ReportData) (string, error) {
 	funcs := template.FuncMap{
 		"add": func(a, b int) int { return a + b },
 		"statusClass": func(code int) string {
@@ -177,6 +236,12 @@ func RenderHTML(result *runner.RunResult, cfg ReportConfig, env string) (string,
 	}
 
 	return sb.String(), nil
+}
+
+// RenderHTML generates the HTML report string for a single scenario.
+func RenderHTML(result *runner.RunResult, cfg ReportConfig, env string) (string, error) {
+	data := MapResultToReportData(result, env, cfg.MaskFields, true)
+	return renderHTMLTemplate(data)
 }
 
 // SaveHTML saves the rendered HTML to the specified paths.

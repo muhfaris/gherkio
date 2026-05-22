@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/muhfaris/gherkio/internal/model"
 	"github.com/muhfaris/gherkio/internal/report"
@@ -166,6 +165,49 @@ func handleReport(result *runner.RunResult, projectDir string, env string, repor
 	}
 }
 
+func handleSuiteReport(results []*runner.RunResult, projectDir string, env string, reportCfg *report.ReportConfig) {
+	if reportCfg == nil || len(results) == 0 {
+		return
+	}
+
+	// If only one result, use the single-scenario path
+	if len(results) == 1 {
+		handleReport(results[0], projectDir, env, reportCfg)
+		return
+	}
+
+	formats := strings.Split(reportCfg.Format, ",")
+	for _, format := range formats {
+		format = strings.TrimSpace(format)
+		switch format {
+		case "html":
+			html, err := report.RenderHTMLSuite(results, *reportCfg, env)
+			if err != nil {
+				fmt.Printf("Failed to render HTML suite report: %v\n", err)
+				continue
+			}
+			savedPath, err := report.SaveHTML(html, projectDir, reportCfg.Path)
+			if err != nil {
+				fmt.Printf("Failed to save HTML suite report: %v\n", err)
+				continue
+			}
+			fmt.Printf("📄 HTML Report saved: %s\n", savedPath)
+		case "json":
+			jsonStr, err := report.RenderJSONSuite(results, *reportCfg, env)
+			if err != nil {
+				fmt.Printf("Failed to render JSON suite report: %v\n", err)
+				continue
+			}
+			savedPath, err := report.SaveJSON(jsonStr, projectDir, reportCfg.Path)
+			if err != nil {
+				fmt.Printf("Failed to save JSON suite report: %v\n", err)
+				continue
+			}
+			fmt.Printf("📄 JSON Report saved: %s\n", savedPath)
+		}
+	}
+}
+
 func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string) error {
 	cfg := runner.RunConfig{
 		TestPath:   testPath,
@@ -213,10 +255,8 @@ func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *repor
 
 	fmt.Printf("Running %d test(s)...\n\n", len(files))
 
-	// For multiple tests, we technically need an aggregate report.
-	// For Phase 1 RFC, let's just create an aggregate RunResult and generate a single report.
-	var allSteps []runner.StepResult
-	totalDuration := int64(0)
+	// Collect individual results for suite-level reporting
+	var results []*runner.RunResult
 
 	for i, file := range files {
 		relPath, _ := filepath.Rel(projectDir, file)
@@ -234,12 +274,22 @@ func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *repor
 			fmt.Printf("[%d/%d] ✗ %s — error: %v\n", i+1, len(files), relPath, err)
 			anyFailed = true
 			totalFail++
-			// Create a pseudo-step for the failed file execution
-			failedStep := runner.StepResult{
-				Original: model.Step{Request: model.Request{URL: relPath}},
-				Error:    err.Error(),
+			// Create a pseudo-result for the failed file
+			failedResult := &runner.RunResult{
+				Scenario:  filepath.Base(relPath),
+				TestFile:  file,
+				Passed:    false,
+				TotalFail: 1,
+				Steps: []runner.StepResult{
+					{
+						Original:     model.Step{Request: model.Request{URL: relPath}},
+						ScenarioName: filepath.Base(relPath),
+						TestFile:     file,
+						Error:        err.Error(),
+					},
+				},
 			}
-			allSteps = append(allSteps, failedStep)
+			results = append(results, failedResult)
 			continue
 		}
 
@@ -251,8 +301,7 @@ func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *repor
 			anyFailed = true
 		}
 
-		allSteps = append(allSteps, result.Steps...)
-		totalDuration += result.Duration.Nanoseconds()
+		results = append(results, result)
 
 		if i < len(files)-1 {
 			fmt.Println()
@@ -272,17 +321,9 @@ func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *repor
 	fmt.Printf("%s %s — across %d scenario(s)\n", statusIcon, statusWord, len(files))
 	fmt.Printf("%d passed, %d failed, %d total assertions\n", totalPass, totalFail, total)
 
-	// Generate combined report
+	// Generate suite report (keeps scenarios grouped)
 	if reportCfg != nil {
-		combinedResult := &runner.RunResult{
-			Scenario:  "Test Suite Run",
-			Passed:    !anyFailed,
-			Steps:     allSteps,
-			TotalPass: totalPass,
-			TotalFail: totalFail,
-			Duration:  time.Duration(totalDuration),
-		}
-		handleReport(combinedResult, projectDir, env, reportCfg)
+		handleSuiteReport(results, projectDir, env, reportCfg)
 	}
 
 	if anyFailed {

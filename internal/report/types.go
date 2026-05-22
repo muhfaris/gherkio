@@ -1,10 +1,26 @@
 package report
 
 // ReportData represents the top-level data structure passed to the HTML template.
+// For single-scenario runs, Steps is populated and Scenarios is nil.
+// For multi-scenario runs, Scenarios is populated and Steps is nil.
 type ReportData struct {
 	ScenarioName  string
 	Environment   string
 	Timestamp     string
+	TotalDuration string
+	TotalSteps    int
+	PassCount     int
+	FailCount     int
+	PassPercent   float64
+	FailPercent   float64
+	Steps         []ReportStep     // populated for single-scenario runs
+	Scenarios     []ScenarioData   // populated for multi-scenario runs
+}
+
+// ScenarioData holds the report data for a single scenario within a suite run.
+type ScenarioData struct {
+	Name          string
+	TestFile      string
 	TotalDuration string
 	TotalSteps    int
 	PassCount     int

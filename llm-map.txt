@@ -189,6 +189,7 @@ type RunConfig struct {
 }
 type RunResult struct {
     Scenario  string
+    TestFile  string          // File path of the scenario
     Steps     []StepResult
     TotalPass int
     TotalFail int
@@ -198,6 +199,8 @@ type RunResult struct {
 
 // internal/runner/executor.go
 type StepResult struct {
+    ScenarioName string          // Scenario this step belongs to
+    TestFile     string          // File path of the scenario
     Request    *RequestInfo
     Response   *ResponseInfo
     Assertions []AssertionResult
@@ -434,11 +437,13 @@ Creates:
 ├── tests/
 │   └── example/
 │       └── login.yaml          # Example test to get started
-├── reports/
+├── reports/                    # ⚠️ Generated output — safe to .gitignore
 │   ├── latest/
 │   └── archive/
 └── schemas/
 ```
+
+**Note:** `.gherkio/reports/` contains generated reports (HTML, JSON) created at runtime by `gherkio run --report`. It is **safe to add to `.gitignore`** — it has no effect on `go test ./...` (all tests live under `internal/`). Deleting it won't break anything; reports are regenerated on the next `gherkio run --report`.
 
 After init, you can immediately run:
 ```bash
@@ -464,4 +469,10 @@ Gherkio supports generating standalone HTML reports for test runs.
 - **Trigger**: via CLI flag `--report html` or `--report json` or `.gherkio/config.yaml` `reports.format: html,json`.
 - **Output**: Saved to `.gherkio/reports/latest/report.html` and a timestamped directory.
 - **Features**: Includes masked payloads, copyable cURL commands, extracted Request IDs from headers, and inline timing assertion results.
+- **Multi-Scenario Grouping**: When running multiple test files (e.g. `gherkio run` with no args or a directory), each scenario is reported as a **separate group** in the report, with its own header, pass/fail stats, and grouped steps. The suite-level summary shows aggregate stats. Each `StepResult` carries `ScenarioName` and `TestFile` to enable this grouping.
+- **Report Types**:
+  - `internal/report/types.go` — `ReportData` (has both `Steps` for single-scenario and `Scenarios []ScenarioData` for multi-scenario), `ScenarioData`, `ReportStep`, `ReportAssertion`, `ReportConfig`
+  - `internal/report/html.go` — `RenderHTML()` for single, `RenderHTMLSuite()` for multi (calls `MapResultsToSuiteReportData()`), shared `renderHTMLTemplate()`
+  - `internal/report/json.go` — `RenderJSON()` for single, `RenderJSONSuite()` for multi
+  - `internal/report/template.html` — supports both modes via `{{if .Scenarios}}...{{else}}...{{end}}`
 - **Implementation**: Uses `html/template` with `//go:embed` to embed `assets/template/report.html` directly into the binary (no external dependencies). Housed in the `internal/report/` package.

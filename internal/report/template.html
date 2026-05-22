@@ -530,7 +530,161 @@
         <button class="toolbar-btn" onclick="toggleAll()">Expand all</button>
       </div>
 
-      <!-- ── Steps ── -->
+      <!-- ── Scenarios (multi-scenario) ── -->
+      {{if .Scenarios}}
+        {{range $sIdx, $scenario := .Scenarios}}
+        <!-- Scenario: {{$scenario.Name}} -->
+        <div class="scenario-block" style="margin-bottom: 24px;">
+          <!-- Scenario header -->
+          <div class="header" style="margin-bottom: 8px;">
+            <div class="header-top">
+              <span class="scenario-name" style="font-size: 16px;">{{$scenario.Name}}</span>
+              <span class="env-badge">{{$scenario.TestFile}}</span>
+            </div>
+            <div class="header-meta">
+              <span class="meta-item"><strong>Duration:</strong> {{$scenario.TotalDuration}}</span>
+              <span class="meta-item"><strong>Steps:</strong> {{$scenario.TotalSteps}}</span>
+              <span class="meta-item"><strong>Passed:</strong> {{$scenario.PassCount}}</span>
+              <span class="meta-item"><strong>Failed:</strong> {{$scenario.FailCount}}</span>
+            </div>
+          </div>
+          <!-- Scenario steps -->
+          <div class="steps" id="steps-{{$sIdx}}">
+            {{range $i, $step := $scenario.Steps}}
+        <div
+          class="step {{if not $step.Passed}}step-fail{{end}}"
+          id="step-s{{$sIdx}}-{{$i}}"
+        >
+          <!-- Step header -->
+          <div class="step-header" onclick="toggleStep('step-s{{$sIdx}}-{{$i}}')">
+            <span class="step-status"
+              >{{if $step.Passed}}✅{{else}}❌{{end}}</span
+            >
+            <span class="step-num">#{{add $i 1}}</span>
+            <span class="step-method method-{{$step.Method}}"
+              >{{$step.Method}}</span
+            >
+            <span class="step-url" title="{{$step.URL}}">{{$step.URL}}</span>
+
+            <div class="step-badges">
+              <!-- Status code -->
+              <span class="status-badge {{statusClass $step.StatusCode}}"
+                >{{$step.StatusCode}}</span
+              >
+
+              <!-- Response time -->
+              <span
+                class="badge {{if $step.TimingFailed}}timing-fail{{else}}timing-ok{{end}}"
+                title="Response time"
+              >
+                ⏱ {{$step.Duration}}
+              </span>
+
+              <!-- Request ID (copyable) -->
+              {{if $step.RequestID}}
+              <span
+                class="badge req-id"
+                onclick="copyText('{{$step.RequestID}}', event)"
+                title="Click to copy request ID"
+              >
+                🔑 {{$step.RequestID}}
+              </span>
+              {{end}}
+            </div>
+
+            <span class="step-chevron">▼</span>
+          </div>
+
+          <!-- Step body -->
+          <div class="step-body">
+            <!-- Response info -->
+            <div class="response-info">
+              <span style="font-size: 13px; color: var(--text-secondary)">
+                <strong style="color: var(--text)">{{$step.StatusCode}}</strong>
+                {{$step.StatusText}}
+              </span>
+            </div>
+
+            <!-- cURL command -->
+            <div class="section open" id="curl-s{{$sIdx}}-{{$i}}">
+              <div class="section-title" onclick="toggleSection('curl-s{{$sIdx}}-{{$i}}')">
+                <span class="section-chevron">▶</span> cURL command
+              </div>
+              <div class="section-content">
+                <div class="code-block-wrap">
+                  <pre class="code-block" id="curl-code-s{{$sIdx}}-{{$i}}">
+{{$step.CurlCommand}}</pre
+                  >
+                  <button class="copy-btn" onclick="copyEl('curl-code-s{{$sIdx}}-{{$i}}')">
+                    Copy
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Request body -->
+            {{if $step.RequestBody}}
+            <div class="section" id="req-s{{$sIdx}}-{{$i}}">
+              <div class="section-title" onclick="toggleSection('req-s{{$sIdx}}-{{$i}}')">
+                <span class="section-chevron">▶</span> Request body
+              </div>
+              <div class="section-content">
+                <pre class="code-block">{{$step.RequestBody}}</pre>
+              </div>
+            </div>
+            {{end}}
+
+            <!-- Response body -->
+            {{if $step.ResponseBody}}
+            <div class="section" id="res-s{{$sIdx}}-{{$i}}">
+              <div class="section-title" onclick="toggleSection('res-s{{$sIdx}}-{{$i}}')">
+                <span class="section-chevron">▶</span> Response body
+              </div>
+              <div class="section-content">
+                <pre class="code-block">{{$step.ResponseBody}}</pre>
+              </div>
+            </div>
+            {{end}}
+
+            <!-- Assertions -->
+            {{if $step.Assertions}}
+            <div class="section open" id="assert-s{{$sIdx}}-{{$i}}">
+              <div
+                class="section-title"
+                onclick="toggleSection('assert-s{{$sIdx}}-{{$i}}')"
+              >
+                <span class="section-chevron">▶</span> Assertions ({{len
+                $step.Assertions}})
+              </div>
+              <div class="section-content">
+                <div class="assertions">
+                  {{range $step.Assertions}}
+                  <div class="assertion-item">
+                    <span
+                      class="assert-icon {{if .Passed}}assert-pass{{else}}assert-fail{{end}}"
+                    >
+                      {{if .Passed}}✓{{else}}✗{{end}}
+                    </span>
+                    <div>
+                      <div class="assert-label">{{.Label}}</div>
+                      {{if not .Passed}}
+                      <div class="assert-detail">{{.Detail}}</div>
+                      {{end}}
+                    </div>
+                  </div>
+                  {{end}}
+                </div>
+              </div>
+            </div>
+            {{end}}
+          </div>
+        </div>
+        {{end}}
+          </div>
+        </div>
+        {{end}}
+      {{else}}
+      <!-- ── Steps (single scenario) ── -->
       <div class="steps" id="steps">
         {{range $i, $step := .Steps}}
         <div
@@ -663,7 +817,7 @@
         </div>
         {{end}}
       </div>
-      <!-- /steps -->
+      {{end}}
     </div>
     <!-- /container -->
 
@@ -672,9 +826,9 @@
     <script>
       var allExpanded = false;
 
-      function toggleStep(i) {
-        var el = document.getElementById("step-" + i);
-        el.classList.toggle("open");
+      function toggleStep(id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.toggle("open");
       }
 
       function toggleSection(id) {
