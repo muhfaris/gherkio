@@ -6,14 +6,18 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
+	"github.com/muhfaris/gherkio/internal/model"
+	"github.com/muhfaris/gherkio/internal/report"
 	"github.com/muhfaris/gherkio/internal/runner"
 	"github.com/spf13/cobra"
 )
 
 var (
-	envName string
-	verbose bool
+	envName      string
+	verbose      bool
+	reportFormat string
 )
 
 // runCmd represents the gherkio run command.
@@ -34,14 +38,15 @@ Example:
   gherkio run tests/login.yaml
   gherkio run restful-api/       # Run all tests in restful-api/ directory
   gherkio run login.yaml --env staging
-  gherkio run login.yaml --verbose`,
+  gherkio run login.yaml --verbose
+  gherkio run login.yaml --report html`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		testPath := ""
 		if len(args) > 0 {
 			testPath = args[0]
 		}
-		return runTest(testPath, envName, verbose)
+		return runTest(testPath, envName, verbose, reportFormat)
 	},
 }
 
@@ -49,9 +54,10 @@ func init() {
 	rootCmd.AddCommand(runCmd)
 	runCmd.Flags().StringVarP(&envName, "env", "e", "local", "Environment to use (e.g. local, staging, production)")
 	runCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show full request/response payloads")
+	runCmd.Flags().StringVar(&reportFormat, "report", "", "Generate a report (format: html)")
 }
 
-func runTest(testPath, env string, verbose bool) error {
+func runTest(testPath, env string, verbose bool, reportFormat string) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("failed to get current directory: %w", err)
@@ -63,9 +69,41 @@ func runTest(testPath, env string, verbose bool) error {
 		return fmt.Errorf("not inside a Gherkio project: %w", err)
 	}
 
+	// Load Configuration
+	appCfg, err := runner.LoadConfig(projectDir)
+	if err != nil {
+		// Log but don't fail if config is broken/missing, fallback to defaults
+		fmt.Printf("Warning: failed to load config: %v\n", err)
+	}
+
+	// Merge CLI with Config for Report Format
+	if reportFormat == "" && appCfg != nil && appCfg.Reports.Format != "" {
+		reportFormat = appCfg.Reports.Format
+	}
+
+	maskFields := runner.GetDefaultSensitiveFields()
+	if appCfg != nil && appCfg.Security.Mask.Enabled && len(appCfg.Security.Mask.Fields) > 0 {
+		maskFields = appCfg.Security.Mask.Fields
+	}
+
+	// Build common report configuration
+	var reportCfg *report.ReportConfig
+	if reportFormat != "" {
+		reportCfg = &report.ReportConfig{
+			Format:        reportFormat,
+			Path:          "",
+			MaskSensitive: true,
+			MaskFields:    maskFields,
+		}
+		if appCfg != nil {
+			reportCfg.Path = appCfg.Reports.Path
+			reportCfg.MaskSensitive = appCfg.Reports.MaskSensitive
+		}
+	}
+
 	// No test path or directory: run all tests
 	if testPath == "" {
-		return runAllTests(projectDir, env, verbose)
+		return runAllTests(projectDir, env, verbose, reportCfg, maskFields)
 	}
 
 	// Check if the path is a directory
@@ -77,7 +115,7 @@ func runTest(testPath, env string, verbose bool) error {
 		if altInfo, altErr := os.Stat(altPath); altErr == nil && altInfo.IsDir() {
 			testDir = altPath
 		}
-		return runAllInDir(testDir, projectDir, env, verbose)
+		return runAllInDir(testDir, projectDir, env, verbose, reportCfg, maskFields)
 	}
 
 	// Resolve single test file path
@@ -86,15 +124,36 @@ func runTest(testPath, env string, verbose bool) error {
 		return fmt.Errorf("test file not found: %w", err)
 	}
 
-	return runSingleTest(fullPath, projectDir, env, verbose)
+	return runSingleTest(fullPath, projectDir, env, verbose, reportCfg, maskFields)
 }
 
-func runSingleTest(testPath, projectDir, env string, verbose bool) error {
+func handleReport(result *runner.RunResult, projectDir string, env string, reportCfg *report.ReportConfig) {
+	if reportCfg == nil {
+		return
+	}
+
+	if reportCfg.Format == "html" {
+		html, err := report.RenderHTML(result, *reportCfg, env)
+		if err != nil {
+			fmt.Printf("Failed to render HTML report: %v\n", err)
+			return
+		}
+		savedPath, err := report.SaveHTML(html, projectDir, reportCfg.Path)
+		if err != nil {
+			fmt.Printf("Failed to save HTML report: %v\n", err)
+			return
+		}
+		fmt.Printf("📄 Report saved: %s\n", savedPath)
+	}
+}
+
+func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string) error {
 	cfg := runner.RunConfig{
 		TestPath:   testPath,
 		EnvName:    env,
 		ProjectDir: projectDir,
 		Verbose:    verbose,
+		MaskFields: maskFields,
 	}
 
 	result, err := runner.Run(cfg)
@@ -104,6 +163,8 @@ func runSingleTest(testPath, projectDir, env string, verbose bool) error {
 
 	runner.PrintResult(result, cfg.Verbose, cfg.MaskFields)
 
+	handleReport(result, projectDir, env, reportCfg)
+
 	if !result.Passed {
 		os.Exit(1)
 	}
@@ -111,12 +172,12 @@ func runSingleTest(testPath, projectDir, env string, verbose bool) error {
 	return nil
 }
 
-func runAllTests(projectDir, env string, verbose bool) error {
+func runAllTests(projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string) error {
 	testsDir := filepath.Join(projectDir, ".gherkio", "tests")
-	return runAllInDir(testsDir, projectDir, env, verbose)
+	return runAllInDir(testsDir, projectDir, env, verbose, reportCfg, maskFields)
 }
 
-func runAllInDir(testDir, projectDir, env string, verbose bool) error {
+func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string) error {
 	files, err := discoverTestFiles(testDir)
 	if err != nil {
 		return fmt.Errorf("failed to discover test files: %w", err)
@@ -133,6 +194,11 @@ func runAllInDir(testDir, projectDir, env string, verbose bool) error {
 
 	fmt.Printf("Running %d test(s)...\n\n", len(files))
 
+	// For multiple tests, we technically need an aggregate report.
+	// For Phase 1 RFC, let's just create an aggregate RunResult and generate a single report.
+	var allSteps []runner.StepResult
+	totalDuration := int64(0)
+
 	for i, file := range files {
 		relPath, _ := filepath.Rel(projectDir, file)
 
@@ -141,6 +207,7 @@ func runAllInDir(testDir, projectDir, env string, verbose bool) error {
 			EnvName:    env,
 			ProjectDir: projectDir,
 			Verbose:    verbose,
+			MaskFields: maskFields,
 		}
 
 		result, err := runner.Run(cfg)
@@ -148,6 +215,12 @@ func runAllInDir(testDir, projectDir, env string, verbose bool) error {
 			fmt.Printf("[%d/%d] ✗ %s — error: %v\n", i+1, len(files), relPath, err)
 			anyFailed = true
 			totalFail++
+			// Create a pseudo-step for the failed file execution
+			failedStep := runner.StepResult{
+				Original: model.Step{Request: model.Request{URL: relPath}},
+				Error:    err.Error(),
+			}
+			allSteps = append(allSteps, failedStep)
 			continue
 		}
 
@@ -158,6 +231,9 @@ func runAllInDir(testDir, projectDir, env string, verbose bool) error {
 		if !result.Passed {
 			anyFailed = true
 		}
+
+		allSteps = append(allSteps, result.Steps...)
+		totalDuration += result.Duration.Nanoseconds()
 
 		if i < len(files)-1 {
 			fmt.Println()
@@ -176,6 +252,19 @@ func runAllInDir(testDir, projectDir, env string, verbose bool) error {
 	fmt.Println(strings.Repeat("═", 40))
 	fmt.Printf("%s %s — across %d scenario(s)\n", statusIcon, statusWord, len(files))
 	fmt.Printf("%d passed, %d failed, %d total assertions\n", totalPass, totalFail, total)
+
+	// Generate combined report
+	if reportCfg != nil {
+		combinedResult := &runner.RunResult{
+			Scenario:  "Test Suite Run",
+			Passed:    !anyFailed,
+			Steps:     allSteps,
+			TotalPass: totalPass,
+			TotalFail: totalFail,
+			Duration:  time.Duration(totalDuration),
+		}
+		handleReport(combinedResult, projectDir, env, reportCfg)
+	}
 
 	if anyFailed {
 		os.Exit(1)

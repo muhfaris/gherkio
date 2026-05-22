@@ -103,7 +103,6 @@ func evaluateMatcher(path string, expected string, actual interface{}) (Assertio
 			Reason:   reason,
 		}, true
 
-
 	case "number":
 		passed := false
 		reason := ""
@@ -326,12 +325,12 @@ func formatActual(actual interface{}) string {
 
 // isMatcherKeyword fast checks if the expected string is formatted as a matcher
 func isMatcherKeyword(expected string) bool {
-    parts := strings.SplitN(expected, " ", 2)
-    switch parts[0] {
-    case "exists", "uuid", "email", "datetime", "uri", "number", "string", "boolean", "array", "object", "null", "true", "false":
-        return true
-    case "contains", "startsWith", "endsWith", "regex":
-        return len(parts) == 2
-    }
-    return false
+	parts := strings.SplitN(expected, " ", 2)
+	switch parts[0] {
+	case "exists", "uuid", "email", "datetime", "uri", "number", "string", "boolean", "array", "object", "null", "true", "false":
+		return true
+	case "contains", "startsWith", "endsWith", "regex":
+		return len(parts) == 2
+	}
+	return false
 }

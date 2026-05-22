@@ -57,6 +57,11 @@ gherkio/
 │   ├── model/                       # Data model / YAML structs
 │   │   ├── test.go                  # TestFile, Step, Request, Expect
 │   │   └── environment.go           # Environment, Service
+    ├── report/                  # HTML/JSON reporting engine
+│   │   ├── html.go              # HTML rendering logic
+│   │   ├── helpers.go           # cURL generation, RequestID extraction
+│   │   ├── template.html        # Embedded HTML template
+│   │   └── types.go             # Report structs
 │   └── runner/                      # Execution engine
 │       ├── runner.go                # Orchestrator: load → execute → assert
 │       ├── executor.go              # HTTP client, JWT decoder, path resolver, assertions
@@ -149,6 +154,16 @@ type Expect struct {
     Status int                    // Expected HTTP status code
     Extra  map[string]interface{} // Everything else (path → matcher)
 }
+
+// internal/model/config.go
+type Config struct {
+    Project      ProjectConfig
+    Environments EnvConfig
+    Tests        TestsConfig
+    Security     SecurityConfig
+    Reports      ReportsConfig
+}
+
 
 // internal/model/environment.go
 type Environment struct {
@@ -348,6 +363,7 @@ gherkio run <test-file>                       # Execute a single test scenario
 gherkio run <directory>/                      # Run all tests in a subdirectory
 gherkio run <test-file> --env <environment>   # Run with specific environment
 gherkio run <test-file> --verbose             # Show full request/response payloads
+gherkio run <test-file> --report html         # Generate HTML report
 gherkio run <test-file> -v                    # Shorthand for --verbose
 ```
 
@@ -370,7 +386,7 @@ Project root detection: walks up from cwd looking for `.gherkio/` directory.
 - ✅ Timing assertions (`timing: { max: 500ms }`)
 - ✅ Scenario Composition / use-steps (Phase 1 MVP: recursion, merging, depth check)
 - ✅ CLI commands (init, run)
-- ⏳ Reporting (HTML, JSON) — planned but not MVP
+- ✅ HTML Reporting (Phase 1)
 - ✅ Schema Assertions (Phase 1)
 - ⏳ Capability system — future
 - ⏳ Plugin system — future
@@ -439,3 +455,10 @@ go test ./...                           # Run Go unit tests (when they exist)
 ```
 Collection matchers (`count()`, `all()`) are implemented in `evaluateAssertion()` in `executor.go`, which calls `evaluateMatcher()` for each element internally.
 
+
+### 11. HTML Reporting
+Gherkio supports generating standalone HTML reports for test runs.
+- **Trigger**: via CLI flag `--report html` or `.gherkio/config.yaml` `reports.format: html`.
+- **Output**: Saved to `.gherkio/reports/latest/report.html` and a timestamped directory.
+- **Features**: Includes masked payloads, copyable cURL commands, extracted Request IDs from headers, and inline timing assertion results.
+- **Implementation**: Uses `html/template` with `//go:embed` to embed `assets/template/report.html` directly into the binary (no external dependencies). Housed in the `internal/report/` package.

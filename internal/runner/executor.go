@@ -1,10 +1,10 @@
 package runner
 
 import (
-	"github.com/muhfaris/gherkio/internal/model"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/muhfaris/gherkio/internal/model"
 	"io"
 	"net/http"
 	"sort"
@@ -155,7 +155,7 @@ func evaluateTiming(actual time.Duration, maxStr string) AssertionResult {
 	return AssertionResult{
 		Path:     "timing.max",
 		Expected: maxStr,
-		Actual:   formatDuration(actual),
+		Actual:   FormatDuration(actual),
 		Passed:   passed,
 	}
 }
@@ -420,7 +420,6 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 			Reason:   failedReason,
 		}
 	}
-
 
 	// JWT assertions
 	if strings.HasPrefix(path, "jwt.") {

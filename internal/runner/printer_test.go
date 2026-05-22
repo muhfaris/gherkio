@@ -3,8 +3,8 @@ package runner
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"flag"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -326,11 +326,11 @@ func TestMaskSensitiveData(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := maskSensitiveData(tt.data, tt.fields)
+			got := MaskSensitiveData(tt.data, tt.fields)
 			gotStr := toString(got)
 			wantStr := toString(tt.want)
 			if gotStr != wantStr {
-				t.Errorf("maskSensitiveData() = %s, want %s", gotStr, wantStr)
+				t.Errorf("MaskSensitiveData() = %s, want %s", gotStr, wantStr)
 			}
 		})
 	}
@@ -396,9 +396,9 @@ func TestFormatRequestBody(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := formatRequestBody(tt.body, tt.maskFields)
+			got := FormatRequestBody(tt.body, tt.maskFields)
 			if got != tt.want {
-				t.Errorf("formatRequestBody() = %q, want %q", got, tt.want)
+				t.Errorf("FormatRequestBody() = %q, want %q", got, tt.want)
 			}
 		})
 	}
@@ -418,9 +418,9 @@ func TestFormatDuration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {
-			got := formatDuration(tt.d)
+			got := FormatDuration(tt.d)
 			if got != tt.want {
-				t.Errorf("formatDuration(%v) = %q, want %q", tt.d, got, tt.want)
+				t.Errorf("FormatDuration(%v) = %q, want %q", tt.d, got, tt.want)
 			}
 		})
 	}
@@ -445,4 +445,3 @@ func TestStepSpacing(t *testing.T) {
 		})
 	}
 }
-

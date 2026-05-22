@@ -164,7 +164,6 @@ properties:
     type: string
 `
 
-
 // initCmd represents the gherkio init command.
 var initCmd = &cobra.Command{
 	Use:   "init",
