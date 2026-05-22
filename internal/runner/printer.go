@@ -24,7 +24,7 @@ var defaultSensitiveFields = []string{
 }
 
 // maskSensitiveData recursively walks parsed JSON and replaces sensitive field values.
-func maskSensitiveData(data interface{}, fields []string) interface{} {
+func MaskSensitiveData(data interface{}, fields []string) interface{} {
 	if len(fields) == 0 {
 		return data
 	}
@@ -36,14 +36,14 @@ func maskSensitiveData(data interface{}, fields []string) interface{} {
 			if isSensitiveField(key, fields) {
 				masked[key] = "***masked***"
 			} else {
-				masked[key] = maskSensitiveData(val, fields)
+				masked[key] = MaskSensitiveData(val, fields)
 			}
 		}
 		return masked
 	case []interface{}:
 		masked := make([]interface{}, len(v))
 		for i, val := range v {
-			masked[i] = maskSensitiveData(val, fields)
+			masked[i] = MaskSensitiveData(val, fields)
 		}
 		return masked
 	default:
@@ -85,11 +85,11 @@ func indentPrefix(indent string) string {
 }
 
 // formatRequestBody pretty-prints a JSON body, optionally masking sensitive fields.
-func formatRequestBody(body string, maskFields []string) string {
+func FormatRequestBody(body string, maskFields []string) string {
 	var parsed interface{}
 	if err := json.Unmarshal([]byte(body), &parsed); err == nil {
 		if len(maskFields) > 0 {
-			parsed = maskSensitiveData(parsed, maskFields)
+			parsed = MaskSensitiveData(parsed, maskFields)
 		}
 		pretty, _ := json.MarshalIndent(parsed, "", "  ")
 		return string(pretty)
@@ -183,14 +183,14 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 			if step.Request != nil {
 				fmt.Printf("Request:\n%s %s\n", step.Request.Method, step.Request.URL)
 				if step.Request.Body != "" {
-					fmt.Printf("Body: %s\n", formatRequestBody(step.Request.Body, maskFields))
+					fmt.Printf("Body: %s\n", FormatRequestBody(step.Request.Body, maskFields))
 				}
 				fmt.Println()
 			}
 
 			// Response (always shown in verbose)
 			if step.Response != nil {
-				fmt.Printf("Response:\nStatus: %d\n\nBody:\n%s\n", step.Response.Status, formatRequestBody(step.Response.Body, maskFields))
+				fmt.Printf("Response:\nStatus: %d\n\nBody:\n%s\n", step.Response.Status, FormatRequestBody(step.Response.Body, maskFields))
 				fmt.Println()
 			}
 
@@ -310,7 +310,7 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 
 			// Show response body only on failure in summary mode
 			if !stepPassed && step.Response != nil {
-				fmt.Printf("\nResponse:\nStatus: %d\n\nBody:\n%s\n", step.Response.Status, formatRequestBody(step.Response.Body, maskFields))
+				fmt.Printf("\nResponse:\nStatus: %d\n\nBody:\n%s\n", step.Response.Status, FormatRequestBody(step.Response.Body, maskFields))
 			}
 
 			if step.Error != "" {
@@ -336,10 +336,10 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 	summary := fmt.Sprintf("%d passed, %d failed, %d total", result.TotalPass, result.TotalFail, total)
 	fmt.Printf("%s\n", summary)
 
-	fmt.Printf("Duration: %s\n", formatDuration(result.Duration))
+	fmt.Printf("Duration: %s\n", FormatDuration(result.Duration))
 	fmt.Println()
 }
-func formatDuration(d time.Duration) string {
+func FormatDuration(d time.Duration) string {
 	if d < time.Second {
 		return fmt.Sprintf("%dms", d.Milliseconds())
 	}
@@ -348,4 +348,9 @@ func formatDuration(d time.Duration) string {
 		return fmt.Sprintf("%.1fs", secs)
 	}
 	return d.Round(time.Second).String()
+}
+
+// GetDefaultSensitiveFields returns the default sensitive fields
+func GetDefaultSensitiveFields() []string {
+	return defaultSensitiveFields
 }

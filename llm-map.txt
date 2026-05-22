@@ -57,6 +57,11 @@ gherkio/
 │   ├── model/                       # Data model / YAML structs
 │   │   ├── test.go                  # TestFile, Step, Request, Expect
 │   │   └── environment.go           # Environment, Service
+    ├── report/                  # HTML/JSON reporting engine
+│   │   ├── html.go              # HTML rendering logic
+│   │   ├── helpers.go           # cURL generation, RequestID extraction
+│   │   ├── template.html        # Embedded HTML template
+│   │   └── types.go             # Report structs
 │   └── runner/                      # Execution engine
 │       ├── runner.go                # Orchestrator: load → execute → assert
 │       ├── executor.go              # HTTP client, JWT decoder, path resolver, assertions
@@ -150,6 +155,16 @@ type Expect struct {
     Extra  map[string]interface{} // Everything else (path → matcher)
 }
 
+// internal/model/config.go
+type Config struct {
+    Project      ProjectConfig
+    Environments EnvConfig
+    Tests        TestsConfig
+    Security     SecurityConfig
+    Reports      ReportsConfig
+}
+
+
 // internal/model/environment.go
 type Environment struct {
     BaseURL  string
@@ -174,6 +189,7 @@ type RunConfig struct {
 }
 type RunResult struct {
     Scenario  string
+    TestFile  string          // File path of the scenario
     Steps     []StepResult
     TotalPass int
     TotalFail int
@@ -183,6 +199,8 @@ type RunResult struct {
 
 // internal/runner/executor.go
 type StepResult struct {
+    ScenarioName string          // Scenario this step belongs to
+    TestFile     string          // File path of the scenario
     Request    *RequestInfo
     Response   *ResponseInfo
     Assertions []AssertionResult
@@ -348,6 +366,10 @@ gherkio run <test-file>                       # Execute a single test scenario
 gherkio run <directory>/                      # Run all tests in a subdirectory
 gherkio run <test-file> --env <environment>   # Run with specific environment
 gherkio run <test-file> --verbose             # Show full request/response payloads
+gherkio run <test-file> --report html         # Generate HTML report
+gherkio run <test-file> --report json         # Generate JSON report
+gherkio run <test-file> --report html,json    # Generate both reports
+gherkio run <test-file> --report json --report-raw # Unmasked JSON
 gherkio run <test-file> -v                    # Shorthand for --verbose
 ```
 
@@ -370,7 +392,7 @@ Project root detection: walks up from cwd looking for `.gherkio/` directory.
 - ✅ Timing assertions (`timing: { max: 500ms }`)
 - ✅ Scenario Composition / use-steps (Phase 1 MVP: recursion, merging, depth check)
 - ✅ CLI commands (init, run)
-- ⏳ Reporting (HTML, JSON) — planned but not MVP
+- ✅ HTML & JSON Reporting (Phase 1 & 2)
 - ✅ Schema Assertions (Phase 1)
 - ⏳ Capability system — future
 - ⏳ Plugin system — future
@@ -415,11 +437,13 @@ Creates:
 ├── tests/
 │   └── example/
 │       └── login.yaml          # Example test to get started
-├── reports/
+├── reports/                    # ⚠️ Generated output — safe to .gitignore
 │   ├── latest/
 │   └── archive/
 └── schemas/
 ```
+
+**Note:** `.gherkio/reports/` contains generated reports (HTML, JSON) created at runtime by `gherkio run --report`. It is **safe to add to `.gitignore`** — it has no effect on `go test ./...` (all tests live under `internal/`). Deleting it won't break anything; reports are regenerated on the next `gherkio run --report`.
 
 After init, you can immediately run:
 ```bash
@@ -439,3 +463,16 @@ go test ./...                           # Run Go unit tests (when they exist)
 ```
 Collection matchers (`count()`, `all()`) are implemented in `evaluateAssertion()` in `executor.go`, which calls `evaluateMatcher()` for each element internally.
 
+
+### 11. HTML & JSON Reporting
+Gherkio supports generating standalone HTML reports for test runs.
+- **Trigger**: via CLI flag `--report html` or `--report json` or `.gherkio/config.yaml` `reports.format: html,json`.
+- **Output**: Saved to `.gherkio/reports/latest/report.html` and a timestamped directory.
+- **Features**: Includes masked payloads, copyable cURL commands, extracted Request IDs from headers, and inline timing assertion results.
+- **Multi-Scenario Grouping**: When running multiple test files (e.g. `gherkio run` with no args or a directory), each scenario is reported as a **separate group** in the report, with its own header, pass/fail stats, and grouped steps. The suite-level summary shows aggregate stats. Each `StepResult` carries `ScenarioName` and `TestFile` to enable this grouping.
+- **Report Types**:
+  - `internal/report/types.go` — `ReportData` (has both `Steps` for single-scenario and `Scenarios []ScenarioData` for multi-scenario), `ScenarioData`, `ReportStep`, `ReportAssertion`, `ReportConfig`
+  - `internal/report/html.go` — `RenderHTML()` for single, `RenderHTMLSuite()` for multi (calls `MapResultsToSuiteReportData()`), shared `renderHTMLTemplate()`
+  - `internal/report/json.go` — `RenderJSON()` for single, `RenderJSONSuite()` for multi
+  - `internal/report/template.html` — supports both modes via `{{if .Scenarios}}...{{else}}...{{end}}`
+- **Implementation**: Uses `html/template` with `//go:embed` to embed `assets/template/report.html` directly into the binary (no external dependencies). Housed in the `internal/report/` package.

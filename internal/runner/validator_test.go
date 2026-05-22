@@ -6,27 +6,27 @@ import (
 	"github.com/muhfaris/gherkio/internal/model"
 )
 
-func ptrInt(i int) *int             { return &i }
-func ptrFloat(f float64) *float64   { return &f }
+func ptrInt(i int) *int           { return &i }
+func ptrFloat(f float64) *float64 { return &f }
 
 func TestValidateSchema(t *testing.T) {
 	tests := []struct {
-		name       string
-		data       interface{}
-		schema     *model.Schema
+		name           string
+		data           interface{}
+		schema         *model.Schema
 		wantViolations int
 	}{
 		{
-			name: "empty schema matches anything",
-			data: map[string]interface{}{"foo": "bar"},
-			schema: &model.Schema{},
+			name:           "empty schema matches anything",
+			data:           map[string]interface{}{"foo": "bar"},
+			schema:         &model.Schema{},
 			wantViolations: 0,
 		},
 		{
 			name: "valid simple object",
 			data: map[string]interface{}{"id": 1, "name": "Alice"},
 			schema: &model.Schema{
-				Type: "object",
+				Type:     "object",
 				Required: []string{"id", "name"},
 				Properties: map[string]*model.Schema{
 					"id":   {Type: "integer"},
@@ -39,7 +39,7 @@ func TestValidateSchema(t *testing.T) {
 			name: "missing required field",
 			data: map[string]interface{}{"name": "Alice"},
 			schema: &model.Schema{
-				Type: "object",
+				Type:     "object",
 				Required: []string{"id", "name"},
 			},
 			wantViolations: 1, // "id" is missing
@@ -77,7 +77,7 @@ func TestValidateSchema(t *testing.T) {
 			name: "valid format email",
 			data: "test@example.com",
 			schema: &model.Schema{
-				Type: "string",
+				Type:   "string",
 				Format: "email",
 			},
 			wantViolations: 0,
@@ -86,7 +86,7 @@ func TestValidateSchema(t *testing.T) {
 			name: "invalid format email",
 			data: "not-an-email",
 			schema: &model.Schema{
-				Type: "string",
+				Type:   "string",
 				Format: "email",
 			},
 			wantViolations: 1,
@@ -95,7 +95,7 @@ func TestValidateSchema(t *testing.T) {
 			name: "valid array items",
 			data: []interface{}{"apple", "banana"},
 			schema: &model.Schema{
-				Type: "array",
+				Type:  "array",
 				Items: &model.Schema{Type: "string"},
 			},
 			wantViolations: 0,
@@ -104,7 +104,7 @@ func TestValidateSchema(t *testing.T) {
 			name: "invalid array items",
 			data: []interface{}{"apple", 42},
 			schema: &model.Schema{
-				Type: "array",
+				Type:  "array",
 				Items: &model.Schema{Type: "string"},
 			},
 			wantViolations: 1, // 42 is not a string
@@ -113,7 +113,7 @@ func TestValidateSchema(t *testing.T) {
 			name: "array constraints min/max",
 			data: []interface{}{"apple", "banana"},
 			schema: &model.Schema{
-				Type: "array",
+				Type:     "array",
 				MinItems: ptrInt(1),
 				MaxItems: ptrInt(2),
 			},
@@ -123,7 +123,7 @@ func TestValidateSchema(t *testing.T) {
 			name: "array constraints max exceeded",
 			data: []interface{}{"apple", "banana", "cherry"},
 			schema: &model.Schema{
-				Type: "array",
+				Type:     "array",
 				MaxItems: ptrInt(2),
 			},
 			wantViolations: 1,
@@ -132,7 +132,7 @@ func TestValidateSchema(t *testing.T) {
 			name: "string constraints pattern",
 			data: "A123",
 			schema: &model.Schema{
-				Type: "string",
+				Type:    "string",
 				Pattern: "^[A-Z][0-9]{3}$",
 			},
 			wantViolations: 0,
@@ -141,7 +141,7 @@ func TestValidateSchema(t *testing.T) {
 			name: "string constraints length",
 			data: "abcd",
 			schema: &model.Schema{
-				Type: "string",
+				Type:      "string",
 				MinLength: ptrInt(3),
 				MaxLength: ptrInt(5),
 			},
@@ -151,7 +151,7 @@ func TestValidateSchema(t *testing.T) {
 			name: "numeric constraints",
 			data: 10,
 			schema: &model.Schema{
-				Type: "integer",
+				Type:    "integer",
 				Minimum: ptrFloat(5),
 				Maximum: ptrFloat(15),
 			},
@@ -161,7 +161,7 @@ func TestValidateSchema(t *testing.T) {
 			name: "numeric constraint failure",
 			data: 20,
 			schema: &model.Schema{
-				Type: "integer",
+				Type:    "integer",
 				Maximum: ptrFloat(15),
 			},
 			wantViolations: 1,
@@ -170,7 +170,7 @@ func TestValidateSchema(t *testing.T) {
 			name: "nullable passes with nil",
 			data: nil,
 			schema: &model.Schema{
-				Type: "string",
+				Type:     "string",
 				Nullable: true,
 			},
 			wantViolations: 0,
@@ -179,7 +179,7 @@ func TestValidateSchema(t *testing.T) {
 			name: "not nullable fails with nil",
 			data: nil,
 			schema: &model.Schema{
-				Type: "string",
+				Type:     "string",
 				Nullable: false,
 			},
 			wantViolations: 1,

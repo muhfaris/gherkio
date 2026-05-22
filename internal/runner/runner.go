@@ -23,6 +23,7 @@ type RunConfig struct {
 // RunResult holds the overall execution result.
 type RunResult struct {
 	Scenario  string        `json:"scenario"`
+	TestFile  string        `json:"testFile,omitempty"`
 	Steps     []StepResult  `json:"steps"`
 	TotalPass int           `json:"totalPass"`
 	TotalFail int           `json:"totalFail"`
@@ -55,11 +56,17 @@ func Run(cfg RunConfig) (*RunResult, error) {
 	currentDir := filepath.Dir(cfg.TestPath)
 	steps, passes, fails, passed := executeSteps(testFile.Steps, env, vars, cfg.ProjectDir, currentDir, 0)
 
+	// Propagate scenario name and test file path to each step result
+	for i := range steps {
+		steps[i].ScenarioName = testFile.Scenario
+		steps[i].TestFile = cfg.TestPath
+	}
+
 	result.Steps = steps
 	result.TotalPass = passes
 	result.TotalFail = fails
 	result.Passed = passed
-
+	result.TestFile = cfg.TestPath
 	result.Duration = time.Since(start)
 
 	return result, nil

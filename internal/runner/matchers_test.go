@@ -172,8 +172,8 @@ func TestFormatActual(t *testing.T) {
 
 func TestIsMatcherKeyword(t *testing.T) {
 	tests := []struct {
-		input  string
-		want   bool
+		input string
+		want  bool
 	}{
 		{"exists", true},
 		{"uuid", true},
@@ -191,10 +191,10 @@ func TestIsMatcherKeyword(t *testing.T) {
 		{"startsWith prefix", true},
 		{"endsWith suffix", true},
 		{"regex pattern", true},
-		{"contains", false},      // missing argument
-		{"startsWith", false},    // missing argument
-		{"endsWith", false},      // missing argument
-		{"regex", false},         // missing argument
+		{"contains", false},   // missing argument
+		{"startsWith", false}, // missing argument
+		{"endsWith", false},   // missing argument
+		{"regex", false},      // missing argument
 		{"unknown", false},
 		{"", false},
 		{"foo bar", false},

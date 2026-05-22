@@ -60,11 +60,13 @@ This creates the `.gherkio/` directory structure:
 ├── tests/
 │   └── example/
 │       └── login.yaml         # Example test
-├── reports/
+├── reports/                   # Generated output — safe to .gitignore
 │   ├── latest/
 │   └── archive/
 └── schemas/
 ```
+
+> **💡 Tip:** `.gherkio/reports/` contains runtime-generated HTML/JSON reports. It's **safe to add to `.gitignore`** — it doesn't affect `go test ./...` or any project functionality. Reports are regenerated on the next `gherkio run --report`.
 
 ### 2. Run the example test
 

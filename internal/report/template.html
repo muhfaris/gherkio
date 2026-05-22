@@ -1,0 +1,888 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>API Test Report — {{.ScenarioName}}</title>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --bg-secondary: #f7f7f5;
+        --bg-tertiary: #f0efec;
+        --text: #1a1a18;
+        --text-secondary: #5f5e5a;
+        --text-tertiary: #888780;
+        --border: rgba(0, 0, 0, 0.12);
+        --border-secondary: rgba(0, 0, 0, 0.2);
+        --pass-bg: #eaf3de;
+        --pass-text: #27500a;
+        --pass-border: #639922;
+        --fail-bg: #fcebeb;
+        --fail-text: #791f1f;
+        --fail-border: #e24b4a;
+        --badge-bg: #f1efe8;
+        --badge-text: #444441;
+        --warn-bg: #faeeda;
+        --warn-text: #633806;
+        --info-bg: #e6f1fb;
+        --info-text: #0c447c;
+        --code-bg: #f1efe8;
+        --radius: 8px;
+        --radius-lg: 12px;
+        --mono: "SF Mono", "Fira Code", "Cascadia Code", "Consolas", monospace;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1c1c1a;
+          --bg-secondary: #252523;
+          --bg-tertiary: #2c2c2a;
+          --text: #f0efec;
+          --text-secondary: #b4b2a9;
+          --text-tertiary: #888780;
+          --border: rgba(255, 255, 255, 0.1);
+          --border-secondary: rgba(255, 255, 255, 0.18);
+          --pass-bg: #173404;
+          --pass-text: #c0dd97;
+          --pass-border: #3b6d11;
+          --fail-bg: #501313;
+          --fail-text: #f7c1c1;
+          --fail-border: #a32d2d;
+          --badge-bg: #2c2c2a;
+          --badge-text: #d3d1c7;
+          --warn-bg: #412402;
+          --warn-text: #fac775;
+          --info-bg: #042c53;
+          --info-text: #b5d4f4;
+          --code-bg: #2c2c2a;
+        }
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--text);
+        background: var(--bg-tertiary);
+        padding: 24px 16px 48px;
+      }
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+      }
+
+      /* ── Header ── */
+      .header {
+        background: var(--bg);
+        border: 0.5px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 20px 24px;
+        margin-bottom: 16px;
+      }
+      .header-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .scenario-name {
+        font-size: 20px;
+        font-weight: 500;
+        color: var(--text);
+      }
+      .env-badge {
+        font-size: 12px;
+        font-weight: 500;
+        padding: 3px 10px;
+        border-radius: 20px;
+        background: var(--info-bg);
+        color: var(--info-text);
+        border: 0.5px solid currentColor;
+        opacity: 0.9;
+      }
+      .header-meta {
+        display: flex;
+        gap: 20px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+      }
+      .meta-item {
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+      .meta-item strong {
+        color: var(--text);
+        font-weight: 500;
+      }
+
+      /* ── Summary bar ── */
+      .summary {
+        background: var(--bg);
+        border: 0.5px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 16px 24px;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      .summary-bar {
+        flex: 1;
+        min-width: 200px;
+        height: 8px;
+        border-radius: 4px;
+        overflow: hidden;
+        display: flex;
+      }
+      .bar-pass {
+        background: var(--pass-border);
+      }
+      .bar-fail {
+        background: var(--fail-border);
+      }
+      .summary-stats {
+        display: flex;
+        gap: 16px;
+      }
+      .stat {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .stat-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .stat-dot.pass {
+        background: var(--pass-border);
+      }
+      .stat-dot.fail {
+        background: var(--fail-border);
+      }
+      .stat-dot.total {
+        background: var(--text-tertiary);
+      }
+
+      /* ── Steps ── */
+      .steps {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .step {
+        background: var(--bg);
+        border: 0.5px solid var(--border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+      }
+      .step.step-fail {
+        border-color: var(--fail-border);
+      }
+      .step-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        cursor: pointer;
+        user-select: none;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .step-header:hover {
+        background: var(--bg-secondary);
+      }
+      .step-status {
+        font-size: 16px;
+        flex-shrink: 0;
+      }
+      .step-num {
+        font-size: 12px;
+        color: var(--text-tertiary);
+        font-weight: 500;
+        min-width: 28px;
+      }
+      .step-method {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 7px;
+        border-radius: 4px;
+        font-family: var(--mono);
+        flex-shrink: 0;
+      }
+      .method-GET {
+        background: var(--info-bg);
+        color: var(--info-text);
+      }
+      .method-POST {
+        background: var(--pass-bg);
+        color: var(--pass-text);
+      }
+      .method-PUT {
+        background: var(--warn-bg);
+        color: var(--warn-text);
+      }
+      .method-PATCH {
+        background: var(--warn-bg);
+        color: var(--warn-text);
+      }
+      .method-DELETE {
+        background: var(--fail-bg);
+        color: var(--fail-text);
+      }
+      .step-url {
+        font-size: 13px;
+        font-family: var(--mono);
+        color: var(--text);
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .step-badges {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-shrink: 0;
+        flex-wrap: wrap;
+      }
+      .badge {
+        font-size: 12px;
+        padding: 2px 8px;
+        border-radius: 20px;
+        border: 0.5px solid var(--border);
+        background: var(--badge-bg);
+        color: var(--badge-text);
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+        cursor: default;
+      }
+      .badge.timing-ok {
+        background: var(--badge-bg);
+        color: var(--badge-text);
+      }
+      .badge.timing-fail {
+        background: var(--fail-bg);
+        color: var(--fail-text);
+        border-color: var(--fail-border);
+      }
+      .badge.req-id {
+        cursor: pointer;
+      }
+      .badge.req-id:hover {
+        background: var(--info-bg);
+        color: var(--info-text);
+      }
+      .step-chevron {
+        font-size: 12px;
+        color: var(--text-tertiary);
+        transition: transform 0.2s;
+        margin-left: auto;
+      }
+      .step.open .step-chevron {
+        transform: rotate(180deg);
+      }
+
+      /* ── Step body ── */
+      .step-body {
+        display: none;
+        border-top: 0.5px solid var(--border);
+        padding: 16px;
+      }
+      .step.open .step-body {
+        display: block;
+      }
+
+      /* ── Collapsible sections ── */
+      .section {
+        margin-bottom: 12px;
+      }
+      .section-title {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 0;
+        user-select: none;
+      }
+      .section-title:hover {
+        color: var(--text);
+      }
+      .section-chevron {
+        font-size: 10px;
+        transition: transform 0.2s;
+      }
+      .section.open .section-chevron {
+        transform: rotate(90deg);
+      }
+      .section-content {
+        display: none;
+      }
+      .section.open .section-content {
+        display: block;
+      }
+
+      /* ── Code blocks ── */
+      .code-block {
+        background: var(--code-bg);
+        border: 0.5px solid var(--border);
+        border-radius: var(--radius);
+        padding: 10px 12px;
+        font-family: var(--mono);
+        font-size: 12px;
+        overflow-x: auto;
+        white-space: pre;
+        color: var(--text);
+        margin-top: 6px;
+        position: relative;
+      }
+      .code-block-wrap {
+        position: relative;
+      }
+      .copy-btn {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        font-size: 11px;
+        padding: 3px 8px;
+        border-radius: 4px;
+        border: 0.5px solid var(--border-secondary);
+        background: var(--bg);
+        color: var(--text-secondary);
+        cursor: pointer;
+        opacity: 0.8;
+      }
+      .copy-btn:hover {
+        opacity: 1;
+        background: var(--bg-secondary);
+      }
+
+      /* ── Status code badge ── */
+      .status-badge {
+        font-size: 12px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-family: var(--mono);
+        flex-shrink: 0;
+      }
+      .status-2xx {
+        background: var(--pass-bg);
+        color: var(--pass-text);
+      }
+      .status-3xx {
+        background: var(--info-bg);
+        color: var(--info-text);
+      }
+      .status-4xx {
+        background: var(--warn-bg);
+        color: var(--warn-text);
+      }
+      .status-5xx {
+        background: var(--fail-bg);
+        color: var(--fail-text);
+      }
+
+      /* ── Assertions ── */
+      .assertions {
+        margin-top: 8px;
+      }
+      .assertion-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 5px 0;
+        border-bottom: 0.5px solid var(--border);
+        font-size: 13px;
+      }
+      .assertion-item:last-child {
+        border-bottom: none;
+      }
+      .assert-icon {
+        flex-shrink: 0;
+        font-size: 14px;
+      }
+      .assert-pass {
+        color: var(--pass-border);
+      }
+      .assert-fail {
+        color: var(--fail-border);
+      }
+      .assert-label {
+        flex: 1;
+        color: var(--text);
+      }
+      .assert-detail {
+        font-size: 12px;
+        color: var(--fail-text);
+        font-family: var(--mono);
+        margin-top: 2px;
+      }
+
+      /* ── Response info row ── */
+      .response-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+      }
+
+      /* ── Toast ── */
+      #toast {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        background: var(--text);
+        color: var(--bg);
+        font-size: 13px;
+        padding: 8px 16px;
+        border-radius: var(--radius);
+        opacity: 0;
+        transition: opacity 0.2s;
+        pointer-events: none;
+        z-index: 999;
+      }
+      #toast.show {
+        opacity: 1;
+      }
+
+      /* ── Expand all ── */
+      .toolbar {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 8px;
+      }
+      .toolbar-btn {
+        font-size: 12px;
+        padding: 4px 12px;
+        border-radius: var(--radius);
+        border: 0.5px solid var(--border-secondary);
+        background: var(--bg);
+        color: var(--text-secondary);
+        cursor: pointer;
+      }
+      .toolbar-btn:hover {
+        background: var(--bg-secondary);
+        color: var(--text);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <!-- ── Header ── -->
+      <div class="header">
+        <div class="header-top">
+          <span class="scenario-name">{{.ScenarioName}}</span>
+          <span class="env-badge">{{.Environment}}</span>
+        </div>
+        <div class="header-meta">
+          <span class="meta-item"
+            ><strong>Started:</strong> {{.Timestamp}}</span
+          >
+          <span class="meta-item"
+            ><strong>Duration:</strong> {{.TotalDuration}}</span
+          >
+          <span class="meta-item"><strong>Steps:</strong> {{.TotalSteps}}</span>
+        </div>
+      </div>
+
+      <!-- ── Summary bar ── -->
+      <div class="summary">
+        <div class="summary-bar">
+          <div class="bar-pass" style="width: {{.PassPercent}}%"></div>
+          <div class="bar-fail" style="width: {{.FailPercent}}%"></div>
+        </div>
+        <div class="summary-stats">
+          <span class="stat"
+            ><span class="stat-dot pass"></span> {{.PassCount}} passed</span
+          >
+          <span class="stat"
+            ><span class="stat-dot fail"></span> {{.FailCount}} failed</span
+          >
+          <span class="stat"
+            ><span class="stat-dot total"></span> {{.TotalSteps}} total</span
+          >
+        </div>
+      </div>
+
+      <!-- ── Toolbar ── -->
+      <div class="toolbar">
+        <button class="toolbar-btn" onclick="toggleAll()">Expand all</button>
+      </div>
+
+      <!-- ── Scenarios (multi-scenario) ── -->
+      {{if .Scenarios}}
+        {{range $sIdx, $scenario := .Scenarios}}
+        <!-- Scenario: {{$scenario.Name}} -->
+        <div class="scenario-block" style="margin-bottom: 24px;">
+          <!-- Scenario header -->
+          <div class="header" style="margin-bottom: 8px;">
+            <div class="header-top">
+              <span class="scenario-name" style="font-size: 16px;">{{$scenario.Name}}</span>
+              <span class="env-badge">{{$scenario.TestFile}}</span>
+            </div>
+            <div class="header-meta">
+              <span class="meta-item"><strong>Duration:</strong> {{$scenario.TotalDuration}}</span>
+              <span class="meta-item"><strong>Steps:</strong> {{$scenario.TotalSteps}}</span>
+              <span class="meta-item"><strong>Passed:</strong> {{$scenario.PassCount}}</span>
+              <span class="meta-item"><strong>Failed:</strong> {{$scenario.FailCount}}</span>
+            </div>
+          </div>
+          <!-- Scenario steps -->
+          <div class="steps" id="steps-{{$sIdx}}">
+            {{range $i, $step := $scenario.Steps}}
+        <div
+          class="step {{if not $step.Passed}}step-fail{{end}}"
+          id="step-s{{$sIdx}}-{{$i}}"
+        >
+          <!-- Step header -->
+          <div class="step-header" onclick="toggleStep('step-s{{$sIdx}}-{{$i}}')">
+            <span class="step-status"
+              >{{if $step.Passed}}✅{{else}}❌{{end}}</span
+            >
+            <span class="step-num">#{{add $i 1}}</span>
+            <span class="step-method method-{{$step.Method}}"
+              >{{$step.Method}}</span
+            >
+            <span class="step-url" title="{{$step.URL}}">{{$step.URL}}</span>
+
+            <div class="step-badges">
+              <!-- Status code -->
+              <span class="status-badge {{statusClass $step.StatusCode}}"
+                >{{$step.StatusCode}}</span
+              >
+
+              <!-- Response time -->
+              <span
+                class="badge {{if $step.TimingFailed}}timing-fail{{else}}timing-ok{{end}}"
+                title="Response time"
+              >
+                ⏱ {{$step.Duration}}
+              </span>
+
+              <!-- Request ID (copyable) -->
+              {{if $step.RequestID}}
+              <span
+                class="badge req-id"
+                onclick="copyText('{{$step.RequestID}}', event)"
+                title="Click to copy request ID"
+              >
+                🔑 {{$step.RequestID}}
+              </span>
+              {{end}}
+            </div>
+
+            <span class="step-chevron">▼</span>
+          </div>
+
+          <!-- Step body -->
+          <div class="step-body">
+            <!-- Response info -->
+            <div class="response-info">
+              <span style="font-size: 13px; color: var(--text-secondary)">
+                <strong style="color: var(--text)">{{$step.StatusCode}}</strong>
+                {{$step.StatusText}}
+              </span>
+            </div>
+
+            <!-- cURL command -->
+            <div class="section open" id="curl-s{{$sIdx}}-{{$i}}">
+              <div class="section-title" onclick="toggleSection('curl-s{{$sIdx}}-{{$i}}')">
+                <span class="section-chevron">▶</span> cURL command
+              </div>
+              <div class="section-content">
+                <div class="code-block-wrap">
+                  <pre class="code-block" id="curl-code-s{{$sIdx}}-{{$i}}">
+{{$step.CurlCommand}}</pre
+                  >
+                  <button class="copy-btn" onclick="copyEl('curl-code-s{{$sIdx}}-{{$i}}')">
+                    Copy
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Request body -->
+            {{if $step.RequestBody}}
+            <div class="section" id="req-s{{$sIdx}}-{{$i}}">
+              <div class="section-title" onclick="toggleSection('req-s{{$sIdx}}-{{$i}}')">
+                <span class="section-chevron">▶</span> Request body
+              </div>
+              <div class="section-content">
+                <pre class="code-block">{{$step.RequestBody}}</pre>
+              </div>
+            </div>
+            {{end}}
+
+            <!-- Response body -->
+            {{if $step.ResponseBody}}
+            <div class="section" id="res-s{{$sIdx}}-{{$i}}">
+              <div class="section-title" onclick="toggleSection('res-s{{$sIdx}}-{{$i}}')">
+                <span class="section-chevron">▶</span> Response body
+              </div>
+              <div class="section-content">
+                <pre class="code-block">{{$step.ResponseBody}}</pre>
+              </div>
+            </div>
+            {{end}}
+
+            <!-- Assertions -->
+            {{if $step.Assertions}}
+            <div class="section open" id="assert-s{{$sIdx}}-{{$i}}">
+              <div
+                class="section-title"
+                onclick="toggleSection('assert-s{{$sIdx}}-{{$i}}')"
+              >
+                <span class="section-chevron">▶</span> Assertions ({{len
+                $step.Assertions}})
+              </div>
+              <div class="section-content">
+                <div class="assertions">
+                  {{range $step.Assertions}}
+                  <div class="assertion-item">
+                    <span
+                      class="assert-icon {{if .Passed}}assert-pass{{else}}assert-fail{{end}}"
+                    >
+                      {{if .Passed}}✓{{else}}✗{{end}}
+                    </span>
+                    <div>
+                      <div class="assert-label">{{.Label}}</div>
+                      {{if not .Passed}}
+                      <div class="assert-detail">{{.Detail}}</div>
+                      {{end}}
+                    </div>
+                  </div>
+                  {{end}}
+                </div>
+              </div>
+            </div>
+            {{end}}
+          </div>
+        </div>
+        {{end}}
+          </div>
+        </div>
+        {{end}}
+      {{else}}
+      <!-- ── Steps (single scenario) ── -->
+      <div class="steps" id="steps">
+        {{range $i, $step := .Steps}}
+        <div
+          class="step {{if not $step.Passed}}step-fail{{end}}"
+          id="step-{{$i}}"
+        >
+          <!-- Step header -->
+          <div class="step-header" onclick="toggleStep({{$i}})">
+            <span class="step-status"
+              >{{if $step.Passed}}✅{{else}}❌{{end}}</span
+            >
+            <span class="step-num">#{{add $i 1}}</span>
+            <span class="step-method method-{{$step.Method}}"
+              >{{$step.Method}}</span
+            >
+            <span class="step-url" title="{{$step.URL}}">{{$step.URL}}</span>
+
+            <div class="step-badges">
+              <!-- Status code -->
+              <span class="status-badge {{statusClass $step.StatusCode}}"
+                >{{$step.StatusCode}}</span
+              >
+
+              <!-- Response time -->
+              <span
+                class="badge {{if $step.TimingFailed}}timing-fail{{else}}timing-ok{{end}}"
+                title="Response time"
+              >
+                ⏱ {{$step.Duration}}
+              </span>
+
+              <!-- Request ID (copyable) -->
+              {{if $step.RequestID}}
+              <span
+                class="badge req-id"
+                onclick="copyText('{{$step.RequestID}}', event)"
+                title="Click to copy request ID"
+              >
+                🔑 {{$step.RequestID}}
+              </span>
+              {{end}}
+            </div>
+
+            <span class="step-chevron">▼</span>
+          </div>
+
+          <!-- Step body -->
+          <div class="step-body">
+            <!-- Response info -->
+            <div class="response-info">
+              <span style="font-size: 13px; color: var(--text-secondary)">
+                <strong style="color: var(--text)">{{$step.StatusCode}}</strong>
+                {{$step.StatusText}}
+              </span>
+            </div>
+
+            <!-- cURL command -->
+            <div class="section open" id="curl-{{$i}}">
+              <div class="section-title" onclick="toggleSection('curl-{{$i}}')">
+                <span class="section-chevron">▶</span> cURL command
+              </div>
+              <div class="section-content">
+                <div class="code-block-wrap">
+                  <pre class="code-block" id="curl-code-{{$i}}">
+{{$step.CurlCommand}}</pre
+                  >
+                  <button class="copy-btn" onclick="copyEl('curl-code-{{$i}}')">
+                    Copy
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Request body -->
+            {{if $step.RequestBody}}
+            <div class="section" id="req-{{$i}}">
+              <div class="section-title" onclick="toggleSection('req-{{$i}}')">
+                <span class="section-chevron">▶</span> Request body
+              </div>
+              <div class="section-content">
+                <pre class="code-block">{{$step.RequestBody}}</pre>
+              </div>
+            </div>
+            {{end}}
+
+            <!-- Response body -->
+            {{if $step.ResponseBody}}
+            <div class="section" id="res-{{$i}}">
+              <div class="section-title" onclick="toggleSection('res-{{$i}}')">
+                <span class="section-chevron">▶</span> Response body
+              </div>
+              <div class="section-content">
+                <pre class="code-block">{{$step.ResponseBody}}</pre>
+              </div>
+            </div>
+            {{end}}
+
+            <!-- Assertions -->
+            {{if $step.Assertions}}
+            <div class="section open" id="assert-{{$i}}">
+              <div
+                class="section-title"
+                onclick="toggleSection('assert-{{$i}}')"
+              >
+                <span class="section-chevron">▶</span> Assertions ({{len
+                $step.Assertions}})
+              </div>
+              <div class="section-content">
+                <div class="assertions">
+                  {{range $step.Assertions}}
+                  <div class="assertion-item">
+                    <span
+                      class="assert-icon {{if .Passed}}assert-pass{{else}}assert-fail{{end}}"
+                    >
+                      {{if .Passed}}✓{{else}}✗{{end}}
+                    </span>
+                    <div>
+                      <div class="assert-label">{{.Label}}</div>
+                      {{if not .Passed}}
+                      <div class="assert-detail">{{.Detail}}</div>
+                      {{end}}
+                    </div>
+                  </div>
+                  {{end}}
+                </div>
+              </div>
+            </div>
+            {{end}}
+          </div>
+        </div>
+        {{end}}
+      </div>
+      {{end}}
+    </div>
+    <!-- /container -->
+
+    <div id="toast">Copied!</div>
+
+    <script>
+      var allExpanded = false;
+
+      function toggleStep(id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.toggle("open");
+      }
+
+      function toggleSection(id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.toggle("open");
+      }
+
+      function toggleAll() {
+        var steps = document.querySelectorAll(".step");
+        allExpanded = !allExpanded;
+        steps.forEach(function (s) {
+          if (allExpanded) s.classList.add("open");
+          else s.classList.remove("open");
+        });
+        document.querySelector(".toolbar-btn").textContent = allExpanded
+          ? "Collapse all"
+          : "Expand all";
+      }
+
+      function copyEl(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        copyText(el.innerText, null);
+      }
+
+      function copyText(text, evt) {
+        if (evt) evt.stopPropagation();
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(text).then(showToast);
+        } else {
+          var ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          showToast();
+        }
+      }
+
+      function showToast() {
+        var t = document.getElementById("toast");
+        t.classList.add("show");
+        setTimeout(function () {
+          t.classList.remove("show");
+        }, 1800);
+      }
+
+      // Auto-expand failed steps on load
+      document.querySelectorAll(".step.step-fail").forEach(function (s) {
+        s.classList.add("open");
+      });
+    </script>
+  </body>
+</html>
