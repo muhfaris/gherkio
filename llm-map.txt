@@ -99,10 +99,10 @@ Load YAML test file  ──→  Load environment YAML  ──→  For each step:
     │
     ├── 1. Interpolate request variables ($var / ${var})
     ├── 2. Resolve URL (via env.baseUrl or env.services[].baseUrl)
-    ├── 3. Execute HTTP request
+    ├── 3. Execute HTTP request (Wrapped in Retry Loop if `retry` is configured)
     ├── 4. Auto-decode JWT from response.token or response.access_token
     ├── 5. Run assertions (status + body/JWT matchers)
-    ├── 6. Extract & save variables
+    ├── 6. Extract & save variables (on successful retry or after exhaust)
     └── 7. Collect results
 ```
 
@@ -117,9 +117,18 @@ type TestFile struct {
 type Step struct {
     Use     string            // References another scenario file to execute
     Request Request           // HTTP request definition
+    Retry   *RetryConfig      // Request retry configuration
     Expect  Expect            // Assertions
     Save    map[string]string // Variable extraction (e.g. {"token": "body.accessToken"})
     Timing  TimingConfig      // Timing expectations (e.g. max: 500ms)
+}
+
+type RetryConfig struct {
+    Attempts    int
+    Interval    int
+    Backoff     string // "constant", "linear", "exponential"
+    MaxDuration string // e.g. "30s"
+    OnStatus    []int  // Only retry on these HTTP statuses
 }
 
 type TimingConfig struct {
@@ -206,6 +215,16 @@ type StepResult struct {
     Assertions []AssertionResult
     Duration   time.Duration
     Error      string
+    RetryCount   int             // Number of retries executed
+    RetryHistory []RetryEntry    // History of retry attempts
+}
+
+type RetryEntry struct {
+    Attempt  int
+    Status   int
+    Body     string
+    Duration time.Duration
+    Error    string
 }
 type AssertionResult struct {
     Path        string
@@ -392,8 +411,9 @@ Project root detection: walks up from cwd looking for `.gherkio/` directory.
 - ✅ Timing assertions (`timing: { max: 500ms }`)
 - ✅ Scenario Composition / use-steps (Phase 1 MVP: recursion, merging, depth check)
 - ✅ CLI commands (init, run)
-- ✅ HTML & JSON Reporting (Phase 1 & 2)
+- ✅ HTML & JSON Reporting (Phase 1, 2, & 3)
 - ✅ Schema Assertions (Phase 1)
+- ✅ Request Retries — RFC-5 (Attempts, Interval, Backoff strategies, OnStatus, Reporting)
 - ⏳ MCP Server Support — RFC-6 (internal/core/ refactoring for LLM integration)
 - ⏳ Capability system — future
 - ⏳ Plugin system — future
