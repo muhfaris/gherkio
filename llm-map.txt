@@ -343,7 +343,9 @@ This behavior is implemented in `internal/runner/printer.go`. The `Suggestions` 
 
 ```
 gherkio init                                  # Scaffold .gherkio/ directory
-gherkio run <test-file>                       # Execute a test scenario (summary output)
+gherkio run                                 # Run all tests in .gherkio/tests/
+gherkio run <test-file>                       # Execute a single test scenario
+gherkio run <directory>/                      # Run all tests in a subdirectory
 gherkio run <test-file> --env <environment>   # Run with specific environment
 gherkio run <test-file> --verbose             # Show full request/response payloads
 gherkio run <test-file> -v                    # Shorthand for --verbose

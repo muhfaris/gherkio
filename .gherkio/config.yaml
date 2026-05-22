@@ -1,0 +1,27 @@
+# Gherkio Configuration
+project:
+  name: ""
+  version: "1.0.0"
+
+environments:
+  default: local
+  path: .gherkio/environments
+
+tests:
+  path: .gherkio/tests
+
+reports:
+  path: .gherkio/reports
+  format: html
+  archive: true
+
+schemas:
+  path: .gherkio/schemas
+
+security:
+  mask:
+    # Sensitive field names to mask in output.
+    # Override defaults by listing custom field names here.
+    # Set to empty to disable masking.
+    enabled: true
+    fields: []

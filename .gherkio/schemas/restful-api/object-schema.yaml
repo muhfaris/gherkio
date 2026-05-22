@@ -1,0 +1,14 @@
+
+type: object
+required:
+  - id
+  - name
+  - data
+properties:
+  id:
+    type: string
+  name:
+    type: string
+  data:
+    type: object
+    nullable: true

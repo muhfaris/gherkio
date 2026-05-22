@@ -247,6 +247,91 @@ expect:
   all(body.items.email): email      # All elements are valid emails
 ```
 
+### Schema assertions
+
+Validate the entire response structure against a reusable schema file. Schemas live in `.gherkio/schemas/` and are organized by domain.
+
+```yaml
+expect:
+  status: 200
+  schema: example/login-response    # Validates full response shape
+```
+
+Instead of asserting every field individually:
+
+```yaml
+expect:
+  status: 200
+  body.id: exists
+  body.name: exists
+  body.email: exists
+```
+
+You can define a schema once and reuse it across tests:
+
+```yaml
+# .gherkio/schemas/example/user-response.yaml
+type: object
+required:
+  - id
+  - username
+  - email
+properties:
+  id:
+    type: integer
+  username:
+    type: string
+  email:
+    type: string
+    format: email
+  firstName:
+    type: string
+  lastName:
+    type: string
+  gender:
+    type: string
+  image:
+    type: string
+```
+
+Then use it in any test:
+
+```yaml
+expect:
+  status: 200
+  schema: example/user-response
+```
+
+Schema assertions can be mixed with individual assertions:
+
+```yaml
+expect:
+  status: 200
+  schema: example/user-response        # Shape validation
+  body.customFlag: true                 # Extra assertion beyond schema
+```
+
+**Supported schema rules:**
+
+| Rule | Example | Description |
+|------|---------|-------------|
+| `type` | `type: string` | Validates type (string, integer, number, boolean, array, object, null) |
+| `required` | `required: [id, name]` | Fields that must exist with non-null values |
+| `properties` | `properties: { ... }` | Field-level validation (recursive) |
+| `items` | `items: { type: string }` | Array item validation |
+| `format` | `format: email` | Format validation (email, uuid, datetime, uri) |
+| `enum` | `enum: [admin, user]` | Allowed values |
+| `pattern` | `pattern: "^[A-Z]"` | Regex pattern |
+| `minLength` / `maxLength` | `minLength: 1` | String length bounds |
+| `minimum` / `maximum` | `minimum: 0` | Numeric bounds |
+| `minItems` / `maxItems` | `maxItems: 100` | Array length bounds |
+| `nullable` | `type: string, nullable: true` | Allows null values |
+
+Schema file resolution:
+1. `schema: users/user-response` → `.gherkio/schemas/users/user-response.yaml`
+2. `schema: login-response` → `.gherkio/schemas/login-response.yaml`
+3. Falls back to `.yml` extension if `.yaml` not found
+
 ---
 
 ## Scenario Composition (use-steps)

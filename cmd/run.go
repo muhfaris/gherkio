@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"github.com/muhfaris/gherkio/internal/runner"
 	"github.com/spf13/cobra"
@@ -20,17 +22,25 @@ var runCmd = &cobra.Command{
 	Short: "Execute a test scenario",
 	Long: `Executes a Gherkio test YAML file and displays the results.
 
+If no test file is provided, all tests in .gherkio/tests/ are executed.
+If a directory is provided, all tests in that directory are executed.
+
 The test file path is resolved in the following order:
 1. As provided (relative to current working directory)
 2. Relative to .gherkio/tests/ directory
 
 Example:
+  gherkio run                    # Run all tests
   gherkio run tests/login.yaml
+  gherkio run restful-api/       # Run all tests in restful-api/ directory
   gherkio run login.yaml --env staging
   gherkio run login.yaml --verbose`,
-	Args: cobra.ExactArgs(1),
+	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		testPath := args[0]
+		testPath := ""
+		if len(args) > 0 {
+			testPath = args[0]
+		}
 		return runTest(testPath, envName, verbose)
 	},
 }
@@ -53,14 +63,35 @@ func runTest(testPath, env string, verbose bool) error {
 		return fmt.Errorf("not inside a Gherkio project: %w", err)
 	}
 
-	// Resolve test file path
-	fullPath, err := resolveTestPath(cwd, projectDir, testPath)
+	// No test path or directory: run all tests
+	if testPath == "" {
+		return runAllTests(projectDir, env, verbose)
+	}
+
+	// Check if the path is a directory
+	fullPath := filepath.Join(cwd, testPath)
+	if info, err := os.Stat(fullPath); err == nil && info.IsDir() {
+		testDir := fullPath
+		// Also try resolving relative to .gherkio/tests/
+		altPath := filepath.Join(projectDir, ".gherkio", "tests", testPath)
+		if altInfo, altErr := os.Stat(altPath); altErr == nil && altInfo.IsDir() {
+			testDir = altPath
+		}
+		return runAllInDir(testDir, projectDir, env, verbose)
+	}
+
+	// Resolve single test file path
+	fullPath, err = resolveTestPath(cwd, projectDir, testPath)
 	if err != nil {
 		return fmt.Errorf("test file not found: %w", err)
 	}
 
+	return runSingleTest(fullPath, projectDir, env, verbose)
+}
+
+func runSingleTest(testPath, projectDir, env string, verbose bool) error {
 	cfg := runner.RunConfig{
-		TestPath:   fullPath,
+		TestPath:   testPath,
 		EnvName:    env,
 		ProjectDir: projectDir,
 		Verbose:    verbose,
@@ -78,6 +109,106 @@ func runTest(testPath, env string, verbose bool) error {
 	}
 
 	return nil
+}
+
+func runAllTests(projectDir, env string, verbose bool) error {
+	testsDir := filepath.Join(projectDir, ".gherkio", "tests")
+	return runAllInDir(testsDir, projectDir, env, verbose)
+}
+
+func runAllInDir(testDir, projectDir, env string, verbose bool) error {
+	files, err := discoverTestFiles(testDir)
+	if err != nil {
+		return fmt.Errorf("failed to discover test files: %w", err)
+	}
+
+	if len(files) == 0 {
+		fmt.Println("No test files found.")
+		return nil
+	}
+
+	totalPass := 0
+	totalFail := 0
+	anyFailed := false
+
+	fmt.Printf("Running %d test(s)...\n\n", len(files))
+
+	for i, file := range files {
+		relPath, _ := filepath.Rel(projectDir, file)
+
+		cfg := runner.RunConfig{
+			TestPath:   file,
+			EnvName:    env,
+			ProjectDir: projectDir,
+			Verbose:    verbose,
+		}
+
+		result, err := runner.Run(cfg)
+		if err != nil {
+			fmt.Printf("[%d/%d] ✗ %s — error: %v\n", i+1, len(files), relPath, err)
+			anyFailed = true
+			totalFail++
+			continue
+		}
+
+		runner.PrintResult(result, cfg.Verbose, cfg.MaskFields)
+
+		totalPass += result.TotalPass
+		totalFail += result.TotalFail
+		if !result.Passed {
+			anyFailed = true
+		}
+
+		if i < len(files)-1 {
+			fmt.Println()
+		}
+	}
+
+	// Combined summary
+	total := totalPass + totalFail
+	statusIcon := "✓"
+	statusWord := "PASS"
+	if anyFailed {
+		statusIcon = "✗"
+		statusWord = "FAIL"
+	}
+
+	fmt.Println(strings.Repeat("═", 40))
+	fmt.Printf("%s %s — across %d scenario(s)\n", statusIcon, statusWord, len(files))
+	fmt.Printf("%d passed, %d failed, %d total assertions\n", totalPass, totalFail, total)
+
+	if anyFailed {
+		os.Exit(1)
+	}
+
+	return nil
+}
+
+// discoverTestFiles finds all .yaml files recursively in the given directory.
+func discoverTestFiles(dir string) ([]string, error) {
+	var files []string
+
+	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if filepath.Ext(path) == ".yaml" {
+			files = append(files, path)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to walk directory %s: %w", dir, err)
+	}
+
+	// Sort for deterministic ordering
+	sort.Strings(files)
+
+	return files, nil
 }
 
 // findProjectRoot walks up from cwd to find a directory containing .gherkio.

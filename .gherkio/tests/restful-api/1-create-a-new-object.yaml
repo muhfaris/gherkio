@@ -1,0 +1,24 @@
+scenario: Create a new phone object (Reusable Step)
+
+steps:
+  - request:
+      service: restful-api
+      method: POST
+      url: /objects
+      headers:
+        Content-Type: application/json
+      body:
+        name: "Apple MacBook Pro 16"
+        data:
+          year: 2024
+          price: 2499.99
+          "CPU model": "M3 Max"
+
+    expect:
+      status: 200
+      body.id: exists
+      body.name: "Apple MacBook Pro 16"
+      schema: restful-api/object-schema
+
+    save:
+      created_id: body.id

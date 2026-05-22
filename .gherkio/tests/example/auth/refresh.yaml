@@ -1,0 +1,16 @@
+scenario: refresh token
+
+steps:
+  - use: me.yaml
+  - request:
+      method: POST
+      url: /auth/refresh
+      headers:
+        Content-Type: application/json
+      body:
+        refreshToken: $refreshToken
+        expiresInMins: 30
+    expect:
+      status: 200
+      body.accessToken: exists
+      body.refreshToken: exists
