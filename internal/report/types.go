@@ -46,6 +46,17 @@ type ReportStep struct {
 	Passed       bool
 	Assertions   []ReportAssertion
 	Error        string
+	RetryCount   int
+	RetryHistory []RetryEntry
+}
+
+// RetryEntry mirrors runner.RetryEntry for the report scope.
+type RetryEntry struct {
+	Attempt  int
+	Status   int
+	Body     string
+	Duration string
+	Error    string
 }
 
 // ReportAssertion represents a single assertion result in the report.
