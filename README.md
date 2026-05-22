@@ -511,7 +511,6 @@ go test ./internal/runner/
 # After intentionally changing printer output — regenerate golden files
 go test ./internal/runner/ -update
 ```
-```
 
 ### Project structure
 
