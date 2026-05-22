@@ -25,7 +25,7 @@ Body:
   "username": "emilys"
 }
 
-✗ FAIL
+✗ FAIL (login example)
 3 passed, 1 failed, 4 total
 Duration: 388ms
 

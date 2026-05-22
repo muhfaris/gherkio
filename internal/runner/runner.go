@@ -13,22 +13,25 @@ import (
 
 // RunConfig holds configuration for a single run.
 type RunConfig struct {
-	TestPath   string   // Path to the test YAML file
-	EnvName    string   // Environment name (e.g. "local", "staging")
-	ProjectDir string   // Root project directory (where .gherkio lives)
-	Verbose    bool     // Show full request/response payloads
-	MaskFields []string // Sensitive field names to mask in output (nil = use defaults)
+	TestPath     string   // Path to the test YAML file
+	EnvName      string   // Environment name (e.g. "local", "staging")
+	ProjectDir   string   // Root project directory (where .gherkio lives)
+	Verbose      bool     // Show full request/response payloads
+	MaskFields   []string // Sensitive field names to mask in output (nil = use defaults)
+	AccountName  string   // Account name to use from credentials (optional)
+	CredentialVars map[string]interface{} // Pre-injected credential variables (optional)
 }
 
 // RunResult holds the overall execution result.
 type RunResult struct {
-	Scenario  string        `json:"scenario"`
-	TestFile  string        `json:"testFile,omitempty"`
-	Steps     []StepResult  `json:"steps"`
-	TotalPass int           `json:"totalPass"`
-	TotalFail int           `json:"totalFail"`
-	Duration  time.Duration `json:"duration"`
-	Passed    bool          `json:"passed"`
+	Scenario   string        `json:"scenario"`
+	TestFile   string        `json:"testFile,omitempty"`
+	Account    string        `json:"account,omitempty"` // Account name used (if any)
+	Steps      []StepResult  `json:"steps"`
+	TotalPass  int           `json:"totalPass"`
+	TotalFail  int           `json:"totalFail"`
+	Duration   time.Duration `json:"duration"`
+	Passed     bool          `json:"passed"`
 }
 
 // Run executes a test file and returns the result.
@@ -50,9 +53,18 @@ func Run(cfg RunConfig) (*RunResult, error) {
 	// 3. Execute steps
 	result := &RunResult{
 		Scenario: testFile.Scenario,
+		Account:  cfg.AccountName,
 	}
 
 	vars := make(map[string]interface{})
+
+	// Inject credential variables first (can be overridden by save:)
+	if cfg.CredentialVars != nil {
+		for key, val := range cfg.CredentialVars {
+			vars[key] = val
+		}
+	}
+
 	currentDir := filepath.Dir(cfg.TestPath)
 	var allSteps []StepResult
 	setupFailed := false

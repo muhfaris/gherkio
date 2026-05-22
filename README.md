@@ -24,6 +24,7 @@ Gherkio lets you describe HTTP-based integration tests as declarative YAML scena
 - **Contextual Diagnostics** — Failed assertions show available fields and full response body
 - **Setup & Teardown** — Pre-condition and post-condition steps (teardown always runs, even on failure)
 - **Negative Assertions** — Assert field absence (`not exists`) or schema mismatch (`schema: not <name>`)
+- **Multi-Account Credentials** — Run the same tests against multiple accounts with `--account` or `--all-accounts`
 
 ---
 
@@ -59,6 +60,8 @@ This creates the `.gherkio/` directory structure:
 ```
 .gherkio/
 ├── config.yaml                # Project configuration
+├── credentials/               # Account credentials per environment
+│   └── local.yaml             # Default credentials (DummyJSON test user)
 ├── environments/
 │   └── local.yaml             # Default environment (DummyJSON)
 ├── tests/
@@ -239,6 +242,72 @@ steps:
       status: 200
       body.status: confirmed
 ```
+
+---
+
+## Multi-Account Credentials
+
+Run the same test scenarios against multiple accounts without duplicating test files or environment files.
+
+### Credentials file
+
+Credentials live in `.gherkio/credentials/<env>.yaml`, matching the active environment:
+
+```yaml
+# .gherkio/credentials/staging.yaml
+accounts:
+  alpha:
+    username: alpha@test.com
+    password: alpha-secret
+    role: admin
+
+  beta:
+    username: beta@test.com
+    password: beta-secret
+    role: viewer
+```
+
+Account fields (`username`, `password`, `role`, plus any extras) are injected as variables (`$username`, `$password`, `$role`) — they work exactly like `save:`d variables in URLs, headers, and request bodies.
+
+### Usage
+
+```bash
+# Run with a specific account
+gherkio run tests/login.yaml --env staging --account alpha
+
+# Run against ALL accounts
+gherkio run tests/login.yaml --env staging --all-accounts
+```
+
+### How it works
+
+```yaml
+scenario: Staging login
+
+steps:
+  - request:
+      method: POST
+      url: /auth/login
+      body:
+        username: $username       # Injected from credentials
+        password: $password       # Injected from credentials
+
+    expect:
+      status: 200
+      body.accessToken: exists
+
+    save:
+      token: body.accessToken     # Overrides credential vars if same name
+```
+
+### Edge cases
+
+- **No credentials file** — Test runs normally, no variables injected
+- **1 account, no flag** — Auto-used (no need to type `--account` every time)
+- **2+ accounts, no flag** — Prints a hint and runs without credentials
+- **`--account` with missing file** — Warning printed, flag ignored
+- **`--account` with nonexistent name** — Error with available accounts listed
+- **Passwords** — Automatically masked in output (along with other sensitive fields)
 
 ---
 
@@ -524,6 +593,8 @@ security:
 | `gherkio run <test-file> --env <name>` | Run with a specific environment |
 | `gherkio run <test-file> --verbose` | Show full request/response payloads |
 | `gherkio run <test-file> -v` | Shorthand for --verbose |
+| `gherkio run <test-file> --account <name>` | Run with a specific account from credentials |
+| `gherkio run <test-file> --all-accounts` | Run against all accounts in the credentials file |
 
 ### Test file resolution
 
@@ -598,6 +669,7 @@ Shows full request and response payloads, including headers and bodies (with sen
 | Reporting (HTML, JSON) | ✅ |
 | Setup & Teardown blocks | ✅ |
 | Negative assertions (`not exists`, `schema: not`) | ✅ |
+| Multi-Account Credentials (`--account`, `--all-accounts`) | ✅ |
 | Plugin/capability system | ⏳ Future |
 | Go unit tests | ✅ Matchers, executor, printer (golden file snapshots) |
 | CI/CD | ⏳ Not yet configured |
@@ -646,7 +718,8 @@ gherkio/
 │   │   ├── test.go              # Test scenario structs
 │   │   ├── config.go            # Project configuration
 │   │   ├── environment.go       # Environment structs
-│   │   └── schema.go            # Schema definition struct
+│   │   ├── schema.go            # Schema definition struct
+│   │   └── credentials.go       # Credentials & Account structs
 │   ├── report/                  # HTML/JSON reporting engine
 │   │   ├── html.go              # HTML rendering logic
 │   │   ├── json.go              # JSON rendering logic
@@ -655,6 +728,7 @@ gherkio/
 │   │   └── types.go             # Report data structs
 │   └── runner/                  # Execution engine
 │       ├── runner.go            # Orchestrator
+│       ├── credentials.go       # Credentials loader & variable injection
 │       ├── executor.go          # HTTP client, assertions, path resolution
 │       ├── executor_test.go     # Tests: resolvePath, evaluateAssertion, timing
 │       ├── interpolator.go      # Variable interpolation

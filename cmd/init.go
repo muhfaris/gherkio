@@ -28,8 +28,8 @@ steps:
       url: /auth/login
 
       body:
-        username: emilys
-        password: emilyspass
+        username: $username
+        password: $password
         expiresInMins: 30
 
     expect:
@@ -57,7 +57,7 @@ steps:
     expect:
       status: 200
       body.id: exists
-      body.username: emilys
+      body.username: $username
       schema: example/user-response
 `
 
@@ -192,6 +192,7 @@ func runInit() error {
 	dirs := []string{
 		baseDir,
 		filepath.Join(baseDir, "environments"),
+		filepath.Join(baseDir, "credentials"),
 		filepath.Join(baseDir, "tests"),
 		filepath.Join(baseDir, "reports"),
 		filepath.Join(baseDir, "reports", "latest"),
@@ -265,6 +266,28 @@ func runInit() error {
 		return fmt.Errorf("failed to write user-response schema file: %w", err)
 	}
 	fmt.Printf("  📄  %s\n", userSchemaPath)
+
+	// Create default credentials file for local environment
+	defaultLocalCredsTemplate := `# Local environment credentials
+# These credentials are used when running tests with --env local
+# Replace with your actual test credentials
+
+accounts:
+  default:
+    username: emilys
+    password: emilyspass
+    role: user
+
+  # admin:
+  #   username: admin@example.com
+  #   password: admin-secret
+  #   role: admin
+`
+	credsPath := filepath.Join(baseDir, "credentials", "local.yaml")
+	if err := os.WriteFile(credsPath, []byte(defaultLocalCredsTemplate), 0644); err != nil {
+		return fmt.Errorf("failed to write credentials file: %w", err)
+	}
+	fmt.Printf("  📄  %s\n", credsPath)
 
 	fmt.Println("\n✨ Gherkio project initialized successfully!")
 	fmt.Println("")
