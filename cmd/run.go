@@ -18,6 +18,8 @@ var (
 	verbose      bool
 	reportFormat string
 	reportRaw    bool
+	accountName  string
+	allAccounts  bool
 )
 
 // runCmd represents the gherkio run command.
@@ -39,14 +41,16 @@ Example:
   gherkio run restful-api/       # Run all tests in restful-api/ directory
   gherkio run login.yaml --env staging
   gherkio run login.yaml --verbose
-  gherkio run login.yaml --report html`,
+  gherkio run login.yaml --report html
+  gherkio run login.yaml --env staging --account alpha
+  gherkio run login.yaml --env staging --all-accounts`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		testPath := ""
 		if len(args) > 0 {
 			testPath = args[0]
 		}
-		return runTest(testPath, envName, verbose, reportFormat, reportRaw)
+		return runTest(testPath, envName, verbose, reportFormat, reportRaw, accountName, allAccounts)
 	},
 }
 
@@ -56,9 +60,11 @@ func init() {
 	runCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show full request/response payloads")
 	runCmd.Flags().StringVar(&reportFormat, "report", "", "Generate a report (format: html, json, or html,json)")
 	runCmd.Flags().BoolVar(&reportRaw, "report-raw", false, "Skip sensitive data masking in JSON reports (cURL commands remain masked)")
+	runCmd.Flags().StringVar(&accountName, "account", "", "Account name from credentials file (e.g. alpha, beta)")
+	runCmd.Flags().BoolVar(&allAccounts, "all-accounts", false, "Run tests against all accounts in the credentials file")
 }
 
-func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw bool) error {
+func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw bool, accountName string, allAccounts bool) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("failed to get current directory: %w", err)
@@ -102,9 +108,29 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 		}
 	}
 
+	// Load credentials for the environment
+	creds, err := runner.LoadCredentials(projectDir, env)
+	if err != nil {
+		return fmt.Errorf("failed to load credentials: %w", err)
+	}
+
+	// Warn if --account is specified but no credentials file exists
+	if accountName != "" && creds == nil {
+		fmt.Printf("⚠ No credentials file found for environment %q at .gherkio/credentials/%s.yaml. --account flag ignored.\n\n", env, env)
+	}
+
+	// Validate account usage
+	if accountName != "" && creds != nil {
+		// Check if specified account exists
+		if _, exists := creds.GetAccount(accountName); !exists {
+			available := creds.AccountNames()
+			return fmt.Errorf("account %q not found in .gherkio/credentials/%s.yaml\n  Available accounts: %s", accountName, env, strings.Join(available, ", "))
+		}
+	}
+
 	// No test path or directory: run all tests
 	if testPath == "" {
-		return runAllTests(projectDir, env, verbose, reportCfg, maskFields)
+		return runAllTests(projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts)
 	}
 
 	// Check if the path is a directory
@@ -116,7 +142,7 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 		if altInfo, altErr := os.Stat(altPath); altErr == nil && altInfo.IsDir() {
 			testDir = altPath
 		}
-		return runAllInDir(testDir, projectDir, env, verbose, reportCfg, maskFields)
+		return runAllInDir(testDir, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts)
 	}
 
 	// Resolve single test file path
@@ -125,7 +151,7 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 		return fmt.Errorf("test file not found: %w", err)
 	}
 
-	return runSingleTest(fullPath, projectDir, env, verbose, reportCfg, maskFields)
+	return runSingleTest(fullPath, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts)
 }
 
 func handleReport(result *runner.RunResult, projectDir string, env string, reportCfg *report.ReportConfig) {
@@ -208,13 +234,40 @@ func handleSuiteReport(results []*runner.RunResult, projectDir string, env strin
 	}
 }
 
-func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string) error {
+func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, creds *model.Credentials, accountName string, allAccounts bool) error {
+	// Determine which accounts to run
+	accounts, err := resolveAccounts(creds, accountName, allAccounts)
+	if err != nil {
+		return err
+	}
+
+	// If multiple accounts, run each sequentially
+	if len(accounts) > 1 {
+		return runSingleTestMultiAccount(testPath, projectDir, env, verbose, reportCfg, maskFields, accounts)
+	}
+
+	// Single account (or no credentials)
+	var credentialVars map[string]interface{}
+	var accName string
+	if len(accounts) == 1 {
+		for name, acc := range accounts {
+			accName = name
+			credentialVars = runner.CredentialsToVars(acc)
+		}
+		// Merge credential-sensitive fields into mask
+		for _, acc := range accounts {
+			maskFields = append(maskFields, runner.GetSensitiveFieldsFromCredentials(acc)...)
+		}
+	}
+
 	cfg := runner.RunConfig{
-		TestPath:   testPath,
-		EnvName:    env,
-		ProjectDir: projectDir,
-		Verbose:    verbose,
-		MaskFields: maskFields,
+		TestPath:      testPath,
+		EnvName:       env,
+		ProjectDir:    projectDir,
+		Verbose:       verbose,
+		MaskFields:    maskFields,
+		AccountName:   accName,
+		CredentialVars: credentialVars,
 	}
 
 	result, err := runner.Run(cfg)
@@ -233,12 +286,130 @@ func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *re
 	return nil
 }
 
-func runAllTests(projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string) error {
-	testsDir := filepath.Join(projectDir, ".gherkio", "tests")
-	return runAllInDir(testsDir, projectDir, env, verbose, reportCfg, maskFields)
+// resolveAccounts determines which accounts to use based on credentials, flags, and edge cases.
+// Returns a map of account name → Account for convenient name access.
+func resolveAccounts(creds *model.Credentials, accountName string, allAccounts bool) (map[string]model.Account, error) {
+	// No credentials file - run with no account
+	if creds == nil {
+		return nil, nil
+	}
+
+	accountNames := creds.AccountNames()
+
+	// If --account specified, use just that account
+	if accountName != "" {
+		account, exists := creds.GetAccount(accountName)
+		if !exists {
+			return nil, fmt.Errorf("account %q not found in credentials\n  Available: %s", accountName, strings.Join(accountNames, ", "))
+		}
+		return map[string]model.Account{accountName: account}, nil
+	}
+
+	// If --all-accounts, use all accounts
+	if allAccounts {
+		accounts := make(map[string]model.Account, len(creds.Accounts))
+		for _, name := range accountNames {
+			accounts[name] = creds.Accounts[name]
+		}
+		return accounts, nil
+	}
+
+	// No flags - check edge cases
+	if len(accountNames) == 0 {
+		return nil, nil // No accounts defined
+	}
+
+	if len(accountNames) == 1 {
+		// Single account - auto-use it
+		name := accountNames[0]
+		return map[string]model.Account{name: creds.Accounts[name]}, nil
+	}
+
+	// Multiple accounts but no flag - print hint and continue without credentials
+	fmt.Printf("⚠ %d accounts found in credentials. Use --account <name> or --all-accounts to use them.\n\n", len(accountNames))
+	return nil, nil
 }
 
-func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string) error {
+// runSingleTestMultiAccount runs a single test file against multiple accounts.
+func runSingleTestMultiAccount(testPath, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, accounts map[string]model.Account) error {
+	var allResults []*runner.RunResult
+	totalPass := 0
+	totalFail := 0
+
+	accountCount := len(accounts)
+	i := 0
+	for accountName, account := range accounts {
+		i++
+		// Merge credential-sensitive fields into mask for this account
+		accountMask := append([]string{}, maskFields...)
+		accountMask = append(accountMask, runner.GetSensitiveFieldsFromCredentials(account)...)
+
+		fmt.Printf("Running account: %s (%d/%d)\n\n", accountName, i, accountCount)
+
+		cfg := runner.RunConfig{
+			TestPath:       testPath,
+			EnvName:        env,
+			ProjectDir:     projectDir,
+			Verbose:        verbose,
+			MaskFields:     accountMask,
+			AccountName:    accountName,
+			CredentialVars: runner.CredentialsToVars(account),
+		}
+
+		result, err := runner.Run(cfg)
+		if err != nil {
+			fmt.Printf("✗ Error running with account %s: %v\n", accountName, err)
+			totalFail++
+			failedResult := &runner.RunResult{
+				Scenario:  filepath.Base(testPath),
+				TestFile:  testPath,
+				Account:   accountName,
+				Passed:    false,
+				TotalFail: 1,
+			}
+			allResults = append(allResults, failedResult)
+		} else {
+			runner.PrintResult(result, cfg.Verbose, cfg.MaskFields)
+			totalPass += result.TotalPass
+			totalFail += result.TotalFail
+			allResults = append(allResults, result)
+		}
+
+		if i < accountCount {
+			fmt.Println()
+		}
+	}
+
+	// Combined summary
+	statusIcon := "✓"
+	statusWord := "PASS"
+	if totalFail > 0 {
+		statusIcon = "✗"
+		statusWord = "FAIL"
+	}
+
+	fmt.Println(strings.Repeat("═", 40))
+	fmt.Printf("%s %s — across %d account(s)\n", statusIcon, statusWord, accountCount)
+	fmt.Printf("%d passed, %d failed, %d total assertions\n", totalPass, totalFail, totalPass+totalFail)
+
+	// Generate suite report
+	if reportCfg != nil {
+		handleSuiteReport(allResults, projectDir, env, reportCfg)
+	}
+
+	if totalFail > 0 {
+		os.Exit(1)
+	}
+
+	return nil
+}
+
+func runAllTests(projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, creds *model.Credentials, accountName string, allAccounts bool) error {
+	testsDir := filepath.Join(projectDir, ".gherkio", "tests")
+	return runAllInDir(testsDir, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts)
+}
+
+func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, creds *model.Credentials, accountName string, allAccounts bool) error {
 	files, err := discoverTestFiles(testDir)
 	if err != nil {
 		return fmt.Errorf("failed to discover test files: %w", err)
@@ -249,6 +420,18 @@ func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *repor
 		return nil
 	}
 
+	// Determine which accounts to run
+	accounts, err := resolveAccounts(creds, accountName, allAccounts)
+	if err != nil {
+		return err
+	}
+
+	// If multiple accounts, run each test against all accounts
+	if len(accounts) > 1 {
+		return runAllInDirMultiAccount(testDir, projectDir, env, verbose, reportCfg, maskFields, files, accounts)
+	}
+
+	// Single account or no accounts - run each test file
 	totalPass := 0
 	totalFail := 0
 	anyFailed := false
@@ -261,12 +444,27 @@ func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *repor
 	for i, file := range files {
 		relPath, _ := filepath.Rel(projectDir, file)
 
+		var credentialVars map[string]interface{}
+		var accName string
+		if len(accounts) == 1 {
+			for name, acc := range accounts {
+				accName = name
+				credentialVars = runner.CredentialsToVars(acc)
+			}
+			// Merge credential-sensitive fields into mask
+			for _, acc := range accounts {
+				maskFields = append(maskFields, runner.GetSensitiveFieldsFromCredentials(acc)...)
+			}
+		}
+
 		cfg := runner.RunConfig{
-			TestPath:   file,
-			EnvName:    env,
-			ProjectDir: projectDir,
-			Verbose:    verbose,
-			MaskFields: maskFields,
+			TestPath:       file,
+			EnvName:        env,
+			ProjectDir:     projectDir,
+			Verbose:        verbose,
+			MaskFields:     maskFields,
+			AccountName:    accName,
+			CredentialVars: credentialVars,
 		}
 
 		result, err := runner.Run(cfg)
@@ -278,6 +476,7 @@ func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *repor
 			failedResult := &runner.RunResult{
 				Scenario:  filepath.Base(relPath),
 				TestFile:  file,
+				Account:   accName,
 				Passed:    false,
 				TotalFail: 1,
 				Steps: []runner.StepResult{
@@ -327,6 +526,104 @@ func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *repor
 	}
 
 	if anyFailed {
+		os.Exit(1)
+	}
+
+	return nil
+}
+
+// runAllInDirMultiAccount runs all test files against multiple accounts.
+func runAllInDirMultiAccount(testDir, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, files []string, accounts map[string]model.Account) error {
+	var allResults []*runner.RunResult
+	totalPass := 0
+	totalFail := 0
+	accountCount := len(accounts)
+	totalScenarios := len(files) * accountCount
+
+	fmt.Printf("Running %d test(s) against %d account(s)...\n\n", len(files), accountCount)
+
+	for i, file := range files {
+		relPath, _ := filepath.Rel(projectDir, file)
+
+		j := 0
+		for accountName, account := range accounts {
+			j++
+			// Merge credential-sensitive fields into mask for this account
+			accountMask := append([]string{}, maskFields...)
+			accountMask = append(accountMask, runner.GetSensitiveFieldsFromCredentials(account)...)
+
+			scenarioIdx := i*accountCount + j
+			fmt.Printf("[%d/%d] Running %s with account: %s\n", scenarioIdx, totalScenarios, relPath, accountName)
+
+			cfg := runner.RunConfig{
+				TestPath:       file,
+				EnvName:        env,
+				ProjectDir:     projectDir,
+				Verbose:        verbose,
+				MaskFields:     accountMask,
+				AccountName:    accountName,
+				CredentialVars: runner.CredentialsToVars(account),
+			}
+
+			result, err := runner.Run(cfg)
+			if err != nil {
+				fmt.Printf("  ✗ Error: %v\n", err)
+				totalFail++
+				failedResult := &runner.RunResult{
+					Scenario:  filepath.Base(relPath),
+					TestFile:  file,
+					Account:   accountName,
+					Passed:    false,
+					TotalFail: 1,
+					Steps: []runner.StepResult{
+						{
+							Original:     model.Step{Request: model.Request{URL: relPath}},
+							ScenarioName: filepath.Base(relPath),
+							TestFile:     file,
+							Error:        err.Error(),
+						},
+					},
+				}
+				allResults = append(allResults, failedResult)
+				continue
+			}
+
+			// Print compact result
+			statusIcon := "✓"
+			if !result.Passed {
+				statusIcon = "✗"
+				totalFail++
+			} else {
+				totalPass++
+			}
+			fmt.Printf("  %s %s — %d passed, %d failed\n", statusIcon, accountName, result.TotalPass, result.TotalFail)
+
+			allResults = append(allResults, result)
+		}
+
+		if i < len(files)-1 {
+			fmt.Println()
+		}
+	}
+
+	// Combined summary
+	statusIcon := "✓"
+	statusWord := "PASS"
+	if totalFail > 0 {
+		statusIcon = "✗"
+		statusWord = "FAIL"
+	}
+
+	fmt.Println(strings.Repeat("═", 40))
+	fmt.Printf("%s %s — across %d scenario(s) and %d account(s)\n", statusIcon, statusWord, len(files), accountCount)
+	fmt.Printf("%d passed, %d failed, %d total assertions\n", totalPass, totalFail, totalPass+totalFail)
+
+	// Generate suite report
+	if reportCfg != nil {
+		handleSuiteReport(allResults, projectDir, env, reportCfg)
+	}
+
+	if totalFail > 0 {
 		os.Exit(1)
 	}
 

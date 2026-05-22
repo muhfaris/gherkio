@@ -31,6 +31,7 @@ func MapResultsToSuiteReportData(results []*runner.RunResult, env string, maskFi
 		scenario := ScenarioData{
 			Name:          result.Scenario,
 			TestFile:      result.TestFile,
+			Account:       result.Account,
 			TotalDuration: runner.FormatDuration(result.Duration),
 			TotalSteps:    scData.TotalSteps,
 			PassCount:     scData.PassCount,

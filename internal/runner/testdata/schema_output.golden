@@ -17,7 +17,7 @@ Body:
   "id": "abc"
 }
 
-✗ FAIL
+✗ FAIL (schema validation)
 1 passed, 1 failed, 2 total
 Duration: 50ms
 

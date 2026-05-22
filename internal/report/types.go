@@ -21,6 +21,7 @@ type ReportData struct {
 type ScenarioData struct {
 	Name          string
 	TestFile      string
+	Account       string          `json:"account,omitempty"` // Account name used (if any)
 	TotalDuration string
 	TotalSteps    int
 	PassCount     int

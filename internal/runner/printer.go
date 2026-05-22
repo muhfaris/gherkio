@@ -112,7 +112,13 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 		statusWord = "FAIL"
 	}
 
-	fmt.Printf("\n%s %s\n\n", statusIcon, result.Scenario)
+	// Build scenario display name with account suffix
+	scenarioName := result.Scenario
+	if result.Account != "" {
+		scenarioName = fmt.Sprintf("%s (%s)", result.Scenario, result.Account)
+	}
+
+	fmt.Printf("\n%s %s\n\n", statusIcon, scenarioName)
 
 	stepCounter := 1
 	var lastRole string
@@ -382,7 +388,7 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 	}
 
 	fmt.Println()
-	fmt.Printf("%s %s\n", statusIcon, statusWord)
+	fmt.Printf("%s %s (%s)\n", statusIcon, statusWord, scenarioName)
 
 	// Summary line
 	total := result.TotalPass + result.TotalFail

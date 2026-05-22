@@ -6,7 +6,7 @@
    ✓ status = 200
    ✓ timing.max = max 500ms (actual: 312ms)
 
-✓ PASS
+✓ PASS (timing test)
 2 passed, 0 failed, 2 total
 Duration: 312ms
 

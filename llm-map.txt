@@ -58,7 +58,8 @@ gherkio/
 │   │   ├── test.go                  # TestFile, Step, Request, Expect, RetryConfig
 │   │   ├── config.go                # Project configuration struct
 │   │   ├── environment.go           # Environment, Service
-│   │   └── schema.go               # Schema definition struct
+│   │   ├── schema.go               # Schema definition struct
+│   │   └── credentials.go          # Credentials, Account structs
 │   ├── report/                      # HTML/JSON reporting engine
 │   │   ├── html.go                  # HTML rendering logic
 │   │   ├── json.go                  # JSON rendering logic
@@ -67,6 +68,7 @@ gherkio/
 │   │   └── types.go                 # ReportData, ScenarioData, ReportStep structs
 │   └── runner/                      # Execution engine
 │       ├── runner.go                # Orchestrator: load → execute → assert
+│       ├── credentials.go           # Credentials loader & variable injection
 │       ├── executor.go              # HTTP client, JWT decoder, path resolver, assertions
 │       ├── executor_test.go         # Tests: resolvePath, evaluateAssertion, timing
 │       ├── interpolator.go          # Variable interpolation ($var / ${var})
@@ -94,6 +96,7 @@ gherkio/
 │       └── sample2.yaml             # Example: variable interpolation across steps
 └── .gherkio/                        # Default project scaffold (created by `gherkio init`)
     ├── config.yaml                  # Project configuration
+    ├── credentials/                 # Account credentials per environment
     ├── environments/
     │   └── local.yaml               # Environment: baseUrl, services, env vars
     ├── tests/
@@ -216,6 +219,11 @@ type Service struct {
     BaseURL string
 }
 
+// internal/runner/credentials.go
+// LoadCredentials loads a credentials file for an environment from .gherkio/credentials/<env>.yaml
+// CredentialsToVars converts an Account to a variables map for injection
+// GetSensitiveFieldsFromCredentials returns field names to mask based on credential values
+
 // internal/runner/schema.go
 // LoadSchema loads a schema by name from the project schemas directory.
 // internal/runner/validator.go
@@ -223,15 +231,18 @@ type Service struct {
 
 // internal/runner/runner.go
 type RunConfig struct {
-    TestPath   string   // Path to the test YAML file
-    EnvName    string   // Environment name
-    ProjectDir string   // Root project directory
-    Verbose    bool     // Show full request/response payloads
-    MaskFields []string // Sensitive field names to mask (nil = use defaults)
+    TestPath       string                 // Path to the test YAML file
+    EnvName        string                 // Environment name
+    ProjectDir     string                 // Root project directory
+    Verbose        bool                   // Show full request/response payloads
+    MaskFields     []string               // Sensitive field names to mask (nil = use defaults)
+    AccountName    string                 // Account name from credentials (optional)
+    CredentialVars map[string]interface{} // Pre-injected credential variables (optional)
 }
 type RunResult struct {
     Scenario  string
     TestFile  string          // File path of the scenario
+    Account   string          // Account name used (if any)
     Steps     []StepResult
     TotalPass int
     TotalFail int
@@ -441,6 +452,8 @@ gherkio run <test-file> --report json         # Generate JSON report
 gherkio run <test-file> --report html,json    # Generate both reports
 gherkio run <test-file> --report json --report-raw # Unmasked JSON
 gherkio run <test-file> -v                    # Shorthand for --verbose
+gherkio run <test-file> --env staging --account alpha   # Run with specific account
+gherkio run <test-file> --env staging --all-accounts    # Run against all accounts
 ```
 
 Test file resolution order:
@@ -468,6 +481,7 @@ Project root detection: walks up from cwd looking for `.gherkio/` directory.
 - ✅ Request Retries — RFC-5 (Attempts, Interval, Backoff strategies, OnStatus, Reporting)
 - ✅ Setup & Teardown — RFC-9 (setup/teardown blocks, role markers, always-run teardown)
 - ✅ Negative Assertions — RFC-11 (implemented: `not exists`, `schema: not <name>`)
+- ✅ Multi-Account Credentials — RFC-12 (Credentials model, LoadCredentials, `--account`/`--all-accounts` flags, auto-use single account, per-account masking, report integration)
 
 ### MVP Complete
 
@@ -508,6 +522,8 @@ Creates:
 ```
 .gherkio/
 ├── config.yaml                 # Project configuration
+├── credentials/                # Account credentials per environment
+│   └── local.yaml              # Default credentials (DummyJSON test user)
 ├── environments/
 │   └── local.yaml              # Default env (DummyJSON)
 ├── tests/
@@ -540,7 +556,45 @@ go test ./...                           # Run Go unit tests (when they exist)
 Collection matchers (`count()`, `all()`) are implemented in `evaluateAssertion()` in `executor.go`, which calls `evaluateMatcher()` for each element internally.
 
 
-### 11. HTML & JSON Reporting
+### 11. Multi-Account Credentials System (RFC-12)
+
+Gherkio supports running the same test scenarios against multiple accounts via a credentials system.
+
+**Credentials file** — Lives at `.gherkio/credentials/<env>.yaml`:
+
+```yaml
+accounts:
+  alpha:
+    username: alpha@test.com
+    password: alpha-secret
+    role: admin
+  beta:
+    username: beta@test.com
+    password: beta-secret
+    role: viewer
+```
+
+**CLI flags:**
+- `--account <name>` — Run with a specific account
+- `--all-accounts` — Run against all accounts in the credentials file
+
+**Variable injection:** Account fields (`username`, `password`, `role`, plus any inline extras) are injected as variables (`$username`, `$password`, `$role`) before step execution. Saved step variables override credential variables.
+
+**Edge cases:**
+- No credentials file → test runs normally (no credentials)
+- 1 account, no flag → auto-used (zero-config)
+- 2+ accounts, no flag → hint printed, runs without credentials
+- `--account` with missing file → warning, flag ignored
+- `--account` with nonexistent name → error listing available accounts
+- Passwords and sensitive credential fields auto-added to mask
+
+**Implementations:**
+- `internal/model/credentials.go` — `Credentials` and `Account` structs
+- `internal/runner/credentials.go` — `LoadCredentials()`, `CredentialsToVars()`, `GetSensitiveFieldsFromCredentials()`
+- `cmd/run.go` — `resolveAccounts()` handles auto-use, multi-account iteration, and per-account masking
+- `cmd/init.go` — Creates `.gherkio/credentials/` with a default `local.yaml`
+
+### 12. HTML & JSON Reporting
 Gherkio supports generating standalone HTML reports for test runs.
 - **Trigger**: via CLI flag `--report html` or `--report json` or `.gherkio/config.yaml` `reports.format: html,json`.
 - **Output**: Saved to `.gherkio/reports/latest/report.html` and a timestamped directory.
