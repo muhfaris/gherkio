@@ -158,6 +158,17 @@ func MapResultToReportData(result *runner.RunResult, env string, maskFields []st
 			url = step.Original.Request.URL
 		}
 
+		var retryHistory []RetryEntry
+		for _, entry := range step.RetryHistory {
+			retryHistory = append(retryHistory, RetryEntry{
+				Attempt:  entry.Attempt,
+				Status:   entry.Status,
+				Body:     entry.Body,
+				Duration: runner.FormatDuration(entry.Duration),
+				Error:    entry.Error,
+			})
+		}
+
 		reportSteps = append(reportSteps, ReportStep{
 			Index:        stepIndex,
 			Method:       method,
@@ -174,6 +185,7 @@ func MapResultToReportData(result *runner.RunResult, env string, maskFields []st
 			Assertions:   assertions,
 			Error:        step.Error,
 			RetryCount:   step.RetryCount,
+			RetryHistory: retryHistory,
 		})
 		stepIndex++
 	}

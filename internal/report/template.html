@@ -580,6 +580,13 @@
                 ⏱ {{$step.Duration}}
               </span>
 
+              <!-- Retry Badge -->
+              {{if gt $step.RetryCount 0}}
+              <span class="badge" style="background: var(--warn-bg); color: var(--warn-text); border-color: var(--warn-text);" title="Retried {{$step.RetryCount}} times">
+                ↻ {{$step.RetryCount}} retries
+              </span>
+              {{end}}
+
               <!-- Request ID (copyable) -->
               {{if $step.RequestID}}
               <span
@@ -604,6 +611,34 @@
                 {{$step.StatusText}}
               </span>
             </div>
+
+            <!-- Retry History -->
+            {{if $step.RetryHistory}}
+            <div class="section" id="retry-s{{$sIdx}}-{{$i}}">
+              <div class="section-title" onclick="toggleSection('retry-s{{$sIdx}}-{{$i}}')">
+                <span class="section-chevron">▶</span> Retry History ({{len $step.RetryHistory}})
+              </div>
+              <div class="section-content">
+                <div class="assertions">
+                  {{range $step.RetryHistory}}
+                  <div class="assertion-item" style="flex-direction: column;">
+                    <div style="display: flex; gap: 8px; width: 100%;">
+                      <span class="status-badge {{statusClass .Status}}">{{.Status}}</span>
+                      <span style="font-weight: 500; font-size: 13px;">Attempt {{.Attempt}}</span>
+                      <span style="color: var(--text-tertiary); font-size: 12px; margin-left: auto;">⏱ {{.Duration}}</span>
+                    </div>
+                    {{if .Error}}
+                      <div class="assert-detail" style="margin-top: 4px;">{{.Error}}</div>
+                    {{end}}
+                    {{if .Body}}
+                      <div class="code-block" style="margin-top: 4px; max-height: 80px; overflow-y: hidden;">{{.Body}}</div>
+                    {{end}}
+                  </div>
+                  {{end}}
+                </div>
+              </div>
+            </div>
+            {{end}}
 
             <!-- cURL command -->
             <div class="section open" id="curl-s{{$sIdx}}-{{$i}}">
@@ -716,6 +751,13 @@
                 ⏱ {{$step.Duration}}
               </span>
 
+              <!-- Retry Badge -->
+              {{if gt $step.RetryCount 0}}
+              <span class="badge" style="background: var(--warn-bg); color: var(--warn-text); border-color: var(--warn-text);" title="Retried {{$step.RetryCount}} times">
+                ↻ {{$step.RetryCount}} retries
+              </span>
+              {{end}}
+
               <!-- Request ID (copyable) -->
               {{if $step.RequestID}}
               <span
@@ -740,6 +782,34 @@
                 {{$step.StatusText}}
               </span>
             </div>
+
+            <!-- Retry History -->
+            {{if $step.RetryHistory}}
+            <div class="section" id="retry-{{$i}}">
+              <div class="section-title" onclick="toggleSection('retry-{{$i}}')">
+                <span class="section-chevron">▶</span> Retry History ({{len $step.RetryHistory}})
+              </div>
+              <div class="section-content">
+                <div class="assertions">
+                  {{range $step.RetryHistory}}
+                  <div class="assertion-item" style="flex-direction: column;">
+                    <div style="display: flex; gap: 8px; width: 100%;">
+                      <span class="status-badge {{statusClass .Status}}">{{.Status}}</span>
+                      <span style="font-weight: 500; font-size: 13px;">Attempt {{.Attempt}}</span>
+                      <span style="color: var(--text-tertiary); font-size: 12px; margin-left: auto;">⏱ {{.Duration}}</span>
+                    </div>
+                    {{if .Error}}
+                      <div class="assert-detail" style="margin-top: 4px;">{{.Error}}</div>
+                    {{end}}
+                    {{if .Body}}
+                      <div class="code-block" style="margin-top: 4px; max-height: 80px; overflow-y: hidden;">{{.Body}}</div>
+                    {{end}}
+                  </div>
+                  {{end}}
+                </div>
+              </div>
+            </div>
+            {{end}}
 
             <!-- cURL command -->
             <div class="section open" id="curl-{{$i}}">
