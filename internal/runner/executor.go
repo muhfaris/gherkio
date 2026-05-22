@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/muhfaris/gherkio/internal/model"
 	"io"
+	"math/rand"
 	"net/http"
 	"sort"
 	"strconv"
@@ -64,6 +65,31 @@ type AssertionResult struct {
 	Passed      bool     `json:"passed"`
 	Reason      string   `json:"reason,omitempty"`
 	Suggestions []string `json:"suggestions,omitempty"`
+}
+
+// calculateBackoff computes the sleep duration based on strategy and attempt count, with jitter.
+func calculateBackoff(strategy string, intervalMs int, attempt int) time.Duration {
+	baseInterval := float64(intervalMs)
+	var sleepFloat float64
+
+	switch strings.ToLower(strategy) {
+	case "linear":
+		sleepFloat = baseInterval * float64(attempt)
+	case "exponential":
+		// exponential: interval * 2^(attempt-1)
+		multiplier := float64(int(1) << (attempt - 1))
+		sleepFloat = baseInterval * multiplier
+	case "constant":
+		fallthrough
+	default:
+		sleepFloat = baseInterval
+	}
+
+	// Apply ±25% jitter
+	jitterFactor := 0.75 + (rand.Float64() * 0.5)
+	sleepFloat = sleepFloat * jitterFactor
+
+	return time.Duration(sleepFloat) * time.Millisecond
 }
 
 // getAvailableFields returns a sorted list of top-level keys from a parsed JSON object.

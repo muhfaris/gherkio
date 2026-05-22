@@ -12,6 +12,7 @@ type RetryConfig struct {
 	Interval    int    `yaml:"interval,omitempty"`
 	Backoff     string `yaml:"backoff,omitempty"`
 	MaxDuration string `yaml:"maxDuration,omitempty"`
+	OnStatus    []int  `yaml:"onStatus,omitempty"`
 }
 
 // TimingConfig holds timing expectations for a step.

@@ -176,7 +176,8 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 			stepErr      error
 			retryHistory []RetryEntry
 			attempts     = 1
-			interval     = time.Millisecond * 500
+			intervalMs   = 500
+			backoffStrat = "constant"
 			hasRetry     = step.Retry != nil
 		)
 
@@ -185,7 +186,10 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 				attempts = step.Retry.Attempts
 			}
 			if step.Retry.Interval > 0 {
-				interval = time.Millisecond * time.Duration(step.Retry.Interval)
+				intervalMs = step.Retry.Interval
+			}
+			if step.Retry.Backoff != "" {
+				backoffStrat = step.Retry.Backoff
 			}
 		}
 
@@ -233,7 +237,7 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 					stepErr = err
 					break
 				}
-				time.Sleep(interval)
+				time.Sleep(calculateBackoff(backoffStrat, intervalMs, i))
 				continue
 			}
 
@@ -278,6 +282,20 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 				break
 			}
 
+			if hasRetry && len(step.Retry.OnStatus) > 0 {
+				statusMatch := false
+				for _, st := range step.Retry.OnStatus {
+					if resp.Status == st {
+						statusMatch = true
+						break
+					}
+				}
+				if !statusMatch {
+					// Condition failed but status is not in onStatus list, so don't retry
+					break
+				}
+			}
+
 			if i == attempts {
 				break
 			}
@@ -287,7 +305,7 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 				break
 			}
 
-			time.Sleep(interval)
+			time.Sleep(calculateBackoff(backoffStrat, intervalMs, i))
 		}
 
 		if stepErr != nil {
