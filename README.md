@@ -644,26 +644,37 @@ gherkio/
 ├── internal/
 │   ├── model/                   # YAML data models
 │   │   ├── test.go              # Test scenario structs
-│   │   └── environment.go       # Environment structs
+│   │   ├── config.go            # Project configuration
+│   │   ├── environment.go       # Environment structs
+│   │   └── schema.go            # Schema definition struct
+│   ├── report/                  # HTML/JSON reporting engine
+│   │   ├── html.go              # HTML rendering logic
+│   │   ├── json.go              # JSON rendering logic
+│   │   ├── helpers.go           # cURL generation, RequestID extraction
+│   │   ├── template.html        # Embedded HTML template
+│   │   └── types.go             # Report data structs
 │   └── runner/                  # Execution engine
 │       ├── runner.go            # Orchestrator
 │       ├── executor.go          # HTTP client, assertions, path resolution
-│       ├── executor_test.go     # Tests: resolvePath, evaluateAssertion, timing, etc.
+│       ├── executor_test.go     # Tests: resolvePath, evaluateAssertion, timing
 │       ├── interpolator.go      # Variable interpolation
 │       ├── matchers.go          # Advanced matchers (uuid, email, contains, etc.)
 │       ├── matchers_test.go     # Tests: all matchers with pass/fail cases
 │       ├── printer.go           # Console output
-│       ├── printer_test.go      # Tests: golden file snapshots + helpers
+│       ├── printer_test.go      # Tests: golden file snapshots
+│       ├── config.go            # Config file loader
+│       ├── schema.go            # Schema file loader
+│       ├── validator.go         # Schema validation engine
+│       ├── validator_test.go    # Tests: schema validation
 │       └── testdata/            # Golden files for snapshot testing
-│           ├── summary_output.golden
-│           ├── verbose_output.golden
-│           ├── advanced_matchers_output.golden
-│           └── timing_output.golden
 ├── docs/                        # Documentation
 │   ├── prd.md                   # Product requirements
-│   ├── rfcs/                    # RFC proposals
+│   ├── rfcs/                    # RFC proposals (1-11)
 │   ├── handoffs/                # Agent handoff documents
 │   └── note.md                  # Dev notes
+├── llm-map.txt                  # AI context map
+├── .goreleaser.yml              # GoReleaser config
+├── install.sh                   # Installation script
 ├── example/                     # Example test files
 └── .gherkio/                    # Default project scaffold
 ```

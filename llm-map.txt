@@ -55,18 +55,35 @@ gherkio/
 │   └── run.go                       # `gherkio run <file>` — execute tests
 ├── internal/
 │   ├── model/                       # Data model / YAML structs
-│   │   ├── test.go                  # TestFile, Step, Request, Expect
-│   │   └── environment.go           # Environment, Service
-    ├── report/                  # HTML/JSON reporting engine
-│   │   ├── html.go              # HTML rendering logic
-│   │   ├── helpers.go           # cURL generation, RequestID extraction
-│   │   ├── template.html        # Embedded HTML template
-│   │   └── types.go             # Report structs
+│   │   ├── test.go                  # TestFile, Step, Request, Expect, RetryConfig
+│   │   ├── config.go                # Project configuration struct
+│   │   ├── environment.go           # Environment, Service
+│   │   └── schema.go               # Schema definition struct
+│   ├── report/                      # HTML/JSON reporting engine
+│   │   ├── html.go                  # HTML rendering logic
+│   │   ├── json.go                  # JSON rendering logic
+│   │   ├── helpers.go               # cURL generation, RequestID extraction
+│   │   ├── template.html            # Embedded HTML template (go:embed)
+│   │   └── types.go                 # ReportData, ScenarioData, ReportStep structs
 │   └── runner/                      # Execution engine
 │       ├── runner.go                # Orchestrator: load → execute → assert
 │       ├── executor.go              # HTTP client, JWT decoder, path resolver, assertions
+│       ├── executor_test.go         # Tests: resolvePath, evaluateAssertion, timing
 │       ├── interpolator.go          # Variable interpolation ($var / ${var})
-│       └── printer.go               # Console output formatter
+│       ├── matchers.go              # Type/string/collection matchers (uuid, email, etc.)
+│       ├── matchers_test.go         # Tests: all matchers with pass/fail cases
+│       ├── printer.go               # Console output formatter
+│       ├── printer_test.go          # Tests: golden file snapshot tests
+│       ├── config.go                # LoadConfig helper
+│       ├── schema.go                # Schema file loader
+│       ├── validator.go             # Schema validation engine
+│       ├── validator_test.go        # Tests: schema validation
+│       └── testdata/                # Golden files for snapshot testing
+│           ├── summary_output.golden
+│           ├── verbose_output.golden
+│           ├── advanced_matchers_output.golden
+│           ├── schema_output.golden
+│           └── timing_output.golden
 ├── docs/
 │   ├── prd.md                       # Product Requirements Document
 │   ├── technical.md                 # File structure notes
@@ -449,16 +466,14 @@ Project root detection: walks up from cwd looking for `.gherkio/` directory.
 - ✅ HTML & JSON Reporting (Phase 1, 2, & 3)
 - ✅ Schema Assertions (Phase 1)
 - ✅ Request Retries — RFC-5 (Attempts, Interval, Backoff strategies, OnStatus, Reporting)
-- ✅ Setup & Teardown — RFC-7 (setup/teardown blocks, role markers, always-run teardown)
-- ⏳ Per-Request Timeout — RFC-7 (draft)
-- ⏳ Configuration Alignment (schemas path) — RFC-8 (draft)
-- ⏳ Setup & Teardown Steps — RFC-9 (draft)
-- ⏳ MCP Server Support — RFC-6 (internal/core/ refactoring for LLM integration)
-- ⏳ Capability system — future
+- ✅ Setup & Teardown — RFC-9 (setup/teardown blocks, role markers, always-run teardown)
 - ✅ Negative Assertions — RFC-11 (implemented: `not exists`, `schema: not <name>`)
-- ⏳ Plugin system — future
-- ⏳ Go unit tests — 6 test files across `internal/report` and `internal/runner` (matchers, executor, printer, schema, validator, HTML report)
-- ⏳ CI/CD — not yet configured
+
+### MVP Complete
+
+All features from PRD §26.1 (MVP Scope) are implemented. The remaining gaps are either internal architecture (Capability System RFC-10), explicitly out-of-MVP scope (plugin system, escape hatch, parallel execution, filter tags), or non-functional (CI/CD).
+
+### Future / Out of MVP
 
 ---
 

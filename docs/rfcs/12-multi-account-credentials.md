@@ -178,13 +178,38 @@ type ScenarioData struct {
 
 If `--env staging` is used but no `credentials/staging.yaml` exists, the command behaves exactly as today — no accounts, no change. Credentials are purely additive.
 
-### 4.2 Credentials file exists but `--account` not specified
+### 4.2 Credentials file exists but no account flag specified
 
-If credentials exist but no `--account` or `--all-accounts` flag is given, credential variables are **not injected**. The test runs as-is. This prevents accidental credential injection when running ad-hoc tests.
+If credentials exist for the active environment but neither `--account` nor `--all-accounts` is given:
+
+- **1 account** → auto-use it (no need to type `--account` every time)
+- **2+ accounts** → print a hint and run without credentials:
+
+```
+⚠ 3 accounts found in credentials/staging.yaml. Use --account <name> or --all-accounts to use them.
+```
+
+This keeps the zero-config experience clean for the common case (one account per environment) while being explicit when ambiguity exists.
 
 ### 4.3 `--account` without `--env`
 
 If `--account alpha` is used without `--env`, Gherkio uses the default environment (e.g. `local`) and looks for `credentials/local.yaml`. This is consistent with how `--env` defaults work.
+
+### 4.4 `--account` specified but credentials file missing
+
+If `--account alpha` is specified but no credentials file exists for the active environment, the command fails with a clear error:
+
+```
+✗ No credentials file found for environment "staging" at .gherkio/credentials/staging.yaml.
+  Create one or remove the --account flag.
+```
+
+If the credentials file exists but the named account doesn't exist in it:
+
+```
+✗ Account "alpha" not found in .gherkio/credentials/staging.yaml.
+  Available accounts: beta, gamma, delta
+```
 
 ### 4.4 Variable conflicts
 
