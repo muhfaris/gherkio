@@ -1,0 +1,20 @@
+scenario: retry with timing failure (demonstrates retry output)
+
+steps:
+  # This will pass on first attempt but timing assertion will fail
+  # because timing.max is set unrealistically low
+  - request:
+      method: GET
+      url: /products/1
+
+    retry:
+      attempts: 3
+      interval: 2000
+      backoff: constant
+
+    expect:
+      status: 200
+      body.id: exists
+
+    timing:
+      max: 100ms

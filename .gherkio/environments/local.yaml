@@ -1,4 +1,1 @@
 baseUrl: https://dummyjson.com
-services:
-  restful-api:
-    baseUrl: https://api.restful-api.dev

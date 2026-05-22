@@ -646,8 +646,9 @@ properties:
 		if result.Passed {
 			t.Error("expected schema to fail but passed")
 		}
-		if result.Actual != "invalid" {
-			t.Errorf("expected actual='invalid', got %q", result.Actual)
+		expectedSummary := "field body.id: expected type integer, got string"
+		if result.Actual != expectedSummary {
+			t.Errorf("expected actual=%q, got %q", expectedSummary, result.Actual)
 		}
 		if result.Reason == "" {
 			t.Error("expected reason to contain violations")

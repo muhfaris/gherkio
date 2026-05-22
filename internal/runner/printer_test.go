@@ -244,7 +244,7 @@ func TestPrintResult_WithTimingAssertion(t *testing.T) {
 // Tests for helper functions
 
 func TestPrintResult_SchemaAssertion(t *testing.T) {
-	schemaReason := "actual: \"not-an-email\"\nexpected: field body.email format email\nreason: validation failed\n\nactual: (missing)\nexpected: field body.id is required\nreason: validation failed"
+	schemaReason := "field body.email: expected format email, got not-an-email\nfield body.id: field body.id is required but (missing)"
 
 	result := &RunResult{
 		Scenario: "schema validation",
@@ -264,7 +264,7 @@ func TestPrintResult_SchemaAssertion(t *testing.T) {
 				},
 				Assertions: []AssertionResult{
 					{Path: "status", Expected: "200", Actual: "200", Passed: true},
-					{Path: "schema", Expected: "users/user-response", Actual: "invalid", Passed: false, Reason: schemaReason},
+					{Path: "schema", Expected: "users/user-response", Actual: "field body.email: expected format email, got not-an-email", Passed: false, Reason: schemaReason},
 				},
 				Duration: 50 * time.Millisecond,
 			},

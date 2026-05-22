@@ -3,7 +3,9 @@ package model
 // TestFile represents a single Gherkio test YAML file.
 type TestFile struct {
 	Scenario string `yaml:"scenario"`
+	Setup    []Step `yaml:"setup,omitempty"`
 	Steps    []Step `yaml:"steps"`
+	Teardown []Step `yaml:"teardown,omitempty"`
 }
 
 // RetryConfig defines the configuration for a step's retry loop.

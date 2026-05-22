@@ -327,7 +327,9 @@ func formatActual(actual interface{}) string {
 func isMatcherKeyword(expected string) bool {
 	parts := strings.SplitN(expected, " ", 2)
 	switch parts[0] {
-	case "exists", "uuid", "email", "datetime", "uri", "number", "string", "boolean", "array", "object", "null", "true", "false":
+	case "exists", "not":
+		return true
+	case "uuid", "email", "datetime", "uri", "number", "string", "boolean", "array", "object", "null", "true", "false":
 		return true
 	case "contains", "startsWith", "endsWith", "regex":
 		return len(parts) == 2

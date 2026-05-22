@@ -22,6 +22,8 @@ Gherkio lets you describe HTTP-based integration tests as declarative YAML scena
 - **Environment Management** — Switch between `local`, `staging`, `production` with a flag
 - **Sensitive Field Masking** — Tokens, passwords, and secrets are masked in output
 - **Contextual Diagnostics** — Failed assertions show available fields and full response body
+- **Setup & Teardown** — Pre-condition and post-condition steps (teardown always runs, even on failure)
+- **Negative Assertions** — Assert field absence (`not exists`) or schema mismatch (`schema: not <name>`)
 
 ---
 
@@ -240,6 +242,58 @@ steps:
 
 ---
 
+## Setup & Teardown
+
+Pre-condition and post-condition steps that run before/after the main test steps.
+Teardown always runs — even if setup or steps fail — ensuring cleanup.
+
+```yaml
+scenario: Create and verify order
+
+setup:
+  - request:
+      method: POST
+      url: /products/add
+      headers:
+        Content-Type: application/json
+      body:
+        title: "Test Product"
+        price: 99.99
+
+    expect:
+      status: 201
+      body.id: exists
+
+    save:
+      productId: body.id
+
+steps:
+  - request:
+      method: GET
+      url: /products/$productId
+
+    expect:
+      status: 200
+      body.title: "Test Product"
+
+teardown:
+  - request:
+      method: DELETE
+      url: /products/1
+
+    expect:
+      status: 200
+      body.isDeleted: true
+```
+
+**Key behaviors:**
+- Setup runs first. If setup fails, main steps are skipped, but teardown still runs.
+- Teardown always runs, regardless of pass/fail in setup or steps.
+- Teardown failures are logged but do NOT affect the scenario pass/fail result.
+- Variables from setup are available to both main steps and teardown steps.
+
+---
+
 ## Assertions
 
 ### Basic assertions
@@ -291,6 +345,23 @@ expect:
   all(body.items.price): number     # All elements are numbers
   all(body.items.email): email      # All elements are valid emails
 ```
+
+### Negative assertions
+
+Assert that a field does **not** exist, or that a schema does **not** match:
+
+```yaml
+expect:
+  body.deletedAt: not exists          # Field must NOT be present
+  headers.x-deprecated: not exists    # Header must NOT be present
+  jwt.expired: not exists             # JWT claim must NOT be present
+  schema: not example/login-response  # Response must NOT match this schema
+```
+
+**Use cases:**
+- Verify a field is absent after soft delete (`body.deletedAt: not exists`)
+- Confirm a deprecated header is no longer sent (`headers.x-api-version: not exists`)
+- Ensure a schema mismatch is intentional (`schema: not example/login-response`)
 
 ### Schema assertions
 
@@ -524,7 +595,9 @@ Shows full request and response payloads, including headers and bodies (with sen
 | Contextual failure UX | ✅ |
 | Sensitive field masking | ✅ |
 | Multiple environments | ✅ |
-| Reporting (HTML, JSON) | ⏳ Planned |
+| Reporting (HTML, JSON) | ✅ |
+| Setup & Teardown blocks | ✅ |
+| Negative assertions (`not exists`, `schema: not`) | ✅ |
 | Plugin/capability system | ⏳ Future |
 | Go unit tests | ✅ Matchers, executor, printer (golden file snapshots) |
 | CI/CD | ⏳ Not yet configured |

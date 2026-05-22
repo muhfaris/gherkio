@@ -1,0 +1,15 @@
+scenario: negative assertions — failure output demo
+
+# This scenario intentionally fails to show negative assertion error formatting.
+# body.id exists (positive) — field IS there, so it passes.
+# body.id: not exists (negative) — field IS there, so it fails.
+# schema: not features/product-response — product data DOES match, so it fails.
+
+steps:
+  - request:
+      method: GET
+      url: /products/1
+    expect:
+      status: 200
+      body.idx: not exists
+      schema: not example/login-response

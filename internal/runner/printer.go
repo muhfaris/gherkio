@@ -115,7 +115,21 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 	fmt.Printf("\n%s %s\n\n", statusIcon, result.Scenario)
 
 	stepCounter := 1
+	var lastRole string
 	for i, step := range result.Steps {
+		// Print section header when role changes
+		if step.Role != lastRole && (step.Role == "setup" || step.Role == "teardown") {
+			if lastRole != "" {
+				fmt.Println()
+			}
+			sectionName := "Setup"
+			if step.Role == "teardown" {
+				sectionName = "Teardown"
+			}
+			fmt.Printf("── %s ──\n\n", sectionName)
+			lastRole = step.Role
+		}
+
 		indent := strings.Repeat("   │", step.Depth)
 		statusIndent := indent + stepSpacing(step.Depth)
 
@@ -264,9 +278,18 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 							}
 						} else {
 							if a.Reason != "" {
-								fmt.Printf("      └─ actual: %s\n", a.Actual)
-								fmt.Printf("      └─ expected: %s\n", a.Expected)
-								fmt.Printf("      └─ reason: %s\n", a.Reason)
+								// For schema assertions, show reason lines directly
+								if strings.HasPrefix(a.Path, "schema") {
+									for _, line := range strings.Split(a.Reason, "\n") {
+										fmt.Printf("      └─ %s\n", line)
+									}
+								} else {
+									fmt.Printf("      └─ actual: %s\n", a.Actual)
+									fmt.Printf("      └─ expected: %s\n", a.Expected)
+									for _, line := range strings.Split(a.Reason, "\n") {
+										fmt.Printf("      └─ reason: %s\n", line)
+									}
+								}
 							} else {
 								fmt.Printf("      └─ got: %s\n", a.Actual)
 							}
@@ -317,9 +340,19 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 							fmt.Println()
 						} else {
 							if a.Reason != "" {
-								fmt.Printf("%s└─ actual: %s\n", failureIndent, a.Actual)
-								fmt.Printf("%s└─ expected: %s\n", failureIndent, a.Expected)
-								fmt.Printf("%s└─ reason: %s\n", failureIndent, a.Reason)
+								// For schema assertions, the actual value is already descriptive
+								// No need to repeat it separately
+								if strings.HasPrefix(a.Path, "schema") {
+									for _, line := range strings.Split(a.Reason, "\n") {
+										fmt.Printf("%s└─ %s\n", failureIndent, line)
+									}
+								} else {
+									fmt.Printf("%s└─ actual: %s\n", failureIndent, a.Actual)
+									fmt.Printf("%s└─ expected: %s\n", failureIndent, a.Expected)
+									for _, line := range strings.Split(a.Reason, "\n") {
+										fmt.Printf("%s└─ reason: %s\n", failureIndent, line)
+									}
+								}
 							} else {
 								fmt.Printf("%s└─ got: %s\n", failureIndent, a.Actual)
 							}

@@ -54,25 +54,64 @@ func Run(cfg RunConfig) (*RunResult, error) {
 
 	vars := make(map[string]interface{})
 	currentDir := filepath.Dir(cfg.TestPath)
-	steps, passes, fails, passed := executeSteps(testFile.Steps, env, vars, cfg.ProjectDir, currentDir, 0)
+	var allSteps []StepResult
+	setupFailed := false
 
-	// Propagate scenario name and test file path to each step result
-	for i := range steps {
-		steps[i].ScenarioName = testFile.Scenario
-		steps[i].TestFile = cfg.TestPath
+	// Execute setup steps first
+	if len(testFile.Setup) > 0 {
+		setupSteps, setupPass, setupFail, setupPassed := executeSteps(testFile.Setup, env, vars, cfg.ProjectDir, currentDir, 0, "setup")
+		for i := range setupSteps {
+			setupSteps[i].ScenarioName = testFile.Scenario
+			setupSteps[i].TestFile = cfg.TestPath
+		}
+		allSteps = append(allSteps, setupSteps...)
+		result.TotalPass += setupPass
+		result.TotalFail += setupFail
+		if !setupPassed {
+			setupFailed = true
+		}
 	}
 
-	result.Steps = steps
-	result.TotalPass = passes
-	result.TotalFail = fails
-	result.Passed = passed
+	// Execute main steps (skip if setup failed)
+	if !setupFailed {
+		mainSteps, mainPass, mainFail, mainPassed := executeSteps(testFile.Steps, env, vars, cfg.ProjectDir, currentDir, 0, "steps")
+		for i := range mainSteps {
+			mainSteps[i].ScenarioName = testFile.Scenario
+			mainSteps[i].TestFile = cfg.TestPath
+		}
+		allSteps = append(allSteps, mainSteps...)
+		result.TotalPass += mainPass
+		result.TotalFail += mainFail
+		if !mainPassed {
+			result.Passed = false
+		}
+	}
+
+	// Execute teardown steps (always, even if setup or steps failed)
+	// Teardown failures are recorded but don't affect overall pass/fail
+	if len(testFile.Teardown) > 0 {
+		teardownSteps, _, _, _ := executeSteps(testFile.Teardown, env, vars, cfg.ProjectDir, currentDir, 0, "teardown")
+		for i := range teardownSteps {
+			teardownSteps[i].ScenarioName = testFile.Scenario
+			teardownSteps[i].TestFile = cfg.TestPath
+		}
+		allSteps = append(allSteps, teardownSteps...)
+	}
+
+	result.Steps = allSteps
 	result.TestFile = cfg.TestPath
 	result.Duration = time.Since(start)
+
+	// Determine overall pass/fail (teardown failures don't affect this)
+	// If we haven't set Passed to false yet, check main steps pass/fail
+	if result.TotalFail == 0 && setupFailed == false {
+		result.Passed = true
+	}
 
 	return result, nil
 }
 
-func executeSteps(steps []model.Step, env *model.Environment, vars map[string]interface{}, projectDir string, currentDir string, depth int) ([]StepResult, int, int, bool) {
+func executeSteps(steps []model.Step, env *model.Environment, vars map[string]interface{}, projectDir string, currentDir string, depth int, role string) ([]StepResult, int, int, bool) {
 	var stepResults []StepResult
 	totalPass := 0
 	totalFail := 0
@@ -83,6 +122,7 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 		stepResult := StepResult{
 			Original: step,
 			Depth:    depth,
+			Role:     role,
 		}
 
 		// Handle 'use' step recursively
@@ -124,7 +164,7 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 			}
 
 			usedCurrentDir := filepath.Dir(resolvedPath)
-			nestedSteps, nestedPass, nestedFail, _ := executeSteps(usedTest.Steps, env, vars, projectDir, usedCurrentDir, depth+1)
+			nestedSteps, nestedPass, nestedFail, _ := executeSteps(usedTest.Steps, env, vars, projectDir, usedCurrentDir, depth+1, role)
 
 			// Flatten the results
 			stepResults = append(stepResults, nestedSteps...)
@@ -134,6 +174,7 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 				Depth:    depth,
 				IsUseEnd: true,
 				UseFile:  step.Use,
+				Role:     role,
 			}
 			stepResults = append(stepResults, useEndStep)
 			totalPass += nestedPass
