@@ -15,19 +15,54 @@ func GenerateJSONSchema() ([]byte, error) {
 	// Reflect from TestFile which is the root of our YAML DSL
 	schema := r.Reflect(&model.TestFile{})
 
-	// Expect allows dynamic assertions (like body.id: uuid)
+	// --- Advanced Autocomplete for Expect ---
 	if expectSchema, ok := schema.Definitions["Expect"]; ok {
-		expectSchema.AdditionalProperties = &jsonschema.Schema{
-			OneOf: []*jsonschema.Schema{
-				{Type: "string", Description: "String matcher (e.g., exists, uuid, string, number)"},
-				{Type: "number", Description: "Numeric exact match"},
-				{Type: "boolean", Description: "Boolean exact match"},
-				{Type: "object", Description: "Nested matcher object"},
+		// Define the Matcher definition
+		matcherSchema := &jsonschema.Schema{
+			Type: "string",
+			Enum: []interface{}{
+				"exists", "not exists",
+				"uuid", "email", "datetime",
+				"string", "number", "boolean", "array", "object", "null",
+				"true", "false",
 			},
+			Description: "Gherkio assertion matchers",
 		}
+		schema.Definitions["Matcher"] = matcherSchema
+
+		// 1. Explicit properties for Autocomplete suggestions
+		// By adding these explicit keys, the editor will suggest them when typing inside 'expect:'
+		expectSchema.Properties.Set("body.", &jsonschema.Schema{
+			Ref:         "#/$defs/Matcher",
+			Description: "Assert against the JSON response body. Example: body.id, body.data.0.name",
+		})
+		expectSchema.Properties.Set("headers.", &jsonschema.Schema{
+			Ref:         "#/$defs/Matcher",
+			Description: "Assert against response headers. Example: headers.content-type",
+		})
+		expectSchema.Properties.Set("jwt.", &jsonschema.Schema{
+			Ref:         "#/$defs/Matcher",
+			Description: "Assert against decoded JWT claims. Example: jwt.role, jwt.exp",
+		})
+		expectSchema.Properties.Set("schema", &jsonschema.Schema{
+			Type:        "string",
+			Description: "Validate response body against a predefined JSON schema name",
+		})
+
+		// 2. Pattern Properties for dynamic paths
+		// This allows ANY path starting with body., headers., jwt. to be valid and use the Matcher autocomplete
+		if expectSchema.PatternProperties == nil {
+			expectSchema.PatternProperties = make(map[string]*jsonschema.Schema)
+		}
+		expectSchema.PatternProperties["^(body|headers|jwt)\\..+$"] = &jsonschema.Schema{
+			Ref: "#/$defs/Matcher",
+		}
+
+		// Remove the generic AdditionalProperties since we are using PatternProperties and specific keys
+		expectSchema.AdditionalProperties = nil
 	}
 
-	// Make all step fields optional EXCEPT request OR use (one of them usually required, but it's hard to express in simple schema, so we leave them optional for flexible YAML writing)
+	// Make all step fields optional EXCEPT request OR use
 	if stepSchema, ok := schema.Definitions["Step"]; ok {
 		stepSchema.Required = []string{}
 	}
