@@ -15,6 +15,7 @@ func InterpolateRequest(req model.Request, vars map[string]interface{}) (model.R
 		Method:  req.Method,
 		URL:     req.URL,
 		Headers: make(map[string]string),
+		Timeout: req.Timeout,
 	}
 
 	// Interpolate URL

@@ -37,6 +37,7 @@ type Request struct {
 	URL     string            `yaml:"url"`
 	Headers map[string]string `yaml:"headers,omitempty"`
 	Body    interface{}       `yaml:"body,omitempty"`
+	Timeout string            `yaml:"timeout,omitempty"` // e.g. "5s", "30s", "1m"
 }
 
 // Expect holds assertions for a step.

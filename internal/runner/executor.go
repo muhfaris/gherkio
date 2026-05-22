@@ -107,7 +107,7 @@ func getAvailableFields(data interface{}) []string {
 }
 
 // executeRequest performs an HTTP request and returns the result.
-func executeRequest(method, url string, headers map[string]string, body interface{}) (*ResponseInfo, error) {
+func executeRequest(method, url string, headers map[string]string, body interface{}, timeoutStr string) (*ResponseInfo, error) {
 	var bodyReader io.Reader
 	if body != nil {
 		switch b := body.(type) {
@@ -146,7 +146,16 @@ func executeRequest(method, url string, headers map[string]string, body interfac
 		}
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	// Parse timeout with fallback to 30s default
+	timeout := 30 * time.Second
+	if timeoutStr != "" {
+		parsed, err := time.ParseDuration(timeoutStr)
+		if err == nil {
+			timeout = parsed
+		}
+	}
+
+	client := &http.Client{Timeout: timeout}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)

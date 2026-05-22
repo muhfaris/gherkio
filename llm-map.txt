@@ -140,6 +140,7 @@ type Request struct {
     URL     string            // Path (appended to baseUrl)
     Headers map[string]string
     Body    interface{}       // Free-form map or string
+    Timeout string            // Per-request timeout (e.g. "5s", "30s", "1m"), default 30s
 }
 // internal/model/schema.go
 type Schema struct {
@@ -336,6 +337,23 @@ Steps can specify a maximum duration:
 - Implemented in `executor.go` via `evaluateTiming()`
 - Duration is measured per-step from start to completion
 
+### 9a. Request Timeout
+
+Override the default 30-second HTTP client timeout on a per-request basis:
+
+```yaml
+- request:
+    method: GET
+    url: /slow-endpoint
+    timeout: 60s
+```
+
+- Uses Go duration format: `5s`, `30s`, `1m`, `1m30s`
+- Empty or invalid timeout falls back to 30s default
+- `0s` means no timeout (unlimited wait)
+- Distinct from `timing.max` (which is an assertion, not a client deadline)
+- Implemented in `executor.go` in `executeRequest()`
+
 ### 10. Failure UX — Contextual Diagnostics
 
 When an assertion fails, the output is designed for debugging, not just pass/fail:
@@ -409,6 +427,7 @@ Project root detection: walks up from cwd looking for `.gherkio/` directory.
 - ✅ Summary/verbose output modes (default: summary, --verbose for full payloads)
 - ✅ Sensitive field masking (tokens, passwords, secrets masked in output)
 - ✅ Timing assertions (`timing: { max: 500ms }`)
+- ✅ Configurable request timeout (per-request `timeout: 60s` override)
 - ✅ Scenario Composition / use-steps (Phase 1 MVP: recursion, merging, depth check)
 - ✅ CLI commands (init, run)
 - ✅ HTML & JSON Reporting (Phase 1, 2, & 3)
