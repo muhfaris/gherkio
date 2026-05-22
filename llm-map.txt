@@ -394,6 +394,7 @@ Project root detection: walks up from cwd looking for `.gherkio/` directory.
 - ✅ CLI commands (init, run)
 - ✅ HTML & JSON Reporting (Phase 1 & 2)
 - ✅ Schema Assertions (Phase 1)
+- ⏳ MCP Server Support — RFC-6 (internal/core/ refactoring for LLM integration)
 - ⏳ Capability system — future
 - ⏳ Plugin system — future
 - ⏳ Go unit tests — not yet written
