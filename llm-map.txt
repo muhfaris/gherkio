@@ -33,6 +33,7 @@ A CLI tool that executes declarative YAML-based integration test scenarios again
 | `github.com/spf13/cobra` v1.10.2 | CLI framework (root + subcommands) |
 | `github.com/spf13/pflag` v1.0.9 | Flag parsing (via cobra) |
 | `gopkg.in/yaml.v3` v3.0.1 | YAML parsing for test and environment files |
+| `github.com/invopop/jsonschema` | JSON Schema generator from Go structs |
 | Standard library `net/http` | HTTP request execution |
 | Standard library `encoding/json` | JSON body parsing |
 | Standard library `regexp` | Variable interpolation (`$var` / `${var}`) |
@@ -60,6 +61,8 @@ gherkio/
 │   │   ├── environment.go           # Environment, Service
 │   │   ├── schema.go               # Schema definition struct
 │   │   └── credentials.go          # Credentials, Account structs
+│   ├── schema/                      # JSON Schema generator for autocomplete
+│   │   └── generator.go
 │   ├── report/                      # HTML/JSON reporting engine
 │   │   ├── html.go                  # HTML rendering logic
 │   │   ├── json.go                  # JSON rendering logic
@@ -454,6 +457,7 @@ gherkio run <test-file> --report json --report-raw # Unmasked JSON
 gherkio run <test-file> -v                    # Shorthand for --verbose
 gherkio run <test-file> --env staging --account alpha   # Run with specific account
 gherkio run <test-file> --env staging --all-accounts    # Run against all accounts
+gherkio schema                              # Generate JSON Schema for YAML autocomplete
 ```
 
 Test file resolution order:

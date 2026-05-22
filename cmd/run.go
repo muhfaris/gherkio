@@ -261,12 +261,12 @@ func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *re
 	}
 
 	cfg := runner.RunConfig{
-		TestPath:      testPath,
-		EnvName:       env,
-		ProjectDir:    projectDir,
-		Verbose:       verbose,
-		MaskFields:    maskFields,
-		AccountName:   accName,
+		TestPath:       testPath,
+		EnvName:        env,
+		ProjectDir:     projectDir,
+		Verbose:        verbose,
+		MaskFields:     maskFields,
+		AccountName:    accName,
 		CredentialVars: credentialVars,
 	}
 
