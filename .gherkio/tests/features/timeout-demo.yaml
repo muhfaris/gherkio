@@ -1,0 +1,29 @@
+scenario: per-request timeout
+
+# Demonstrates the timeout field on a request step.
+# timeout sets the HTTP client timeout for that specific request.
+
+steps:
+  # Fast request with generous timeout
+  - request:
+      method: GET
+      url: /products/1
+      timeout: 30s
+
+    expect:
+      status: 200
+      body.title: exists
+
+  # Fast request with a very short timeout
+  # This API responds quickly so it should still pass
+  - request:
+      method: GET
+      url: /products/1
+      timeout: 1s
+
+    expect:
+      status: 200
+      body.title: exists
+
+    timing:
+      max: 5s

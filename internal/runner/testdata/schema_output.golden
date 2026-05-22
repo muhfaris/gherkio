@@ -4,16 +4,9 @@
 1. GET https://api.example.com/users
    ✗ failed
    ✓ status = 200
-   ✗ schema = users/user-response (actual: invalid)
-       └─ actual: invalid
-       └─ expected: users/user-response
-       └─ reason: actual: "not-an-email"
-expected: field body.email format email
-reason: validation failed
-
-actual: (missing)
-expected: field body.id is required
-reason: validation failed
+   ✗ schema = users/user-response (actual: field body.email: expected format email, got not-an-email)
+       └─ field body.email: expected format email, got not-an-email
+       └─ field body.id: field body.id is required but (missing)
 
 Response:
 Status: 200

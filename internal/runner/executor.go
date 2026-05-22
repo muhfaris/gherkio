@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/muhfaris/gherkio/internal/model"
@@ -105,6 +106,14 @@ func getAvailableFields(data interface{}) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// formatViolation formats a single schema violation into a human-readable string.
+func formatViolation(v SchemaViolation) string {
+	if v.Rule == "required" {
+		return fmt.Sprintf("field %s: %s but %s", v.Field, v.Expected, v.Actual)
+	}
+	return fmt.Sprintf("field %s: expected %s %s, got %s", v.Field, v.Rule, v.Expected, v.Actual)
 }
 
 // executeRequest performs an HTTP request and returns the result.
@@ -248,6 +257,12 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 			}
 		}
 
+		isNegated := false
+		if strings.HasPrefix(expectedStr, "not ") {
+			isNegated = true
+			expectedStr = strings.TrimPrefix(expectedStr, "not ")
+		}
+
 		schema, err := LoadSchema(expectedStr, projectDir)
 		if err != nil {
 			return AssertionResult{
@@ -261,6 +276,28 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 
 		violations := ValidateSchema(resp.Parsed, schema, "body")
 
+		if isNegated {
+			// schema: not <name> — response should NOT match
+			if len(violations) == 0 {
+				displayName := "not " + expectedStr
+				return AssertionResult{
+					Path:     "schema",
+					Expected: displayName,
+					Actual:   "valid (unexpectedly)",
+					Passed:   false,
+					Reason:   "response matches schema but should not",
+				}
+			}
+			displayName := "not " + expectedStr
+			return AssertionResult{
+				Path:     "schema",
+				Expected: displayName,
+				Actual:   "invalid (expected)",
+				Passed:   true,
+			}
+		}
+
+		// schema: <name> — normal positive assertion
 		if len(violations) == 0 {
 			return AssertionResult{
 				Path:     "schema",
@@ -271,17 +308,20 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 		}
 
 		var reasonBuilder strings.Builder
+		firstViolation := violations[0]
+		summary := formatViolation(firstViolation)
+
 		for i, v := range violations {
 			if i > 0 {
-				reasonBuilder.WriteString("\n\n")
+				reasonBuilder.WriteString("\n")
 			}
-			reasonBuilder.WriteString(fmt.Sprintf("actual: %s\nexpected: field %s %s %s\nreason: %s", v.Actual, v.Field, v.Rule, v.Expected, "validation failed"))
+			reasonBuilder.WriteString(formatViolation(v))
 		}
 
 		return AssertionResult{
 			Path:     "schema",
 			Expected: expectedStr,
-			Actual:   "invalid",
+			Actual:   summary,
 			Passed:   false,
 			Reason:   reasonBuilder.String(),
 		}
@@ -290,6 +330,8 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 	// Collection Matchers: count(path)
 	if strings.HasPrefix(path, "count(") && strings.HasSuffix(path, ")") {
 		innerPath := path[6 : len(path)-1]
+		// Strip body. prefix for consistency with regular assertions
+		innerPath = strings.TrimPrefix(innerPath, "body.")
 		actualVal, found := resolvePath(resp.Parsed, innerPath)
 		if !found {
 			return AssertionResult{
@@ -340,6 +382,8 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 	// Collection Matchers: all(path)
 	if strings.HasPrefix(path, "all(") && strings.HasSuffix(path, ")") {
 		innerPath := path[4 : len(path)-1]
+		// Strip body. prefix for consistency with regular assertions
+		innerPath = strings.TrimPrefix(innerPath, "body.")
 
 		// Determine base array path and the field to check
 		lastDot := strings.LastIndex(innerPath, ".")
@@ -475,12 +519,31 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 		claimPath := strings.TrimPrefix(path, "jwt.")
 		actualVal, found := resolvePath(jwtClaims, claimPath)
 		if !found {
+			// not exists — field absent is a pass
+			if expectedStr == "not exists" {
+				return AssertionResult{
+					Path:     path,
+					Expected: "not exists",
+					Actual:   "(not found)",
+					Passed:   true,
+				}
+			}
 			return AssertionResult{
 				Path:        path,
 				Expected:    expectedStr,
 				Actual:      "(not found)",
 				Passed:      expectedStr == "exists" && false,
 				Suggestions: getAvailableFields(jwtClaims),
+			}
+		}
+
+		// not exists — field found is a fail
+		if expectedStr == "not exists" {
+			return AssertionResult{
+				Path:     path,
+				Expected: "not exists",
+				Actual:   fmt.Sprintf("%v", actualVal),
+				Passed:   false,
 			}
 		}
 
@@ -504,6 +567,15 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 		headerName := strings.TrimPrefix(path, "headers.")
 		actualVal, ok := resp.Headers[headerName]
 		if !ok {
+			// not exists — field absent is a pass
+			if expectedStr == "not exists" {
+				return AssertionResult{
+					Path:     path,
+					Expected: "not exists",
+					Actual:   "(not found)",
+					Passed:   true,
+				}
+			}
 			available := make([]string, 0, len(resp.Headers))
 			for k := range resp.Headers {
 				available = append(available, k)
@@ -515,6 +587,15 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 				Actual:      "(not found)",
 				Passed:      expectedStr == "exists" && false,
 				Suggestions: available,
+			}
+		}
+		// not exists — field found is a fail
+		if expectedStr == "not exists" {
+			return AssertionResult{
+				Path:     path,
+				Expected: "not exists",
+				Actual:   actualVal,
+				Passed:   false,
 			}
 		}
 		// Try Matchers
@@ -529,6 +610,14 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 		bodyPath := strings.TrimPrefix(path, "body.")
 
 		if resp.Parsed == nil {
+			if expectedStr == "not exists" {
+				return AssertionResult{
+					Path:     path,
+					Expected: "not exists",
+					Actual:   "(body not parsed)",
+					Passed:   true,
+				}
+			}
 			return AssertionResult{
 				Path:     path,
 				Expected: expectedStr,
@@ -539,12 +628,31 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 
 		actualVal, found := resolvePath(resp.Parsed, bodyPath)
 		if !found {
+			// not exists — field absent is a pass
+			if expectedStr == "not exists" {
+				return AssertionResult{
+					Path:     path,
+					Expected: "not exists",
+					Actual:   "(not found)",
+					Passed:   true,
+				}
+			}
 			return AssertionResult{
 				Path:        path,
 				Expected:    expectedStr,
 				Actual:      "(not found)",
 				Passed:      expectedStr == "exists" && false,
 				Suggestions: getAvailableFields(resp.Parsed),
+			}
+		}
+
+		// not exists — field found is a fail
+		if expectedStr == "not exists" {
+			return AssertionResult{
+				Path:     path,
+				Expected: "not exists",
+				Actual:   fmt.Sprintf("%v", actualVal),
+				Passed:   false,
 			}
 		}
 
@@ -798,45 +906,5 @@ func decodeJWT(tokenString string) (map[string]interface{}, error) {
 }
 
 func base64Decode(s string) ([]byte, error) {
-	// Use standard base64 instead of custom
-	decoded := make([]byte, len(s))
-	n := 0
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		switch {
-		case c >= 'A' && c <= 'Z':
-			decoded[n] = c - 'A'
-		case c >= 'a' && c <= 'z':
-			decoded[n] = c - 'a' + 26
-		case c >= '0' && c <= '9':
-			decoded[n] = c - '0' + 52
-		case c == '+':
-			decoded[n] = 62
-		case c == '/':
-			decoded[n] = 63
-		default:
-			continue
-		}
-		n++
-	}
-
-	// Decode sextets into bytes
-	result := make([]byte, 0, n*3/4)
-	for i := 0; i+3 < n; i += 4 {
-		val := (int(decoded[i]) << 18) | (int(decoded[i+1]) << 12) | (int(decoded[i+2]) << 6) | int(decoded[i+3])
-		result = append(result, byte(val>>16), byte(val>>8), byte(val))
-	}
-
-	// Handle remaining bytes
-	remaining := n % 4
-	if remaining >= 2 {
-		val := int(decoded[n-2])<<6 | int(decoded[n-1])
-		result = append(result, byte(val>>4))
-		if remaining == 3 {
-			val = (int(decoded[n-3]) << 12) | (int(decoded[n-2]) << 6) | int(decoded[n-1])
-			result = append(result, byte(val>>10), byte(val>>2))
-		}
-	}
-
-	return result, nil
+	return base64.StdEncoding.DecodeString(s)
 }

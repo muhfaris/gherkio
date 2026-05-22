@@ -452,6 +452,7 @@ Project root detection: walks up from cwd looking for `.gherkio/` directory.
 - ✅ Setup & Teardown — RFC-7 (setup/teardown blocks, role markers, always-run teardown)
 - ⏳ MCP Server Support — RFC-6 (internal/core/ refactoring for LLM integration)
 - ⏳ Capability system — future
+- ⏳ Negative Assertions — RFC-11 (draft)
 - ⏳ Plugin system — future
 - ⏳ Go unit tests — not yet written
 - ⏳ CI/CD — not yet configured
