@@ -22,9 +22,10 @@ func GenerateJSONSchema() ([]byte, error) {
 			Type: "string",
 			Enum: []interface{}{
 				"exists", "not exists",
-				"uuid", "email", "datetime",
+				"uuid", "email", "datetime", "uri",
 				"string", "number", "boolean", "array", "object", "null",
 				"true", "false",
+				"contains", "startsWith", "endsWith", "regex",
 			},
 			Description: "Gherkio assertion matchers",
 		}
