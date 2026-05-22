@@ -49,7 +49,7 @@ func TestMapResultToReportData(t *testing.T) {
 	}
 
 	maskFields := []string{"password", "token"}
-	data := MapResultToReportData(result, "local", maskFields)
+	data := MapResultToReportData(result, "local", maskFields, true)
 
 	if data.ScenarioName != "Test Scenario" {
 		t.Errorf("expected scenario name 'Test Scenario', got '%s'", data.ScenarioName)
@@ -137,5 +137,56 @@ func TestRenderHTML(t *testing.T) {
 	}
 	if !strings.Contains(html, "Test HTML Render") {
 		t.Errorf("expected HTML to contain scenario name")
+	}
+}
+
+func TestRenderJSON(t *testing.T) {
+	result := &runner.RunResult{
+		Scenario:  "Test JSON Render",
+		TotalPass: 1,
+		TotalFail: 0,
+		Passed:    true,
+		Duration:  time.Millisecond * 500,
+		Steps: []runner.StepResult{
+			{
+				Original: model.Step{
+					Request: model.Request{
+						Method: "GET",
+						URL:    "/api/users",
+					},
+				},
+				Request: &runner.RequestInfo{
+					Method: "GET",
+					URL:    "/api/users",
+				},
+				Response: &runner.ResponseInfo{
+					Status: 200,
+				},
+				Duration: time.Millisecond * 300,
+				Assertions: []runner.AssertionResult{
+					{
+						Path:     "status",
+						Expected: "200",
+						Actual:   "200",
+						Passed:   true,
+					},
+				},
+			},
+		},
+	}
+
+	cfg := ReportConfig{
+		Format:        "json",
+		MaskSensitive: true,
+		MaskFields:    []string{"password"},
+	}
+
+	jsonStr, err := RenderJSON(result, cfg, "test")
+	if err != nil {
+		t.Fatalf("RenderJSON failed: %v", err)
+	}
+
+	if !strings.Contains(jsonStr, "\"ScenarioName\": \"Test JSON Render\"") {
+		t.Errorf("expected JSON to contain ScenarioName")
 	}
 }

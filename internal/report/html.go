@@ -17,7 +17,7 @@ import (
 var reportTemplateStr string
 
 // MapResultToReportData converts a runner.RunResult to ReportData.
-func MapResultToReportData(result *runner.RunResult, env string, maskFields []string) ReportData {
+func MapResultToReportData(result *runner.RunResult, env string, maskFields []string, forceCurlMasking bool) ReportData {
 	totalPass := 0
 	totalFail := 0
 
@@ -35,7 +35,12 @@ func MapResultToReportData(result *runner.RunResult, env string, maskFields []st
 		stepPassed := step.Error == ""
 
 		if step.Request != nil {
-			curlCmd = generateCurl(step.Request, maskFields)
+
+			curlMaskFields := maskFields
+			if forceCurlMasking {
+				curlMaskFields = runner.GetDefaultSensitiveFields()
+			}
+			curlCmd = generateCurl(step.Request, curlMaskFields)
 			reqBody = runner.FormatRequestBody(step.Request.Body, maskFields)
 		}
 
@@ -141,7 +146,7 @@ func MapResultToReportData(result *runner.RunResult, env string, maskFields []st
 
 // RenderHTML generates the HTML report string.
 func RenderHTML(result *runner.RunResult, cfg ReportConfig, env string) (string, error) {
-	data := MapResultToReportData(result, env, cfg.MaskFields)
+	data := MapResultToReportData(result, env, cfg.MaskFields, true)
 
 	funcs := template.FuncMap{
 		"add": func(a, b int) int { return a + b },

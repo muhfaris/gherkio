@@ -1,6 +1,5 @@
 package report
 
-
 // ReportData represents the top-level data structure passed to the HTML template.
 type ReportData struct {
 	ScenarioName  string

@@ -364,6 +364,9 @@ gherkio run <directory>/                      # Run all tests in a subdirectory
 gherkio run <test-file> --env <environment>   # Run with specific environment
 gherkio run <test-file> --verbose             # Show full request/response payloads
 gherkio run <test-file> --report html         # Generate HTML report
+gherkio run <test-file> --report json         # Generate JSON report
+gherkio run <test-file> --report html,json    # Generate both reports
+gherkio run <test-file> --report json --report-raw # Unmasked JSON
 gherkio run <test-file> -v                    # Shorthand for --verbose
 ```
 
@@ -386,7 +389,7 @@ Project root detection: walks up from cwd looking for `.gherkio/` directory.
 - ✅ Timing assertions (`timing: { max: 500ms }`)
 - ✅ Scenario Composition / use-steps (Phase 1 MVP: recursion, merging, depth check)
 - ✅ CLI commands (init, run)
-- ✅ HTML Reporting (Phase 1)
+- ✅ HTML & JSON Reporting (Phase 1 & 2)
 - ✅ Schema Assertions (Phase 1)
 - ⏳ Capability system — future
 - ⏳ Plugin system — future
@@ -456,9 +459,9 @@ go test ./...                           # Run Go unit tests (when they exist)
 Collection matchers (`count()`, `all()`) are implemented in `evaluateAssertion()` in `executor.go`, which calls `evaluateMatcher()` for each element internally.
 
 
-### 11. HTML Reporting
+### 11. HTML & JSON Reporting
 Gherkio supports generating standalone HTML reports for test runs.
-- **Trigger**: via CLI flag `--report html` or `.gherkio/config.yaml` `reports.format: html`.
+- **Trigger**: via CLI flag `--report html` or `--report json` or `.gherkio/config.yaml` `reports.format: html,json`.
 - **Output**: Saved to `.gherkio/reports/latest/report.html` and a timestamped directory.
 - **Features**: Includes masked payloads, copyable cURL commands, extracted Request IDs from headers, and inline timing assertion results.
 - **Implementation**: Uses `html/template` with `//go:embed` to embed `assets/template/report.html` directly into the binary (no external dependencies). Housed in the `internal/report/` package.

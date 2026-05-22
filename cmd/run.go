@@ -18,6 +18,7 @@ var (
 	envName      string
 	verbose      bool
 	reportFormat string
+	reportRaw    bool
 )
 
 // runCmd represents the gherkio run command.
@@ -46,7 +47,7 @@ Example:
 		if len(args) > 0 {
 			testPath = args[0]
 		}
-		return runTest(testPath, envName, verbose, reportFormat)
+		return runTest(testPath, envName, verbose, reportFormat, reportRaw)
 	},
 }
 
@@ -54,10 +55,11 @@ func init() {
 	rootCmd.AddCommand(runCmd)
 	runCmd.Flags().StringVarP(&envName, "env", "e", "local", "Environment to use (e.g. local, staging, production)")
 	runCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show full request/response payloads")
-	runCmd.Flags().StringVar(&reportFormat, "report", "", "Generate a report (format: html)")
+	runCmd.Flags().StringVar(&reportFormat, "report", "", "Generate a report (format: html, json, or html,json)")
+	runCmd.Flags().BoolVar(&reportRaw, "report-raw", false, "Skip sensitive data masking in JSON reports (cURL commands remain masked)")
 }
 
-func runTest(testPath, env string, verbose bool, reportFormat string) error {
+func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw bool) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("failed to get current directory: %w", err)
@@ -92,7 +94,7 @@ func runTest(testPath, env string, verbose bool, reportFormat string) error {
 		reportCfg = &report.ReportConfig{
 			Format:        reportFormat,
 			Path:          "",
-			MaskSensitive: true,
+			MaskSensitive: !reportRaw,
 			MaskFields:    maskFields,
 		}
 		if appCfg != nil {
@@ -132,18 +134,35 @@ func handleReport(result *runner.RunResult, projectDir string, env string, repor
 		return
 	}
 
-	if reportCfg.Format == "html" {
-		html, err := report.RenderHTML(result, *reportCfg, env)
-		if err != nil {
-			fmt.Printf("Failed to render HTML report: %v\n", err)
-			return
+	formats := strings.Split(reportCfg.Format, ",")
+	for _, format := range formats {
+		format = strings.TrimSpace(format)
+		switch format {
+		case "html":
+			html, err := report.RenderHTML(result, *reportCfg, env)
+			if err != nil {
+				fmt.Printf("Failed to render HTML report: %v\n", err)
+				continue
+			}
+			savedPath, err := report.SaveHTML(html, projectDir, reportCfg.Path)
+			if err != nil {
+				fmt.Printf("Failed to save HTML report: %v\n", err)
+				continue
+			}
+			fmt.Printf("📄 HTML Report saved: %s\n", savedPath)
+		case "json":
+			jsonStr, err := report.RenderJSON(result, *reportCfg, env)
+			if err != nil {
+				fmt.Printf("Failed to render JSON report: %v\n", err)
+				continue
+			}
+			savedPath, err := report.SaveJSON(jsonStr, projectDir, reportCfg.Path)
+			if err != nil {
+				fmt.Printf("Failed to save JSON report: %v\n", err)
+				continue
+			}
+			fmt.Printf("📄 JSON Report saved: %s\n", savedPath)
 		}
-		savedPath, err := report.SaveHTML(html, projectDir, reportCfg.Path)
-		if err != nil {
-			fmt.Printf("Failed to save HTML report: %v\n", err)
-			return
-		}
-		fmt.Printf("📄 Report saved: %s\n", savedPath)
 	}
 }
 
