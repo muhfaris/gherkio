@@ -223,7 +223,7 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 			}
 
 			attemptStart := time.Now()
-			resp, err = executeRequest(interpolatedRequest.Method, url, interpolatedRequest.Headers, interpolatedRequest.Body)
+			resp, err = executeRequest(interpolatedRequest.Method, url, interpolatedRequest.Headers, interpolatedRequest.Body, interpolatedRequest.Timeout)
 
 			entry := RetryEntry{
 				Attempt:  i,

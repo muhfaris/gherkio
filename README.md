@@ -17,6 +17,7 @@ Gherkio lets you describe HTTP-based integration tests as declarative YAML scena
 - **JWT Auto-Decoding** — Automatically decode and assert JWT claims from responses
 - **Scenario Composition** — Reuse scenarios with `use:` for test orchestration
 - **Timing Assertions** — Enforce max step durations (e.g. `max: 500ms`)
+- **Request Timeout** — Configure per-request HTTP client timeout (e.g. `timeout: 60s`)
 - **Request Retries** — Handle eventual consistency with configurable attempts, intervals, backoff strategies (linear, exponential), and status code conditions.
 - **Environment Management** — Switch between `local`, `staging`, `production` with a flag
 - **Sensitive Field Masking** — Tokens, passwords, and secrets are masked in output
@@ -195,6 +196,23 @@ services:
   timing:
     max: 500ms    # Fails if response takes longer than 500ms
 ```
+
+### Request timeout
+
+Override the default 30-second HTTP client timeout for slow endpoints:
+
+```yaml
+- request:
+    method: GET
+    url: /slow-endpoint
+
+  expect:
+    status: 200
+
+  timeout: 60s   # Wait up to 60 seconds for response
+```
+
+Use `0s` for no timeout (unlimited wait). Invalid timeout values fall back to 30 seconds.
 
 ### Request Retries
 
@@ -500,6 +518,7 @@ Shows full request and response payloads, including headers and bodies (with sen
 | Collection matchers (count, all) | ✅ |
 | JWT auto-decoding | ✅ |
 | Timing assertions | ✅ |
+| Request timeout | ✅ |
 | Request retries (polling, backoff) | ✅ |
 | Scenario composition (use-steps) | ✅ |
 | Contextual failure UX | ✅ |
