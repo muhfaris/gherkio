@@ -450,11 +450,14 @@ Project root detection: walks up from cwd looking for `.gherkio/` directory.
 - ✅ Schema Assertions (Phase 1)
 - ✅ Request Retries — RFC-5 (Attempts, Interval, Backoff strategies, OnStatus, Reporting)
 - ✅ Setup & Teardown — RFC-7 (setup/teardown blocks, role markers, always-run teardown)
+- ⏳ Per-Request Timeout — RFC-7 (draft)
+- ⏳ Configuration Alignment (schemas path) — RFC-8 (draft)
+- ⏳ Setup & Teardown Steps — RFC-9 (draft)
 - ⏳ MCP Server Support — RFC-6 (internal/core/ refactoring for LLM integration)
 - ⏳ Capability system — future
 - ✅ Negative Assertions — RFC-11 (implemented: `not exists`, `schema: not <name>`)
 - ⏳ Plugin system — future
-- ✅ Go unit tests — matchers, executor, printer (golden file snapshots), schema, validator
+- ⏳ Go unit tests — 6 test files across `internal/report` and `internal/runner` (matchers, executor, printer, schema, validator, HTML report)
 - ⏳ CI/CD — not yet configured
 
 ---
