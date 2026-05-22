@@ -27,6 +27,17 @@ type StepResult struct {
 	Assertions   []AssertionResult `json:"assertions"`
 	Duration     time.Duration     `json:"duration"`
 	Error        string            `json:"error,omitempty"`
+	RetryCount   int               `json:"retryCount,omitempty"`
+	RetryHistory []RetryEntry      `json:"retryHistory,omitempty"`
+}
+
+// RetryEntry captures the outcome of a single retry attempt.
+type RetryEntry struct {
+	Attempt  int           `json:"attempt"`
+	Status   int           `json:"status"`
+	Body     string        `json:"body,omitempty"`
+	Duration time.Duration `json:"duration"`
+	Error    string        `json:"error,omitempty"`
 }
 
 // RequestInfo captures the executed request details.

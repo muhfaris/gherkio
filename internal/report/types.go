@@ -46,6 +46,7 @@ type ReportStep struct {
 	Passed       bool
 	Assertions   []ReportAssertion
 	Error        string
+	RetryCount   int
 }
 
 // ReportAssertion represents a single assertion result in the report.

@@ -175,6 +175,26 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 			fmt.Printf("%s✗ failed\n", statusIndent)
 		}
 
+		if step.RetryCount > 0 {
+			if stepPassed {
+				fmt.Printf("%s└─ retry: %d, last at retry %d\n", statusIndent, step.RetryCount, step.RetryCount)
+			} else {
+				lastError := ""
+				if step.Error != "" {
+					lastError = fmt.Sprintf("\n%s└─ last error: %s", statusIndent, step.Error)
+				} else if step.Response != nil {
+					lastError = fmt.Sprintf("\n%s└─ last response: status %d, body = %q", statusIndent, step.Response.Status, step.Response.Body)
+				}
+
+				isTimeout := strings.Contains(step.Error, "maxDuration")
+				if isTimeout {
+					fmt.Printf("%s└─ retry: %d/%d, %s%s\n", statusIndent, step.RetryCount, step.Original.Retry.Attempts, step.Error, lastError)
+				} else {
+					fmt.Printf("%s└─ retry: %d exhausted (%d attempts)%s\n", statusIndent, step.RetryCount, step.Original.Retry.Attempts, lastError)
+				}
+			}
+		}
+
 		if verbose {
 			// ── Verbose: full request/response payloads ──
 			fmt.Println()

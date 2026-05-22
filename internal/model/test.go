@@ -6,6 +6,14 @@ type TestFile struct {
 	Steps    []Step `yaml:"steps"`
 }
 
+// RetryConfig defines the configuration for a step's retry loop.
+type RetryConfig struct {
+	Attempts    int    `yaml:"attempts"`
+	Interval    int    `yaml:"interval,omitempty"`
+	Backoff     string `yaml:"backoff,omitempty"`
+	MaxDuration string `yaml:"maxDuration,omitempty"`
+}
+
 // TimingConfig holds timing expectations for a step.
 type TimingConfig struct {
 	Max string `yaml:"max"` // e.g. "500ms", "1s", "250ms"
@@ -15,6 +23,7 @@ type TimingConfig struct {
 type Step struct {
 	Use     string            `yaml:"use,omitempty"`
 	Request Request           `yaml:"request,omitempty"`
+	Retry   *RetryConfig      `yaml:"retry,omitempty"`
 	Expect  Expect            `yaml:"expect,omitempty"`
 	Save    map[string]string `yaml:"save,omitempty"`
 	Timing  TimingConfig      `yaml:"timing,omitempty"`

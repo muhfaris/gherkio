@@ -87,6 +87,12 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 
 		// Handle 'use' step recursively
 		if step.Use != "" {
+			if step.Retry != nil {
+				stepResult.Error = "validation error: retry block is not allowed on 'use:' steps"
+				stepResults = append(stepResults, stepResult)
+				allPassed = false
+				continue
+			}
 			useStartStep := StepResult{
 				Original:   step,
 				Depth:      depth,
@@ -139,7 +145,7 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 		}
 
 		// Resolve URL using service or global baseUrl
-		// Interpolate variables in the request
+		// Interpolate variables in the request once before the loop
 		interpolatedRequest, err := InterpolateRequest(step.Request, vars)
 		if err != nil {
 			stepResult.Error = fmt.Sprintf("Variable interpolation failed: %v", err)
@@ -148,17 +154,7 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 			continue
 		}
 
-		// Resolve URL using service or global baseUrl
 		url := resolveURL(env, interpolatedRequest)
-
-		// Execute HTTP request
-		resp, err := executeRequest(interpolatedRequest.Method, url, interpolatedRequest.Headers, interpolatedRequest.Body)
-		if err != nil {
-			stepResult.Error = err.Error()
-			stepResults = append(stepResults, stepResult)
-			allPassed = false
-			continue
-		}
 
 		stepResult.Request = &RequestInfo{
 			Method:  interpolatedRequest.Method,
@@ -173,26 +169,168 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 			}
 		}
 
-		stepResult.Response = resp
+		var (
+			resp         *ResponseInfo
+			jwtClaims    map[string]interface{}
+			assertions   []AssertionResult
+			stepErr      error
+			retryHistory []RetryEntry
+			attempts     = 1
+			interval     = time.Millisecond * 500
+			hasRetry     = step.Retry != nil
+		)
 
-		// Decode JWT if present in response (checks common field names)
-		var jwtClaims map[string]interface{}
-		if resp.Parsed != nil {
-			for _, field := range []string{"token", "accessToken", "access_token"} {
-				if tokenVal, found := resolvePath(resp.Parsed, field); found {
-					if tokenStr, ok := tokenVal.(string); ok {
-						claims, err := decodeJWT(tokenStr)
-						if err == nil {
-							jwtClaims = claims
-							break
+		if hasRetry {
+			if step.Retry.Attempts > 0 {
+				attempts = step.Retry.Attempts
+			}
+			if step.Retry.Interval > 0 {
+				interval = time.Millisecond * time.Duration(step.Retry.Interval)
+			}
+		}
+
+		var maxDuration time.Duration
+		if hasRetry && step.Retry.MaxDuration != "" {
+			var dErr error
+			maxDuration, dErr = time.ParseDuration(step.Retry.MaxDuration)
+			if dErr != nil {
+				stepResult.Error = fmt.Sprintf("invalid maxDuration: %v", dErr)
+				stepResults = append(stepResults, stepResult)
+				allPassed = false
+				continue
+			}
+		}
+
+		isIdempotent := func(m string) bool {
+			return m == "GET" || m == "HEAD" || m == "OPTIONS" || m == "TRACE"
+		}
+		if hasRetry && !isIdempotent(interpolatedRequest.Method) {
+			fmt.Printf("⚠ %s %s — retrying non-idempotent request\n", interpolatedRequest.Method, url)
+		}
+
+		var lastResp *ResponseInfo
+		var lastJwtClaims map[string]interface{}
+		var lastAssertions []AssertionResult
+
+		for i := 1; i <= attempts; i++ {
+			if maxDuration > 0 && time.Since(stepStart) >= maxDuration {
+				stepErr = fmt.Errorf("maxDuration %s exceeded", step.Retry.MaxDuration)
+				break
+			}
+
+			attemptStart := time.Now()
+			resp, err = executeRequest(interpolatedRequest.Method, url, interpolatedRequest.Headers, interpolatedRequest.Body)
+
+			entry := RetryEntry{
+				Attempt:  i,
+				Duration: time.Since(attemptStart),
+			}
+
+			if err != nil {
+				entry.Error = err.Error()
+				retryHistory = append(retryHistory, entry)
+				if i == attempts {
+					stepErr = err
+					break
+				}
+				time.Sleep(interval)
+				continue
+			}
+
+			entry.Status = resp.Status
+			if len(resp.Body) > 500 {
+				entry.Body = resp.Body[:500] + "..."
+			} else {
+				entry.Body = resp.Body
+			}
+			retryHistory = append(retryHistory, entry)
+
+			jwtClaims = nil
+			if resp.Parsed != nil {
+				for _, field := range []string{"token", "accessToken", "access_token"} {
+					if tokenVal, found := resolvePath(resp.Parsed, field); found {
+						if tokenStr, ok := tokenVal.(string); ok {
+							claims, derr := decodeJWT(tokenStr)
+							if derr == nil {
+								jwtClaims = claims
+								break
+							}
 						}
 					}
 				}
 			}
+
+			assertions = runAssertions(resp.Status, resp, jwtClaims, step.Expect.Status, step.Expect.Extra, projectDir)
+
+			allPass := true
+			for _, a := range assertions {
+				if !a.Passed {
+					allPass = false
+					break
+				}
+			}
+
+			lastResp = resp
+			lastJwtClaims = jwtClaims
+			lastAssertions = assertions
+
+			if allPass {
+				break
+			}
+
+			if i == attempts {
+				break
+			}
+
+			if maxDuration > 0 && time.Since(stepStart) >= maxDuration {
+				stepErr = fmt.Errorf("maxDuration %s exceeded", step.Retry.MaxDuration)
+				break
+			}
+
+			time.Sleep(interval)
 		}
 
-		// Run assertions
-		stepResult.Assertions = runAssertions(resp.Status, resp, jwtClaims, step.Expect.Status, step.Expect.Extra, projectDir)
+		if stepErr != nil {
+			stepResult.Error = stepErr.Error()
+			if hasRetry && len(retryHistory) > 0 {
+				stepResult.RetryCount = len(retryHistory) - 1
+				stepResult.RetryHistory = retryHistory
+				// if we have a last response, use it for context
+				if lastResp != nil {
+					stepResult.Response = lastResp
+					stepResult.Assertions = lastAssertions
+					for _, a := range lastAssertions {
+						if a.Passed {
+							totalPass++
+						} else {
+							totalFail++
+						}
+					}
+				}
+			} else {
+				allPassed = false
+			}
+			stepResult.Duration = time.Since(stepStart)
+			if stepResult.Response == nil {
+				allPassed = false
+			}
+			stepResults = append(stepResults, stepResult)
+			continue
+		}
+
+		stepResult.Response = lastResp
+		stepResult.Assertions = lastAssertions
+
+		// Extract variables
+		if lastResp != nil {
+			extractValues(vars, step.Save, lastResp, lastJwtClaims)
+		}
+
+		stepResult.Duration = time.Since(stepStart)
+		if hasRetry && len(retryHistory) > 1 {
+			stepResult.RetryCount = len(retryHistory) - 1
+			stepResult.RetryHistory = retryHistory
+		}
 
 		// Count pass/fail
 		for _, a := range stepResult.Assertions {
@@ -202,11 +340,6 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 				totalFail++
 			}
 		}
-
-		// Extract variables
-		extractValues(vars, step.Save, resp, jwtClaims)
-
-		stepResult.Duration = time.Since(stepStart)
 
 		// Timing assertion (if configured)
 		if step.Timing.Max != "" {
