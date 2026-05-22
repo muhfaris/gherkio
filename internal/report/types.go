@@ -48,6 +48,7 @@ type ReportStep struct {
 	Error        string
 	RetryCount   int
 	RetryHistory []RetryEntry
+	Role         string `json:"role,omitempty"` // "setup", "steps", "teardown"
 }
 
 // RetryEntry mirrors runner.RetryEntry for the report scope.

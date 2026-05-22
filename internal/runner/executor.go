@@ -30,6 +30,7 @@ type StepResult struct {
 	Error        string            `json:"error,omitempty"`
 	RetryCount   int               `json:"retryCount,omitempty"`
 	RetryHistory []RetryEntry      `json:"retryHistory,omitempty"`
+	Role         string            `json:"role,omitempty"` // "setup", "steps", "teardown"
 }
 
 // RetryEntry captures the outcome of a single retry attempt.

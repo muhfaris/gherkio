@@ -11,9 +11,21 @@ import (
 
 // LoadSchema loads a schema by name from the project's schemas directory.
 // name example: "users/user-response" or "user-response"
-// Resolution: .gherkio/schemas/<name>.yaml, then .gherkio/schemas/<name>.yml
+// Resolution: <schemasDir>/<name>.yaml, then <schemasDir>/<name>.yml
+// The schemas directory is resolved from config (schemas.path) if available,
+// otherwise defaults to .gherkio/schemas relative to projectDir.
 func LoadSchema(name string, projectDir string) (*model.Schema, error) {
 	schemasDir := filepath.Join(projectDir, ".gherkio", "schemas")
+
+	// Override from config if available
+	cfg, err := LoadConfig(projectDir)
+	if err == nil && cfg.Schemas.Path != "" {
+		if filepath.IsAbs(cfg.Schemas.Path) {
+			schemasDir = cfg.Schemas.Path
+		} else {
+			schemasDir = filepath.Join(projectDir, cfg.Schemas.Path)
+		}
+	}
 
 	// Check .yaml first
 	yamlPath := filepath.Join(schemasDir, name+".yaml")

@@ -5,6 +5,7 @@ type Config struct {
 	Project      ProjectConfig  `yaml:"project,omitempty"`
 	Environments EnvConfig      `yaml:"environments,omitempty"`
 	Tests        TestsConfig    `yaml:"tests,omitempty"`
+	Schemas      SchemasConfig  `yaml:"schemas,omitempty"`
 	Security     SecurityConfig `yaml:"security,omitempty"`
 	Reports      ReportsConfig  `yaml:"reports,omitempty"`
 }
@@ -20,6 +21,10 @@ type EnvConfig struct {
 }
 
 type TestsConfig struct {
+	Path string `yaml:"path,omitempty"`
+}
+
+type SchemasConfig struct {
 	Path string `yaml:"path,omitempty"`
 }
 
