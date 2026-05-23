@@ -413,3 +413,150 @@ func FormatDuration(d time.Duration) string {
 func GetDefaultSensitiveFields() []string {
 	return defaultSensitiveFields
 }
+
+// PrintStepResult formats and prints a single step execution result to stdout in a highly compact form.
+func PrintStepResult(result *RunResult, verbose bool, maskFields []string) {
+	if maskFields == nil {
+		maskFields = defaultSensitiveFields
+	}
+
+	stepCounter := 1
+	for i, step := range result.Steps {
+		indent := strings.Repeat("   │", step.Depth)
+		statusIndent := indent + stepSpacing(step.Depth)
+
+		if step.IsUseStart {
+			prefix := fmt.Sprintf("%d. └─ ", stepCounter)
+			if step.Depth > 0 {
+				prefix = indentPrefix(indent) + "   ├ └─ "
+			} else {
+				stepCounter++
+			}
+			fmt.Printf("%suse: %s\n%s   │\n", prefix, step.UseFile, indent)
+			continue
+		}
+		if step.IsUseEnd {
+			if step.Depth > 0 {
+				fmt.Printf("%s\n", indentPrefix(indent))
+			} else {
+				fmt.Printf("\n")
+			}
+			continue
+		}
+
+		stepPassed := step.Error == ""
+		for _, a := range step.Assertions {
+			if !a.Passed {
+				stepPassed = false
+				break
+			}
+		}
+
+		var stepLabel string
+		if step.Request != nil {
+			stepLabel = fmt.Sprintf("%s %s", step.Request.Method, step.Request.URL)
+		} else {
+			if step.Original.Request.URL != "" {
+				stepLabel = fmt.Sprintf("%s %s (failed before execution)", step.Original.Request.Method, step.Original.Request.URL)
+			} else {
+				stepLabel = "Unknown Step"
+			}
+		}
+
+		prefix := "▼ "
+		if step.Depth > 0 {
+			prefix = indentPrefix(indent) + "   ├ ▼ "
+		}
+
+		fmt.Printf("%s%s\n", prefix, stepLabel)
+
+		// Print assertions
+		for _, a := range step.Assertions {
+			icon := "  ✓"
+			if !a.Passed {
+				icon = "  ✗"
+			}
+
+			isTiming := a.Path == "timing.max"
+			assertionText := ""
+			if a.Expected == "exists" {
+				if isTiming {
+					assertionText = fmt.Sprintf("%s %s %s (actual: %s)", icon, a.Path, a.Expected, a.Actual)
+				} else {
+					assertionText = fmt.Sprintf("%s %s %s", icon, a.Path, a.Expected)
+				}
+			} else if isTiming {
+				assertionText = fmt.Sprintf("%s %s = %s (actual: %s)", icon, a.Path, a.Expected, a.Actual)
+			} else {
+				if strings.HasPrefix(a.Expected, "contains ") || strings.HasPrefix(a.Expected, "startsWith ") || strings.HasPrefix(a.Expected, "endsWith ") || strings.HasPrefix(a.Expected, "pattern ") {
+					assertionText = fmt.Sprintf("%s %s %s (actual: %s)", icon, a.Path, a.Expected, a.Actual)
+				} else if strings.HasPrefix(a.Expected, "exactly") || strings.HasPrefix(a.Expected, "all elements") {
+					assertionText = fmt.Sprintf("%s %s = %s (actual: %s)", icon, a.Path, a.Expected, a.Actual)
+				} else if isMatcherKeyword(a.Expected) || a.Reason != "" {
+					assertionText = fmt.Sprintf("%s %s = %s (actual: %s)", icon, a.Path, a.Expected, a.Actual)
+				} else {
+					assertionText = fmt.Sprintf("%s %s = %s", icon, a.Path, a.Expected)
+				}
+			}
+
+			fmt.Printf("%s%s\n", statusIndent, assertionText)
+
+			if !a.Passed {
+				failureIndent := statusIndent + "    "
+				if strings.HasPrefix(a.Actual, "(not found)") || a.Actual == "(unresolved)" {
+					fmt.Printf("%s└─ path not found", failureIndent)
+					if len(a.Suggestions) > 0 {
+						fmt.Printf(" (available: %s)", strings.Join(a.Suggestions, ", "))
+					}
+					fmt.Println()
+				} else {
+					if a.Reason != "" {
+						if strings.HasPrefix(a.Path, "schema") {
+							for _, line := range strings.Split(a.Reason, "\n") {
+								fmt.Printf("%s└─ %s\n", failureIndent, line)
+							}
+						} else {
+							fmt.Printf("%s└─ actual: %s\n", failureIndent, a.Actual)
+							fmt.Printf("%s└─ expected: %s\n", failureIndent, a.Expected)
+							for _, line := range strings.Split(a.Reason, "\n") {
+								fmt.Printf("%s└─ reason: %s\n", failureIndent, line)
+							}
+						}
+					} else {
+						fmt.Printf("%s└─ got: %s\n", failureIndent, a.Actual)
+					}
+				}
+			}
+		}
+
+		if !stepPassed && step.Response != nil {
+			fmt.Printf("\nResponse:\nStatus: %d\n\nBody:\n%s\n", step.Response.Status, FormatRequestBody(step.Response.Body, maskFields))
+		}
+
+		if step.Error != "" {
+			fmt.Printf("%s   ✗ Error: %s\n", indent, step.Error)
+		}
+
+		if verbose {
+			fmt.Println()
+			if step.Request != nil {
+				fmt.Printf("Request:\n%s %s\n", step.Request.Method, step.Request.URL)
+				if step.Request.Body != "" {
+					fmt.Printf("Body: %s\n", FormatRequestBody(step.Request.Body, maskFields))
+				}
+				fmt.Println()
+			}
+			if step.Response != nil {
+				fmt.Printf("Response:\nStatus: %d\n\nBody:\n%s\n", step.Response.Status, FormatRequestBody(step.Response.Body, maskFields))
+				fmt.Println()
+			}
+		}
+
+		if i < len(result.Steps)-1 {
+			nextStep := result.Steps[i+1]
+			if nextStep.Depth == 0 && !nextStep.IsUseStart && !nextStep.IsUseEnd {
+				fmt.Println(strings.Repeat("─", 40))
+			}
+		}
+	}
+}

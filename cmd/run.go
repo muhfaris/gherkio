@@ -20,6 +20,9 @@ var (
 	reportRaw    bool
 	accountName  string
 	allAccounts  bool
+	stepIdx      int
+	lineNum      int
+	stepSection  string
 )
 
 // runCmd represents the gherkio run command.
@@ -62,6 +65,9 @@ func init() {
 	runCmd.Flags().BoolVar(&reportRaw, "report-raw", false, "Skip sensitive data masking in JSON reports (cURL commands remain masked)")
 	runCmd.Flags().StringVar(&accountName, "account", "", "Account name from credentials file (e.g. alpha, beta)")
 	runCmd.Flags().BoolVar(&allAccounts, "all-accounts", false, "Run tests against all accounts in the credentials file")
+	runCmd.Flags().IntVar(&stepIdx, "step", -1, "Index of the step to run (0-indexed)")
+	runCmd.Flags().IntVar(&lineNum, "line", -1, "Line number containing the step to run")
+	runCmd.Flags().StringVar(&stepSection, "section", "steps", "Section containing the step (setup, steps, teardown)")
 }
 
 func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw bool, accountName string, allAccounts bool) error {
@@ -260,6 +266,18 @@ func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *re
 		}
 	}
 
+	targetStepIdx := stepIdx
+	targetSection := stepSection
+	if lineNum >= 0 {
+		loc, err := runner.LocateStep(testPath, lineNum)
+		if err != nil {
+			return err
+		}
+		targetStepIdx = loc.Index
+		targetSection = loc.Section
+		fmt.Printf("🎯 Line %d resolved to %s step %d\n", lineNum, targetSection, targetStepIdx)
+	}
+
 	cfg := runner.RunConfig{
 		TestPath:       testPath,
 		EnvName:        env,
@@ -268,6 +286,8 @@ func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *re
 		MaskFields:     maskFields,
 		AccountName:    accName,
 		CredentialVars: credentialVars,
+		StepIndex:      targetStepIdx,
+		StepSection:    targetSection,
 	}
 
 	result, err := runner.Run(cfg)
@@ -275,7 +295,11 @@ func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *re
 		return fmt.Errorf("execution failed: %w", err)
 	}
 
-	runner.PrintResult(result, cfg.Verbose, cfg.MaskFields)
+	if targetStepIdx >= 0 {
+		runner.PrintStepResult(result, cfg.Verbose, cfg.MaskFields)
+	} else {
+		runner.PrintResult(result, cfg.Verbose, cfg.MaskFields)
+	}
 
 	handleReport(result, projectDir, env, reportCfg)
 

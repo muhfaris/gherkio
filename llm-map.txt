@@ -53,7 +53,8 @@ gherkio/
 ├── cmd/                             # CLI command definitions
 │   ├── root.go                      # Base cobra command
 │   ├── init.go                      # `gherkio init` — scaffold project
-│   └── run.go                       # `gherkio run <file>` — execute tests
+│   ├── run.go                       # `gherkio run <file>` — execute tests
+│   └── convert.go                   # `gherkio convert` — bidirectionally convert cURL/YAML
 ├── internal/
 │   ├── model/                       # Data model / YAML structs
 │   │   ├── test.go                  # TestFile, Step, Request, Expect, RetryConfig
@@ -61,6 +62,12 @@ gherkio/
 │   │   ├── environment.go           # Environment, Service
 │   │   ├── schema.go               # Schema definition struct
 │   │   └── credentials.go          # Credentials, Account structs
+│   ├── converter/                   # Bidirectional cURL / Gherkio YAML Converter
+│   │   ├── parser.go                # Shell tokenizer & cURL arguments parser
+│   │   ├── parser_test.go           # cURL parsing unit tests
+│   │   ├── dsl.go                   # Gherkio YAML formatting & URL stripping
+│   │   ├── curl.go                  # Gherkio YAML steps to cURL reverse converter
+│   │   └── curl_test.go             # Reverse converter & lenient substitution tests
 │   ├── schema/                      # JSON Schema generator for autocomplete
 │   │   ├── generator.go
 │   │   └── generator_test.go
@@ -81,6 +88,8 @@ gherkio/
 │       ├── matchers_test.go         # Tests: all matchers with pass/fail cases
 │       ├── printer.go               # Console output formatter
 │       ├── printer_test.go          # Tests: golden file snapshot tests
+│       ├── steplocator.go           # 1-indexed line-based step boundaries locator
+│       ├── steplocator_test.go      # Step locator test suite
 │       ├── config.go                # LoadConfig helper
 │       ├── schema.go                # Schema file loader
 │       ├── validator.go             # Schema validation engine

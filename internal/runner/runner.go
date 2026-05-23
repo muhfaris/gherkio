@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/muhfaris/gherkio/internal/model"
@@ -20,6 +21,8 @@ type RunConfig struct {
 	MaskFields     []string               // Sensitive field names to mask in output (nil = use defaults)
 	AccountName    string                 // Account name to use from credentials (optional)
 	CredentialVars map[string]interface{} // Pre-injected credential variables (optional)
+	StepIndex      int                    // Index of step to run (0-indexed). Negative means run all steps.
+	StepSection    string                 // Section of the step ("setup", "steps", "teardown")
 }
 
 // RunResult holds the overall execution result.
@@ -45,9 +48,13 @@ func Run(cfg RunConfig) (*RunResult, error) {
 	}
 
 	// 2. Load test file
-	testFile, err := loadTestFile(cfg.TestPath)
+	testFile, err := LoadTestFile(cfg.TestPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load test file: %w", err)
+	}
+
+	if cfg.StepIndex >= 0 {
+		return RunSingleStep(cfg, env, testFile)
 	}
 
 	// 3. Execute steps
@@ -167,7 +174,7 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 				continue
 			}
 
-			usedTest, err := loadTestFile(resolvedPath)
+			usedTest, err := LoadTestFile(resolvedPath)
 			if err != nil {
 				stepResult.Error = fmt.Sprintf("failed to load used test file '%s': %v", resolvedPath, err)
 				stepResults = append(stepResults, stepResult)
@@ -430,8 +437,8 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 	return stepResults, totalPass, totalFail, allPassed
 }
 
-// loadTestFile reads and parses a test YAML file.
-func loadTestFile(path string) (*model.TestFile, error) {
+// LoadTestFile reads and parses a test YAML file.
+func LoadTestFile(path string) (*model.TestFile, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -496,4 +503,124 @@ func resolveUsePath(currentFileDir, projectDir, usePath string) (string, error) 
 	}
 
 	return "", fmt.Errorf("file not found (checked relative to '%s' and '.gherkio/tests/')", currentFileDir)
+}
+
+// RunSingleStep executes a single step in isolation.
+func RunSingleStep(cfg RunConfig, env *model.Environment, testFile *model.TestFile) (*RunResult, error) {
+	start := time.Now()
+
+	section := strings.ToLower(cfg.StepSection)
+	if section == "" {
+		section = "steps"
+	}
+
+	var stepList []model.Step
+	switch section {
+	case "setup":
+		stepList = testFile.Setup
+	case "steps":
+		stepList = testFile.Steps
+	case "teardown":
+		stepList = testFile.Teardown
+	default:
+		return nil, fmt.Errorf("invalid step section: %s", cfg.StepSection)
+	}
+
+	if cfg.StepIndex < 0 || cfg.StepIndex >= len(stepList) {
+		return nil, fmt.Errorf("step index %d out of bounds for section %q (contains %d steps)", cfg.StepIndex, section, len(stepList))
+	}
+
+	targetStep := stepList[cfg.StepIndex]
+	stepsToRun := []model.Step{targetStep}
+
+	vars := make(map[string]interface{})
+	if cfg.CredentialVars != nil {
+		for key, val := range cfg.CredentialVars {
+			vars[key] = val
+		}
+	}
+
+	currentDir := filepath.Dir(cfg.TestPath)
+	runSteps, pass, fail, passed := executeSteps(stepsToRun, env, vars, cfg.ProjectDir, currentDir, 0, section)
+
+	for i := range runSteps {
+		runSteps[i].ScenarioName = testFile.Scenario
+		runSteps[i].TestFile = cfg.TestPath
+	}
+
+	// Scan for undefined variable error and print helpful suggestion
+	for idx, sr := range runSteps {
+		if strings.Contains(sr.Error, "undefined variable: ") {
+			parts := strings.Split(sr.Error, "undefined variable: ")
+			if len(parts) > 1 {
+				varName := strings.TrimSpace(parts[1])
+
+				type PrecedingMatch struct {
+					Index   int
+					Section string
+					Line    int
+					Path    string
+				}
+				var matches []PrecedingMatch
+
+				stepLocations, _ := ScanSteps(cfg.TestPath)
+
+				checkPreceding := func(steps []model.Step, secName string, limit int) {
+					for i := 0; i < limit && i < len(steps); i++ {
+						step := steps[i]
+						if step.Save != nil {
+							if _, ok := step.Save[varName]; ok {
+								line := 0
+								for _, loc := range stepLocations {
+									if loc.Section == secName && loc.Index == i {
+										line = loc.StartLine
+										break
+									}
+								}
+								matches = append(matches, PrecedingMatch{
+									Index:   i,
+									Section: secName,
+									Line:    line,
+									Path:    filepath.Base(cfg.TestPath),
+								})
+							}
+						}
+					}
+				}
+
+				if section == "setup" {
+					checkPreceding(testFile.Setup, "setup", cfg.StepIndex)
+				} else if section == "steps" {
+					checkPreceding(testFile.Setup, "setup", len(testFile.Setup))
+					checkPreceding(testFile.Steps, "steps", cfg.StepIndex)
+				} else if section == "teardown" {
+					checkPreceding(testFile.Setup, "setup", len(testFile.Setup))
+					checkPreceding(testFile.Steps, "steps", len(testFile.Steps))
+					checkPreceding(testFile.Teardown, "teardown", cfg.StepIndex)
+				}
+
+				if len(matches) > 0 {
+					var hint strings.Builder
+					hint.WriteString(fmt.Sprintf("\n\n⚠ Step references $%s which is only available from:\n", varName))
+					for _, m := range matches {
+						hint.WriteString(fmt.Sprintf("  → %s:%s step %d at line %d (save: %s)\n", m.Path, m.Section, m.Index, m.Line, varName))
+					}
+					runSteps[idx].Error += hint.String()
+				}
+			}
+		}
+	}
+
+	result := &RunResult{
+		Scenario:  testFile.Scenario,
+		TestFile:  cfg.TestPath,
+		Account:   cfg.AccountName,
+		Steps:     runSteps,
+		TotalPass: pass,
+		TotalFail: fail,
+		Duration:  time.Since(start),
+		Passed:    passed,
+	}
+
+	return result, nil
 }
