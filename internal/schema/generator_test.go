@@ -1,6 +1,8 @@
 package schema
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -12,5 +14,276 @@ func TestGenerateJSONSchema(t *testing.T) {
 
 	if len(b) == 0 {
 		t.Fatal("Expected generated schema, got empty bytes")
+	}
+}
+
+func TestGenerateAllSchemas(t *testing.T) {
+	b, err := GenerateAllSchemas()
+	if err != nil {
+		t.Fatalf("Failed to generate all schemas: %v", err)
+	}
+
+	if len(b) == 0 {
+		t.Fatal("Expected generated schemas, got empty bytes")
+	}
+
+	// Parse and verify structure
+	var result map[string]interface{}
+	if err := json.Unmarshal(b, &result); err != nil {
+		t.Fatalf("Failed to parse JSON: %v", err)
+	}
+
+	// Verify $defs key exists
+	defs, ok := result["$defs"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected $defs in output")
+	}
+
+	// Verify all schema types are present
+	expectedTypes := []string{"test", "config", "environment", "credentials", "schema-definition"}
+	for _, typ := range expectedTypes {
+		if _, ok := defs[typ]; !ok {
+			t.Errorf("Missing schema type: %s", typ)
+		}
+	}
+
+	// Verify $schema is present
+	if _, ok := result["$schema"]; !ok {
+		t.Error("Missing $schema key")
+	}
+}
+
+func TestGenerateSchemaType(t *testing.T) {
+	tests := []struct {
+		name    string
+		typ     SchemaType
+		wantErr bool
+	}{
+		{"test schema", SchemaTypeTest, false},
+		{"config schema", SchemaTypeConfig, false},
+		{"environment schema", SchemaTypeEnvironment, false},
+		{"credentials schema", SchemaTypeCredentials, false},
+		{"schema-definition schema", SchemaTypeSchemaDefinition, false},
+		{"invalid schema", SchemaType("invalid"), false}, // Returns nil, not error
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b, err := GenerateSchemaType(tt.typ)
+			if err != nil {
+				t.Fatalf("GenerateSchemaType() error = %v", err)
+			}
+
+			if tt.wantErr && b == nil {
+				return // Expected nil for invalid type
+			}
+
+			if len(b) == 0 && !tt.wantErr {
+				t.Error("Expected non-empty schema")
+			}
+
+			if b != nil {
+				// Verify valid JSON
+				var result interface{}
+				if err := json.Unmarshal(b, &result); err != nil {
+					t.Errorf("Invalid JSON output: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestGenerateSchemaType_ContainsExpectedKeys(t *testing.T) {
+	tests := []struct {
+		typ     SchemaType
+		checkFn func(map[string]interface{}) bool
+	}{
+		{
+			SchemaTypeTest,
+			func(m map[string]interface{}) bool {
+				// Test schema should have Definitions with Expect
+				defs, ok := m["definitions"].(map[string]interface{})
+				return ok && defs != nil
+			},
+		},
+		{
+			SchemaTypeConfig,
+			func(m map[string]interface{}) bool {
+				// Config schema should have properties
+				_, hasProps := m["properties"].(map[string]interface{})
+				return hasProps
+			},
+		},
+		{
+			SchemaTypeEnvironment,
+			func(m map[string]interface{}) bool {
+				// Environment schema should have baseUrl required
+				if req, ok := m["required"].([]interface{}); ok {
+					for _, r := range req {
+						if r == "baseUrl" {
+							return true
+						}
+					}
+				}
+				return false
+			},
+		},
+		{
+			SchemaTypeCredentials,
+			func(m map[string]interface{}) bool {
+				// Credentials should have accounts property
+				if props, ok := m["properties"].(map[string]interface{}); ok {
+					_, hasAccounts := props["accounts"]
+					return hasAccounts
+				}
+				return false
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.typ), func(t *testing.T) {
+			b, err := GenerateSchemaType(tt.typ)
+			if err != nil {
+				t.Fatalf("GenerateSchemaType() error = %v", err)
+			}
+
+			var result map[string]interface{}
+			if err := json.Unmarshal(b, &result); err != nil {
+				t.Fatalf("Invalid JSON: %v", err)
+			}
+
+			if !tt.checkFn(result) {
+				t.Errorf("Schema type %s does not meet expected structure", tt.typ)
+			}
+		})
+	}
+}
+
+func TestAvailableSchemaTypes(t *testing.T) {
+	types := AvailableSchemaTypes()
+
+	if len(types) != 5 {
+		t.Errorf("Expected 5 schema types, got %d", len(types))
+	}
+
+	// Verify expected types exist
+	typeNames := make(map[string]bool)
+	for _, t := range types {
+		typeNames[string(t.Type)] = true
+	}
+
+	expected := []string{"test", "config", "environment", "credentials", "schema-definition"}
+	for _, e := range expected {
+		if !typeNames[e] {
+			t.Errorf("Missing expected type: %s", e)
+		}
+	}
+
+	// Verify each type has required fields
+	for _, t := range types {
+		if t.Name == "" {
+			t.Error("SchemaTypeInfo.Name is empty")
+		}
+		if t.Description == "" {
+			t.Error("SchemaTypeInfo.Description is empty")
+		}
+		if len(t.FilePatterns) == 0 {
+			t.Error("SchemaTypeInfo.FilePatterns is empty")
+		}
+	}
+}
+
+func TestSchemaTypes_HaveCorrectFilePatterns(t *testing.T) {
+	types := AvailableSchemaTypes()
+
+	patterns := map[string]string{
+		"test":               ".gherkio/tests/**/*.yaml",
+		"config":             ".gherkio/config.yaml",
+		"environment":        ".gherkio/environments/*.yaml",
+		"credentials":        ".gherkio/credentials/*.yaml",
+		"schema-definition":  ".gherkio/schemas/*.yaml",
+	}
+
+	for _, t := range types {
+		expected, ok := patterns[string(t.Type)]
+		if !ok {
+			t.Errorf("Unexpected type: %s", t.Type)
+			continue
+		}
+		if len(t.FilePatterns) != 1 || t.FilePatterns[0] != expected {
+			t.Errorf("Type %s: expected pattern %q, got %v", t.Type, expected, t.FilePatterns)
+		}
+	}
+}
+
+func TestGenerateAllSchemas_ContainsAllSchemaTypes(t *testing.T) {
+	b, err := GenerateAllSchemas()
+	if err != nil {
+		t.Fatalf("GenerateAllSchemas() error = %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(b, &result); err != nil {
+		t.Fatalf("Invalid JSON: %v", err)
+	}
+
+	defs := result["$defs"].(map[string]interface{})
+
+	// Verify test schema has Expect definition (complex type)
+	testSchema := defs["test"].(map[string]interface{})
+	if defsMap, ok := testSchema["definitions"].(map[string]interface{}); ok {
+		if _, hasExpect := defsMap["Expect"]; !hasExpect {
+			t.Error("Test schema missing Expect definition")
+		}
+		if _, hasMatcher := defsMap["Matcher"]; !hasMatcher {
+			t.Error("Test schema missing Matcher definition")
+		}
+	}
+}
+
+func TestGenerateAllSchemas_DefaultSchemaOutput(t *testing.T) {
+	// This test verifies the default output of GenerateAllSchemas
+	// matches the structure expected by LSP configurations
+	b, err := GenerateAllSchemas()
+	if err != nil {
+		t.Fatalf("GenerateAllSchemas() error = %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(b, &result); err != nil {
+		t.Fatalf("Invalid JSON: %v", err)
+	}
+
+	// Check $schema value
+	schema, ok := result["$schema"].(string)
+	if !ok {
+		t.Error("$schema should be a string")
+	}
+	if !strings.Contains(schema, "json-schema.org") {
+		t.Errorf("Expected json-schema.org in $schema, got: %s", schema)
+	}
+
+	// Check $defs exists
+	if _, ok := result["$defs"]; !ok {
+		t.Error("Missing $defs key")
+	}
+}
+
+func TestGenerateSchemaType_BackwardCompatibility(t *testing.T) {
+	// Test that GenerateJSONSchema (deprecated) still works
+	oldSchema, err := GenerateJSONSchema()
+	if err != nil {
+		t.Fatalf("GenerateJSONSchema() error = %v", err)
+	}
+
+	// And equals GenerateSchemaType(SchemaTypeTest)
+	newSchema, err := GenerateSchemaType(SchemaTypeTest)
+	if err != nil {
+		t.Fatalf("GenerateSchemaType() error = %v", err)
+	}
+
+	if string(oldSchema) != string(newSchema) {
+		t.Error("GenerateJSONSchema and GenerateSchemaType(SchemaTypeTest) should produce identical output")
 	}
 }
