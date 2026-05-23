@@ -2,43 +2,43 @@ package model
 
 // Config represents the .gherkio/config.yaml file.
 type Config struct {
-	Project      ProjectConfig  `yaml:"project,omitempty"`
-	Environments EnvConfig      `yaml:"environments,omitempty"`
-	Tests        TestsConfig    `yaml:"tests,omitempty"`
-	Schemas      SchemasConfig  `yaml:"schemas,omitempty"`
-	Security     SecurityConfig `yaml:"security,omitempty"`
-	Reports      ReportsConfig  `yaml:"reports,omitempty"`
+	Project      ProjectConfig  `yaml:"project,omitempty" jsonschema:"description=Project metadata"`
+	Environments EnvConfig      `yaml:"environments,omitempty" jsonschema:"description=Environment configuration"`
+	Tests        TestsConfig    `yaml:"tests,omitempty" jsonschema:"description=Test path configuration"`
+	Schemas      SchemasConfig  `yaml:"schemas,omitempty" jsonschema:"description=Schema directory path"`
+	Security     SecurityConfig `yaml:"security,omitempty" jsonschema:"description=Security and masking configuration"`
+	Reports      ReportsConfig  `yaml:"reports,omitempty" jsonschema:"description=Report generation configuration"`
 }
 
 type ProjectConfig struct {
-	Name    string `yaml:"name,omitempty"`
-	Version string `yaml:"version,omitempty"`
+	Name    string `yaml:"name,omitempty" jsonschema:"description=Project name"`
+	Version string `yaml:"version,omitempty" jsonschema:"description=Project version"`
 }
 
 type EnvConfig struct {
-	Default string `yaml:"default,omitempty"`
-	Path    string `yaml:"path,omitempty"`
+	Default string `yaml:"default,omitempty" jsonschema:"description=Default environment name"`
+	Path    string `yaml:"path,omitempty" jsonschema:"description=Path to environments directory"`
 }
 
 type TestsConfig struct {
-	Path string `yaml:"path,omitempty"`
+	Path string `yaml:"path,omitempty" jsonschema:"description=Path to tests directory"`
 }
 
 type SchemasConfig struct {
-	Path string `yaml:"path,omitempty"`
+	Path string `yaml:"path,omitempty" jsonschema:"description=Path to schemas directory"`
 }
 
 type SecurityConfig struct {
 	Mask struct {
-		Enabled bool     `yaml:"enabled"`
-		Fields  []string `yaml:"fields,omitempty"`
-	} `yaml:"mask"`
+		Enabled bool     `yaml:"enabled" jsonschema:"description=Enable sensitive field masking"`
+		Fields  []string `yaml:"fields,omitempty" jsonschema:"description=Custom field names to mask (case-insensitive)"`
+	} `yaml:"mask" jsonschema:"description=Mask configuration"`
 }
 
 type ReportsConfig struct {
-	Path          string `yaml:"path,omitempty"`
-	Format        string `yaml:"format,omitempty"`
-	Archive       bool   `yaml:"archive,omitempty"`
-	Retention     int    `yaml:"retention,omitempty"`
-	MaskSensitive bool   `yaml:"maskSensitive,omitempty"`
+	Path          string `yaml:"path,omitempty" jsonschema:"description=Output path for reports"`
+	Format        string `yaml:"format,omitempty" jsonschema:"enum=html,enum=json,description=Report format (html or json)"`
+	Archive       bool   `yaml:"archive,omitempty" jsonschema:"description=Archive previous reports"`
+	Retention     int    `yaml:"retention,omitempty" jsonschema:"description=Number of archives to retain,default=10"`
+	MaskSensitive bool   `yaml:"maskSensitive,omitempty" jsonschema:"description=Mask sensitive data in reports"`
 }

@@ -336,16 +336,27 @@ func GetAvailableMatchers() []string {
 	}
 }
 
+// isMatcherKeyword checks if the expected string is formatted as a matcher.
+// It uses GetAvailableMatchers() as the source of truth to avoid code drift.
 func isMatcherKeyword(expected string) bool {
-	parts := strings.SplitN(expected, " ", 2)
-
-	switch parts[0] {
-	case "exists", "not":
-		return true
-	case "uuid", "email", "datetime", "uri", "number", "string", "boolean", "array", "object", "null", "true", "false":
-		return true
-	case "contains", "startsWith", "endsWith", "regex":
-		return len(parts) == 2
+	matchers := GetAvailableMatchers()
+	for _, m := range matchers {
+		parts := strings.SplitN(m, " ", 2)
+		if len(parts) == 1 {
+			// Single-word matcher (e.g. "uuid", "email")
+			if expected == m {
+				return true
+			}
+		} else {
+			// Multi-word matcher (e.g. "not exists")
+			if expected == m {
+				return true
+			}
+			// Also check if expected starts with the keyword (for partial matching)
+			if strings.HasPrefix(expected, parts[0]+" ") {
+				return true
+			}
+		}
 	}
 	return false
 }

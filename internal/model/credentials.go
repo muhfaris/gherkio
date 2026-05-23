@@ -5,15 +5,15 @@ import "fmt"
 // Credentials represents a credentials file for an environment.
 // Contains multiple named accounts that can be used for testing.
 type Credentials struct {
-	Accounts map[string]Account `yaml:"accounts"`
+	Accounts map[string]Account `yaml:"accounts" jsonschema:"required,description=Map of account names to account credentials"`
 }
 
 // Account represents a single set of credentials for an account.
 type Account struct {
-	Username string            `yaml:"username"`
-	Password string            `yaml:"password"`
-	Role     string            `yaml:"role,omitempty"`
-	Extra    map[string]string `yaml:",inline"`
+	Username string            `yaml:"username" jsonschema:"required,description=Account username or email"`
+	Password string            `yaml:"password" jsonschema:"required,description=Account password"`
+	Role     string            `yaml:"role,omitempty" jsonschema:"description=Account role (e.g. admin, viewer)"`
+	Extra    map[string]string `yaml:",inline" jsonschema:"description=Additional custom fields"`
 }
 
 // Validate checks if the credentials file has valid data.
