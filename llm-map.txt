@@ -62,7 +62,8 @@ gherkio/
 │   │   ├── schema.go               # Schema definition struct
 │   │   └── credentials.go          # Credentials, Account structs
 │   ├── schema/                      # JSON Schema generator for autocomplete
-│   │   └── generator.go
+│   │   ├── generator.go
+│   │   └── generator_test.go
 │   ├── report/                      # HTML/JSON reporting engine
 │   │   ├── html.go                  # HTML rendering logic
 │   │   ├── json.go                  # JSON rendering logic
@@ -74,6 +75,7 @@ gherkio/
 │       ├── credentials.go           # Credentials loader & variable injection
 │       ├── executor.go              # HTTP client, JWT decoder, path resolver, assertions
 │       ├── executor_test.go         # Tests: resolvePath, evaluateAssertion, timing
+│       ├── engine.go               # Source of truth: canonical paths, matchers, collection functions
 │       ├── interpolator.go          # Variable interpolation ($var / ${var})
 │       ├── matchers.go              # Type/string/collection matchers (uuid, email, etc.)
 │       ├── matchers_test.go         # Tests: all matchers with pass/fail cases
@@ -92,7 +94,26 @@ gherkio/
 ├── docs/
 │   ├── prd.md                       # Product Requirements Document
 │   ├── technical.md                 # File structure notes
-│   └── note.md                      # Development progress notes
+│   ├── note.md                      # Development progress notes
+│   ├── rfcs/                        # RFC design documents (1-15)
+│   │   ├── 1-scenario-composition.md
+│   │   ├── 2-advanced-matchers.md
+│   │   ├── 3-schema-assertions.md
+│   │   ├── 4-reporting.md
+│   │   ├── 5-request-retry.md
+│   │   ├── 6-mcp-server-support.md
+│   │   ├── 7-per-request-timeout.md
+│   │   ├── 8-configuration-alignment.md
+│   │   ├── 9-setup-teardown-steps.md
+│   │   ├── 10-capability-system.md
+│   │   ├── 11-negative-assertions.md
+│   │   ├── 12-multi-account-credentials.md
+│   │   ├── 13-credentials-system.md
+│   │   ├── 14-dx-tooling-convert-and-step-runner.md
+│   │   └── 15-schema-completeness.md
+│   └── http/                        # HTTP request examples
+│       └── dummy/
+│           └── login.http
 ├── example/
 │   └── tests/
 │       ├── sample1.yaml             # Example: login with assertions + save
@@ -332,7 +353,28 @@ Assertion and save paths follow dot-notation:
 | Matcher | Behavior |
 |---------|----------|
 | `exists` | Field must exist (any value) |
+| `not exists` | Field must NOT be present (negative assertion) |
+| `uuid` | Valid UUID format (v4) |
+| `email` | Valid email format |
+| `datetime` | Valid RFC3339 / ISO8601 datetime |
+| `uri` | Valid URI format (e.g. https://...) |
+| `string` | Value is a string type |
+| `number` | Value is a numeric type (int, float, json.Number) |
+| `boolean` | Value is a boolean type |
+| `array` | Value is an array type |
+| `object` | Value is an object type (map) |
+| `null` | Value is null |
+| `true` | Value is boolean true |
+| `false` | Value is boolean false |
+| `contains <substring>` | String contains substring (case-sensitive) |
+| `startsWith <prefix>` | String starts with prefix |
+| `endsWith <suffix>` | String ends with suffix |
+| `regex <pattern>` | String matches regex pattern |
+| `count(path): <N>` | Array has exactly N items (collection matcher) |
+| `all(path): <matcher>` | Every element in array matches (collection matcher) |
 | Literal value (e.g. `admin`, `200`) | Equality comparison (string) |
+| `schema: <name>` | Validate full response body against a YAML schema |
+| `schema: not <name>` | Response must NOT match schema (negative assertion) |
 
 ### 6. Variable Interpolation
 

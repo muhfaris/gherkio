@@ -11,7 +11,7 @@ Gherkio lets you describe HTTP-based integration tests as declarative YAML scena
 - **Declarative YAML DSL** — Describe test scenarios, not implementation
 - **HTTP Request Execution** — POST, GET, PUT, DELETE with full header/body support
 - **Rich Assertion Engine** — Status codes, field matching, type validation, and more
-- **Advanced Matchers** — `uuid`, `email`, `datetime`, `string`, `number`, `boolean`, `array`, `object`, `null`, `true`, `false`, and string matchers (`contains`, `startsWith`, `endsWith`, `regex`)
+- **Advanced Matchers** — `uuid`, `email`, `datetime`, `uri`, `string`, `number`, `boolean`, `array`, `object`, `null`, `true`, `false`, and string matchers (`contains`, `startsWith`, `endsWith`, `regex`)
 - **Collection Matchers** — `count(path)` for array length, `all(path)` for element-wise assertions
 - **Variable Interpolation** — Pass values between steps with `$var` / `${var}` syntax
 - **JWT Auto-Decoding** — Automatically decode and assert JWT claims from responses
@@ -413,6 +413,7 @@ expect:
   body.id: uuid            # Valid UUID format (v4)
   body.email: email        # Valid email format
   body.createdAt: datetime # RFC3339 / ISO8601 datetime (e.g. 2026-05-21T12:00:00Z)
+  body.avatar: uri         # Valid URI format (e.g. https://example.com/avatar.png)
   body.name: string        # String type
   body.count: number       # Numeric type (int, float, json.Number)
   body.isActive: boolean   # Boolean type
