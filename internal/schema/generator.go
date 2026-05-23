@@ -9,15 +9,106 @@ import (
 	"github.com/muhfaris/gherkio/internal/runner"
 )
 
-// GenerateJSONSchema generates a JSON schema for the Gherkio DSL based on internal/model.TestFile.
-func GenerateJSONSchema() ([]byte, error) {
+// SchemaType represents a type of Gherkio YAML document.
+type SchemaType string
+
+const (
+	SchemaTypeTest              SchemaType = "test"
+	SchemaTypeConfig            SchemaType = "config"
+	SchemaTypeEnvironment       SchemaType = "environment"
+	SchemaTypeCredentials        SchemaType = "credentials"
+	SchemaTypeSchemaDefinition  SchemaType = "schema-definition"
+)
+
+// SchemaTypeInfo contains metadata about a schema type.
+type SchemaTypeInfo struct {
+	Type        SchemaType
+	Name        string
+	Description string
+	FilePatterns []string
+}
+
+// AvailableSchemaTypes returns information about all available schema types.
+func AvailableSchemaTypes() []SchemaTypeInfo {
+	return []SchemaTypeInfo{
+		{SchemaTypeTest, "test", "Test file schema for .gherkio/tests/**/*.yaml", []string{".gherkio/tests/**/*.yaml"}},
+		{SchemaTypeConfig, "config", "Configuration schema for .gherkio/config.yaml", []string{".gherkio/config.yaml"}},
+		{SchemaTypeEnvironment, "environment", "Environment schema for .gherkio/environments/*.yaml", []string{".gherkio/environments/*.yaml"}},
+		{SchemaTypeCredentials, "credentials", "Credentials schema for .gherkio/credentials/*.yaml", []string{".gherkio/credentials/*.yaml"}},
+		{SchemaTypeSchemaDefinition, "schema-definition", "Schema definition schema for .gherkio/schemas/*.yaml", []string{".gherkio/schemas/*.yaml"}},
+	}
+}
+
+// GenerateAllSchemas generates schemas for all Gherkio YAML document types.
+// Returns a JSON object containing all schemas keyed by type.
+func GenerateAllSchemas() ([]byte, error) {
 	r := new(jsonschema.Reflector)
 	r.RequiredFromJSONSchemaTags = true
 
-	// Reflect from TestFile which is the root of our YAML DSL
-	schema := r.Reflect(&model.TestFile{})
+	// Build individual schemas for each document type
+	testSchema := r.Reflect(&model.TestFile{})
+	configSchema := r.Reflect(&model.Config{})
+	envSchema := r.Reflect(&model.Environment{})
+	credSchema := r.Reflect(&model.Credentials{})
+	schemaDefSchema := r.Reflect(&model.Schema{})
 
-	// --- Advanced Autocomplete for Expect ---
+	// Apply Expect patching only to test schema
+	patchExpectSchema(testSchema)
+
+	// Add step oneOf constraint to test schema
+	patchStepOneOf(testSchema)
+
+	// Combine into a single output using $defs (draft-07 compatible)
+	combined := map[string]interface{}{
+		"$schema": "http://json-schema.org/draft-07/schema#",
+		"$defs": map[string]interface{}{
+			"test":              testSchema,
+			"config":            configSchema,
+			"environment":       envSchema,
+			"credentials":       credSchema,
+			"schema-definition": schemaDefSchema,
+		},
+	}
+
+	return json.MarshalIndent(combined, "", "  ")
+}
+
+// GenerateSchemaType generates a schema for a specific document type.
+func GenerateSchemaType(schemaType SchemaType) ([]byte, error) {
+	r := new(jsonschema.Reflector)
+	r.RequiredFromJSONSchemaTags = true
+
+	switch schemaType {
+	case SchemaTypeTest:
+		schema := r.Reflect(&model.TestFile{})
+		patchExpectSchema(schema)
+		patchStepOneOf(schema)
+		return json.MarshalIndent(schema, "", "  ")
+	case SchemaTypeConfig:
+		schema := r.Reflect(&model.Config{})
+		return json.MarshalIndent(schema, "", "  ")
+	case SchemaTypeEnvironment:
+		schema := r.Reflect(&model.Environment{})
+		return json.MarshalIndent(schema, "", "  ")
+	case SchemaTypeCredentials:
+		schema := r.Reflect(&model.Credentials{})
+		return json.MarshalIndent(schema, "", "  ")
+	case SchemaTypeSchemaDefinition:
+		schema := r.Reflect(&model.Schema{})
+		return json.MarshalIndent(schema, "", "  ")
+	default:
+		return nil, nil
+	}
+}
+
+// GenerateJSONSchema generates a JSON schema for the Gherkio DSL based on internal/model.TestFile.
+// Deprecated: Use GenerateAllSchemas or GenerateSchemaType instead.
+func GenerateJSONSchema() ([]byte, error) {
+	return GenerateSchemaType(SchemaTypeTest)
+}
+
+// patchExpectSchema applies advanced autocomplete enhancements to the Expect definition.
+func patchExpectSchema(schema *jsonschema.Schema) {
 	if expectSchema, ok := schema.Definitions["Expect"]; ok {
 		// Define the Matcher definition dynamically from the runner engine
 		matchers := runner.GetAvailableMatchers()
@@ -89,12 +180,24 @@ func GenerateJSONSchema() ([]byte, error) {
 		// Remove the generic AdditionalProperties since we are using PatternProperties and specific keys
 		expectSchema.AdditionalProperties = nil
 	}
+}
 
-	// Make all step fields optional EXCEPT request OR use
+// patchStepOneOf adds oneOf constraint to Step to ensure request OR use is provided, not both.
+func patchStepOneOf(schema *jsonschema.Schema) {
 	if stepSchema, ok := schema.Definitions["Step"]; ok {
+		// Make all step fields optional except request OR use
 		stepSchema.Required = []string{}
-	}
 
-	// Format as indented JSON
-	return json.MarshalIndent(schema, "", "  ")
+		// Add oneOf constraint for request/use mutual exclusion
+		stepSchema.OneOf = []*jsonschema.Schema{
+			{
+				Required:    []string{"request"},
+				Description: "Step with HTTP request",
+			},
+			{
+				Required:    []string{"use"},
+				Description: "Step composing another scenario",
+			},
+		}
+	}
 }

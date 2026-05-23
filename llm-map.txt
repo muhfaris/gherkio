@@ -528,6 +528,7 @@ Project root detection: walks up from cwd looking for `.gherkio/` directory.
 - ✅ Setup & Teardown — RFC-9 (setup/teardown blocks, role markers, always-run teardown)
 - ✅ Negative Assertions — RFC-11 (implemented: `not exists`, `schema: not <name>`)
 - ✅ Multi-Account Credentials — RFC-12 (Credentials model, LoadCredentials, `--account`/`--all-accounts` flags, auto-use single account, per-account masking, report integration)
+- ✅ Schema Generator Completeness — RFC-15 (`--type`, `--list` flags, multi-schema output, jsonschema tags on all models, source of truth expansion)
 
 ### MVP Complete
 
@@ -597,9 +598,38 @@ go run . run <test-file>                # Run without building (summary)
 go run . run <test-file> --verbose      # Run with full request/response payloads
 go run . run <test-file> -v             # Shorthand
 go run . init                           # Scaffold a project
+go run . schema                         # Generate all schemas (default)
+go run . schema --type test            # Generate only test file schema
+go run . schema --list                 # List available schema types
 go test ./...                           # Run Go unit tests (when they exist)
 ```
 Collection matchers (`count()`, `all()`) are implemented in `evaluateAssertion()` in `executor.go`, which calls `evaluateMatcher()` for each element internally.
+
+### Schema Generator (gherkio schema)
+
+Generates JSON Schema for Gherkio YAML files. Supports multiple document types:
+
+```bash
+gherkio schema                          # All schemas (default output)
+gherkio schema --type test             # Test file schema only
+gherkio schema --type config           # Config schema only
+gherkio schema --type environment     # Environment schema only
+gherkio schema --type credentials      # Credentials schema only
+gherkio schema --type schema-definition  # Schema definition only
+gherkio schema --list                  # List available types
+```
+
+**Available types:**
+- `test` — `.gherkio/tests/**/*.yaml`
+- `config` — `.gherkio/config.yaml`
+- `environment` — `.gherkio/environments/*.yaml`
+- `credentials` — `.gherkio/credentials/*.yaml`
+- `schema-definition` — `.gherkio/schemas/*.yaml`
+
+**Implementation:**
+- `internal/schema/generator.go` — `GenerateAllSchemas()`, `GenerateSchemaType()`, `patchExpectSchema()`, `patchStepOneOf()`
+- `cmd/schema.go` — CLI flags (`--type`, `--list`)
+- `internal/model/*.go` — `jsonschema` tags for all YAML types
 
 
 ### 11. Multi-Account Credentials System (RFC-12)
