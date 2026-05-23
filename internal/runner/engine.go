@@ -5,3 +5,9 @@ package runner
 func GetCanonicalPaths() []string {
 	return []string{"body", "headers", "jwt"}
 }
+
+// GetCollectionFunctions returns the collection matchers supported for array validations.
+// Used by the JSON schema generator.
+func GetCollectionFunctions() []string {
+	return []string{"count", "all"}
+}

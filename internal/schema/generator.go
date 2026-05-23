@@ -69,6 +69,23 @@ func GenerateJSONSchema() ([]byte, error) {
 			Ref: "#/$defs/Matcher",
 		}
 
+		// Add dynamic collection functions (e.g. ^count\(.+\)$, ^all\(.+\)$)
+		collectionFuncs := runner.GetCollectionFunctions()
+		for _, fn := range collectionFuncs {
+			pattern := "^" + fn + "\\(.+\\)$"
+			if fn == "count" {
+				expectSchema.PatternProperties[pattern] = &jsonschema.Schema{
+					Type: "integer",
+					Description: "Assert exact length of an array",
+				}
+			} else {
+				expectSchema.PatternProperties[pattern] = &jsonschema.Schema{
+					Ref: "#/$defs/Matcher",
+					Description: "Assert every element in an array matches this condition",
+				}
+			}
+		}
+
 		// Remove the generic AdditionalProperties since we are using PatternProperties and specific keys
 		expectSchema.AdditionalProperties = nil
 	}
