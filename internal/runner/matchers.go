@@ -324,15 +324,48 @@ func formatActual(actual interface{}) string {
 }
 
 // isMatcherKeyword fast checks if the expected string is formatted as a matcher
-func isMatcherKeyword(expected string) bool {
-	parts := strings.SplitN(expected, " ", 2)
-	switch parts[0] {
-	case "exists", "not":
-		return true
-	case "uuid", "email", "datetime", "uri", "number", "string", "boolean", "array", "object", "null", "true", "false":
-		return true
-	case "contains", "startsWith", "endsWith", "regex":
-		return len(parts) == 2
+// GetAvailableMatchers returns the list of all supported assertion matchers.
+// This is used by the schema generator to provide dynamic autocomplete.
+func GetAvailableMatchers() []string {
+	return []string{
+		"exists", "not exists",
+		"uuid", "email", "datetime", "uri",
+		"string", "number", "boolean", "array", "object", "null",
+		"true", "false",
+		"contains", "startsWith", "endsWith", "regex",
 	}
+}
+
+// isMatcherKeyword checks if the expected string is formatted as a matcher.
+// It uses GetAvailableMatchers() and GetArgMatchers() as the source of truth
+// to avoid code drift.
+func isMatcherKeyword(expected string) bool {
+	matchers := GetAvailableMatchers()
+	argMatchers := GetArgMatchers()
+	argMatcherSet := make(map[string]bool, len(argMatchers))
+	for _, am := range argMatchers {
+		argMatcherSet[am] = true
+	}
+
+	// First pass: exact match with available matchers
+	for _, m := range matchers {
+		if expected == m {
+			// Arg matchers like "contains" need an argument — bare keyword alone is not valid
+			if argMatcherSet[m] {
+				return false
+			}
+			return true
+		}
+	}
+
+	// Second pass: check for "<argMatcher> <value>" form
+	// These appear as bare keywords in the matchers list for schema autocomplete,
+	// but their full form "contains <value>" is needed to be a valid matcher usage.
+	for am := range argMatcherSet {
+		if strings.HasPrefix(expected, am+" ") {
+			return true
+		}
+	}
+
 	return false
 }

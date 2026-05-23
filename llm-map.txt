@@ -33,6 +33,7 @@ A CLI tool that executes declarative YAML-based integration test scenarios again
 | `github.com/spf13/cobra` v1.10.2 | CLI framework (root + subcommands) |
 | `github.com/spf13/pflag` v1.0.9 | Flag parsing (via cobra) |
 | `gopkg.in/yaml.v3` v3.0.1 | YAML parsing for test and environment files |
+| `github.com/invopop/jsonschema` | JSON Schema generator from Go structs |
 | Standard library `net/http` | HTTP request execution |
 | Standard library `encoding/json` | JSON body parsing |
 | Standard library `regexp` | Variable interpolation (`$var` / `${var}`) |
@@ -60,6 +61,9 @@ gherkio/
 │   │   ├── environment.go           # Environment, Service
 │   │   ├── schema.go               # Schema definition struct
 │   │   └── credentials.go          # Credentials, Account structs
+│   ├── schema/                      # JSON Schema generator for autocomplete
+│   │   ├── generator.go
+│   │   └── generator_test.go
 │   ├── report/                      # HTML/JSON reporting engine
 │   │   ├── html.go                  # HTML rendering logic
 │   │   ├── json.go                  # JSON rendering logic
@@ -71,6 +75,7 @@ gherkio/
 │       ├── credentials.go           # Credentials loader & variable injection
 │       ├── executor.go              # HTTP client, JWT decoder, path resolver, assertions
 │       ├── executor_test.go         # Tests: resolvePath, evaluateAssertion, timing
+│       ├── engine.go               # Source of truth: canonical paths, matchers, collection functions
 │       ├── interpolator.go          # Variable interpolation ($var / ${var})
 │       ├── matchers.go              # Type/string/collection matchers (uuid, email, etc.)
 │       ├── matchers_test.go         # Tests: all matchers with pass/fail cases
@@ -89,7 +94,26 @@ gherkio/
 ├── docs/
 │   ├── prd.md                       # Product Requirements Document
 │   ├── technical.md                 # File structure notes
-│   └── note.md                      # Development progress notes
+│   ├── note.md                      # Development progress notes
+│   ├── rfcs/                        # RFC design documents (1-15)
+│   │   ├── 1-scenario-composition.md
+│   │   ├── 2-advanced-matchers.md
+│   │   ├── 3-schema-assertions.md
+│   │   ├── 4-reporting.md
+│   │   ├── 5-request-retry.md
+│   │   ├── 6-mcp-server-support.md
+│   │   ├── 7-per-request-timeout.md
+│   │   ├── 8-configuration-alignment.md
+│   │   ├── 9-setup-teardown-steps.md
+│   │   ├── 10-capability-system.md
+│   │   ├── 11-negative-assertions.md
+│   │   ├── 12-multi-account-credentials.md
+│   │   ├── 13-credentials-system.md
+│   │   ├── 14-rfc-convert-command.md
+│   │   └── 15-schema-completeness.md
+│   └── http/                        # HTTP request examples
+│       └── dummy/
+│           └── login.http
 ├── example/
 │   └── tests/
 │       ├── sample1.yaml             # Example: login with assertions + save
@@ -329,7 +353,28 @@ Assertion and save paths follow dot-notation:
 | Matcher | Behavior |
 |---------|----------|
 | `exists` | Field must exist (any value) |
+| `not exists` | Field must NOT be present (negative assertion) |
+| `uuid` | Valid UUID format (v4) |
+| `email` | Valid email format |
+| `datetime` | Valid RFC3339 / ISO8601 datetime |
+| `uri` | Valid URI format (e.g. https://...) |
+| `string` | Value is a string type |
+| `number` | Value is a numeric type (int, float, json.Number) |
+| `boolean` | Value is a boolean type |
+| `array` | Value is an array type |
+| `object` | Value is an object type (map) |
+| `null` | Value is null |
+| `true` | Value is boolean true |
+| `false` | Value is boolean false |
+| `contains <substring>` | String contains substring (case-sensitive) |
+| `startsWith <prefix>` | String starts with prefix |
+| `endsWith <suffix>` | String ends with suffix |
+| `regex <pattern>` | String matches regex pattern |
+| `count(path): <N>` | Array has exactly N items (collection matcher) |
+| `all(path): <matcher>` | Every element in array matches (collection matcher) |
 | Literal value (e.g. `admin`, `200`) | Equality comparison (string) |
+| `schema: <name>` | Validate full response body against a YAML schema |
+| `schema: not <name>` | Response must NOT match schema (negative assertion) |
 
 ### 6. Variable Interpolation
 
@@ -454,6 +499,7 @@ gherkio run <test-file> --report json --report-raw # Unmasked JSON
 gherkio run <test-file> -v                    # Shorthand for --verbose
 gherkio run <test-file> --env staging --account alpha   # Run with specific account
 gherkio run <test-file> --env staging --all-accounts    # Run against all accounts
+gherkio schema                              # Generate JSON Schema for YAML autocomplete
 ```
 
 Test file resolution order:
@@ -482,6 +528,7 @@ Project root detection: walks up from cwd looking for `.gherkio/` directory.
 - ✅ Setup & Teardown — RFC-9 (setup/teardown blocks, role markers, always-run teardown)
 - ✅ Negative Assertions — RFC-11 (implemented: `not exists`, `schema: not <name>`)
 - ✅ Multi-Account Credentials — RFC-12 (Credentials model, LoadCredentials, `--account`/`--all-accounts` flags, auto-use single account, per-account masking, report integration)
+- ✅ Schema Generator Completeness — RFC-15 (`--type`, `--list` flags, multi-schema output, jsonschema tags on all models, source of truth expansion)
 
 ### MVP Complete
 
@@ -551,9 +598,38 @@ go run . run <test-file>                # Run without building (summary)
 go run . run <test-file> --verbose      # Run with full request/response payloads
 go run . run <test-file> -v             # Shorthand
 go run . init                           # Scaffold a project
+go run . schema                         # Generate all schemas (default)
+go run . schema --type test            # Generate only test file schema
+go run . schema --list                 # List available schema types
 go test ./...                           # Run Go unit tests (when they exist)
 ```
 Collection matchers (`count()`, `all()`) are implemented in `evaluateAssertion()` in `executor.go`, which calls `evaluateMatcher()` for each element internally.
+
+### Schema Generator (gherkio schema)
+
+Generates JSON Schema for Gherkio YAML files. Supports multiple document types:
+
+```bash
+gherkio schema                          # All schemas (default output)
+gherkio schema --type test             # Test file schema only
+gherkio schema --type config           # Config schema only
+gherkio schema --type environment     # Environment schema only
+gherkio schema --type credentials      # Credentials schema only
+gherkio schema --type schema-definition  # Schema definition only
+gherkio schema --list                  # List available types
+```
+
+**Available types:**
+- `test` — `.gherkio/tests/**/*.yaml`
+- `config` — `.gherkio/config.yaml`
+- `environment` — `.gherkio/environments/*.yaml`
+- `credentials` — `.gherkio/credentials/*.yaml`
+- `schema-definition` — `.gherkio/schemas/*.yaml`
+
+**Implementation:**
+- `internal/schema/generator.go` — `GenerateAllSchemas()`, `GenerateSchemaType()`, `patchExpectSchema()`, `patchStepOneOf()`
+- `cmd/schema.go` — CLI flags (`--type`, `--list`)
+- `internal/model/*.go` — `jsonschema` tags for all YAML types
 
 
 ### 11. Multi-Account Credentials System (RFC-12)

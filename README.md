@@ -11,7 +11,7 @@ Gherkio lets you describe HTTP-based integration tests as declarative YAML scena
 - **Declarative YAML DSL** — Describe test scenarios, not implementation
 - **HTTP Request Execution** — POST, GET, PUT, DELETE with full header/body support
 - **Rich Assertion Engine** — Status codes, field matching, type validation, and more
-- **Advanced Matchers** — `uuid`, `email`, `datetime`, `string`, `number`, `boolean`, `array`, `object`, `null`, `true`, `false`, and string matchers (`contains`, `startsWith`, `endsWith`, `regex`)
+- **Advanced Matchers** — `uuid`, `email`, `datetime`, `uri`, `string`, `number`, `boolean`, `array`, `object`, `null`, `true`, `false`, and string matchers (`contains`, `startsWith`, `endsWith`, `regex`)
 - **Collection Matchers** — `count(path)` for array length, `all(path)` for element-wise assertions
 - **Variable Interpolation** — Pass values between steps with `$var` / `${var}` syntax
 - **JWT Auto-Decoding** — Automatically decode and assert JWT claims from responses
@@ -25,6 +25,34 @@ Gherkio lets you describe HTTP-based integration tests as declarative YAML scena
 - **Setup & Teardown** — Pre-condition and post-condition steps (teardown always runs, even on failure)
 - **Negative Assertions** — Assert field absence (`not exists`) or schema mismatch (`schema: not <name>`)
 - **Multi-Account Credentials** — Run the same tests against multiple accounts with `--account` or `--all-accounts`
+
+---
+
+## Editor Autocomplete
+
+Gherkio comes with a built-in JSON Schema generator to provide full IDE autocomplete, validation, and hover documentation for your YAML test files.
+
+Generate the schema in your project root:
+```bash
+gherkio schema > .gherkio-schema.json
+```
+
+**VSCode Setup**
+1. Install the [YAML Extension by Red Hat](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml).
+2. Add this to your workspace `settings.json`:
+```json
+{
+  "yaml.schemas": {
+    "./.gherkio-schema.json": [".gherkio/tests/**/*.yaml"]
+  }
+}
+```
+
+**Inline Alternative (Any Editor)**
+Add this comment to the very top of your test file:
+```yaml
+# yaml-language-server: $schema=../../.gherkio-schema.json
+```
 
 ---
 
@@ -385,6 +413,7 @@ expect:
   body.id: uuid            # Valid UUID format (v4)
   body.email: email        # Valid email format
   body.createdAt: datetime # RFC3339 / ISO8601 datetime (e.g. 2026-05-21T12:00:00Z)
+  body.avatar: uri         # Valid URI format (e.g. https://example.com/avatar.png)
   body.name: string        # String type
   body.count: number       # Numeric type (int, float, json.Number)
   body.isActive: boolean   # Boolean type
@@ -595,6 +624,7 @@ security:
 | `gherkio run <test-file> -v` | Shorthand for --verbose |
 | `gherkio run <test-file> --account <name>` | Run with a specific account from credentials |
 | `gherkio run <test-file> --all-accounts` | Run against all accounts in the credentials file |
+| `gherkio schema` | Generate JSON Schema for YAML autocomplete |
 
 ### Test file resolution
 

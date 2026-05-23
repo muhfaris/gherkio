@@ -13,15 +13,15 @@ type ReportData struct {
 	FailCount     int
 	PassPercent   float64
 	FailPercent   float64
-	Steps         []ReportStep     // populated for single-scenario runs
-	Scenarios     []ScenarioData   // populated for multi-scenario runs
+	Steps         []ReportStep   // populated for single-scenario runs
+	Scenarios     []ScenarioData // populated for multi-scenario runs
 }
 
 // ScenarioData holds the report data for a single scenario within a suite run.
 type ScenarioData struct {
 	Name          string
 	TestFile      string
-	Account       string          `json:"account,omitempty"` // Account name used (if any)
+	Account       string `json:"account,omitempty"` // Account name used (if any)
 	TotalDuration string
 	TotalSteps    int
 	PassCount     int
