@@ -1,13 +1,24 @@
 package cmd
 
 import (
+	"fmt"
+	"runtime"
+
 	"github.com/spf13/cobra"
+)
+
+// Build information. Populated by ldflags at build time.
+var (
+	Version   = "dev"
+	Commit    = "none"
+	BuildDate = "unknown"
 )
 
 // rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
-	Use:   "gherkio",
-	Short: "Gherkio is a testing and validation framework",
+	Use:     "gherkio",
+	Short:   "Gherkio is a testing and validation framework",
+	Version: version(),
 	Long: `Gherkio is a CLI tool for managing test execution,
 validation schemas, and generating reports.`,
 }
@@ -18,5 +29,8 @@ func Execute() error {
 }
 
 func init() {
-	// Here you can define persistent flags for all commands
+}
+
+func version() string {
+	return fmt.Sprintf("%s (commit: %s, built: %s, %s)", Version, Commit, BuildDate, runtime.Version())
 }

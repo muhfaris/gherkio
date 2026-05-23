@@ -685,24 +685,28 @@ Shows full request and response payloads, including headers and bodies (with sen
 |---------|--------|
 | Core runner (HTTP, assertions, saves) | ✅ |
 | Variable interpolation (`$var`, `${var}`, `${var:default}`) | ✅ |
-| Type matchers (uuid, email, datetime, string, number, boolean, array, object, null, true, false) | ✅ |
+| Type matchers (uuid, email, datetime, uri, string, number, boolean, array, object, null, true, false) | ✅ |
 | String matchers (contains, startsWith, endsWith, regex) | ✅ |
 | Collection matchers (count, all) | ✅ |
+| Negative assertions (`not exists`, `schema: not`) | ✅ |
 | JWT auto-decoding | ✅ |
+| Schema validation (YAML schemas) | ✅ |
 | Timing assertions | ✅ |
 | Request timeout | ✅ |
-| Request retries (polling, backoff) | ✅ |
-| Scenario composition (use-steps) | ✅ |
+| Request retries (backoff strategies, onStatus) | ✅ |
+| Scenario composition (`use:` steps) | ✅ |
+| Setup & Teardown blocks | ✅ |
 | Contextual failure UX | ✅ |
 | Sensitive field masking | ✅ |
 | Multiple environments | ✅ |
-| Reporting (HTML, JSON) | ✅ |
-| Setup & Teardown blocks | ✅ |
-| Negative assertions (`not exists`, `schema: not`) | ✅ |
 | Multi-Account Credentials (`--account`, `--all-accounts`) | ✅ |
-| Plugin/capability system | ⏳ Future |
-| Go unit tests | ✅ Matchers, executor, printer (golden file snapshots) |
-| CI/CD | ⏳ Not yet configured |
+| Reporting (HTML, JSON) | ✅ |
+| Editor autocomplete (`gherkio schema`) | ✅ |
+| cURL ↔ DSL conversion (`gherkio convert`) | ✅ |
+| Step runner (`gherkio run --step/--line`) | ✅ |
+| JSON Schema generation (all YAML types) | ✅ |
+| Go unit tests | ✅ |
+| CI/CD (GitHub Actions) | ✅ |
 
 ---
 

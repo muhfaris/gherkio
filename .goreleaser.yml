@@ -10,7 +10,7 @@ before:
 
 builds:
   - id: gherkio
-    main: ./cmd/gherkio
+    main: .
     binary: gherkio
     env:
       - CGO_ENABLED=0
@@ -22,7 +22,7 @@ builds:
       - amd64
       - arm64
     ldflags:
-      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+      - -s -w -X github.com/muhfaris/gherkio/cmd.Version={{.Version}} -X github.com/muhfaris/gherkio/cmd.Commit={{.Commit}} -X github.com/muhfaris/gherkio/cmd.BuildDate={{.Date}}
 
 archives:
   - id: gherkio
