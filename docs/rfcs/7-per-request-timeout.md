@@ -1,6 +1,6 @@
 # RFC-7: Per-Request Timeout
 
-> **Status:** Draft
+> **Status:** Implemented
 > **Author:** Faris
 > **Date:** May 22, 2026
 

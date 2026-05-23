@@ -1,6 +1,6 @@
 # RFC-1: Scenario Composition (Shared/Reusable Tests)
 
-> **Status:** Completed
+> **Status:** Implemented
 > **Author:** Faris
 > **Date:** May 21, 2026
 

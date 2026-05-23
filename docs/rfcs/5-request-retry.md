@@ -1,6 +1,6 @@
 # RFC-5: Request Retry
 
-> **Status:** Draft (Revised)
+> **Status:** Implemented (Revised)
 > **Author:** Faris
 > **Date:** May 22, 2026
 > **Revision:** Removed `until`, deferred `onStatus` to Phase 2, added `timing.max` interaction, idempotency warning, `use:` restriction, connection error handling in retry loop, `Body` field on `RetryEntry`, moved `maxDuration` to Phase 1, retry count = attempts - 1 (only shown when > 0)

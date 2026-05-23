@@ -3,6 +3,7 @@
 > **Status:** Draft
 > **Author:** Faris
 > **Date:** May 22, 2026
+> **Updated:** May 23, 2026 — aligned with current codebase (RFC-14, RFC-15, engine.go)
 
 ---
 
@@ -38,32 +39,52 @@ gherkio/
 ├── cmd/                     │  CLI layer (unchanged, but delegates to new packages)
 │   ├── root.go
 │   ├── init.go              │  ← delegates to scaffolding helpers
-│   └── run.go               │  ← delegates to runner + new packages
+│   ├── run.go               │  ← delegates to runner + new packages
+│   ├── convert.go           │  cURL ↔ DSL conversion (RFC-14)
+│   └── schema.go            │  JSON Schema generation (RFC-15)
 │
 ├── internal/
 │   ├── model/               │  Data types (unchanged)
-│   ├── runner/              │  Execution engine (unchanged)
-│   ├── core/                │  NEW: Domain logic for project artifact management
-│   │   ├── project/         │  Project discovery & metadata
-│   │   │   ├── finder.go    │  Find project root, config, paths
-│   │   │   └── meta.go      │  Project metadata
-│   │   ├── teststore/       │  Test file management
-│   │   │   ├── lister.go    │  List, glob discovery
-│   │   │   ├── reader.go    │  Read & parse test files
-│   │   │   ├── writer.go    │  Create & update test files
-│   │   │   ├── remover.go   │  Delete test files
-│   │   │   └── validator.go │  Validate test structure & references
-│   │   ├── envstore/        │  Environment management
+│   ├── runner/              │  Execution engine
+│   │   ├── runner.go         │  Orchestrator + RunSingleStep()
+│   │   ├── engine.go         │  Source of truth: paths, matchers, backoff (RFC-15)
+│   │   ├── executor.go       │  HTTP client, assertions, retries
+│   │   ├── interpolator.go   │  Variable interpolation
+│   │   ├── matchers.go       │  All matchers + GetAvailableMatchers()
+│   │   ├── steplocator.go    │  Step boundary detection for --line (RFC-14)
+│   │   ├── printer.go        │  Console output + PrintStepResult()
+│   │   ├── credentials.go    │  LoadCredentials() — already exported
+│   │   ├── config.go         │  LoadConfig() — already exported
+│   │   ├── schema.go         │  LoadSchema() — already exported
+│   │   └── validator.go      │  Schema validation engine
+│   ├── schema/               │  JSON Schema generator (RFC-15) ✅ ALREADY EXISTS
+│   │   └── generator.go      │  Generates multi-type schemas for all YAML types
+│   ├── converter/            │  cURL ↔ DSL (RFC-14) ✅ ALREADY EXISTS
+│   │   ├── parser.go         │  cURL tokenizer + parser
+│   │   ├── dsl.go            │  YAML output
+│   │   └── curl.go           │  Reverse: step → cURL
+│   ├── report/               │  HTML/JSON reporting
+│   ├── core/                 │  NEW: Domain logic for project artifact management
+│   │   ├── project/          │  Project discovery & metadata
+│   │   │   ├── finder.go     │  Find project root, config, paths
+│   │   │   └── meta.go       │  Project metadata
+│   │   ├── teststore/        │  Test file management
+│   │   │   ├── lister.go     │  List, glob discovery
+│   │   │   ├── reader.go     │  Read & parse test files (wraps exported LoadTestFile)
+│   │   │   ├── writer.go     │  Create & update test files
+│   │   │   ├── remover.go    │  Delete test files
+│   │   │   └── validator.go  │  Validate test structure & references
+│   │   ├── envstore/         │  Environment management
 │   │   │   ├── lister.go
 │   │   │   ├── reader.go
 │   │   │   ├── writer.go
 │   │   │   └── remover.go
-│   │   └── schemastore/     │  Schema management
+│   │   └── schemastore/      │  Schema management
 │   │       ├── lister.go
 │   │       ├── reader.go
 │   │       ├── writer.go
 │   │       └── remover.go
-│   └── mcp/                 │  NEW: MCP server
+│   └── mcp/                  │  NEW: MCP server
 │       └── server.go
 ```
 
@@ -314,26 +335,26 @@ Steps:
 2. Create `internal/core/schemastore/` — CRUD for schema files
 3. Add cross-reference validation (schema exists when referenced in test)
 
-### Phase 3: Add Dynamic Variable Injection
+### Phase 3: Add Dynamic Variable Injection (Already Partially Done)
 
 **Goal:** Allow MCP to pass variables when running tests.
 
-Current: `runner.Run(cfg RunConfig)` — variables only come from `save:` blocks.
+Current: `runner.Run(cfg RunConfig)` — `CredentialVars` field already exists on `RunConfig` (added in RFC-12). Variables are injected into the step variable context before execution.
 
-Change: Add dynamic variable injection to `RunConfig`:
+For MCP, this field maps directly: when a user passes variables via the `run_test` MCP tool, they're passed as `CredentialVars` to `RunConfig`. No new struct fields needed.
 
 ```go
 type RunConfig struct {
-    TestPath   string
-    EnvName    string
-    ProjectDir string
-    Verbose    bool
-    MaskFields []string
-    Vars       map[string]interface{} // NEW: pre-seeded variables
+    TestPath       string
+    EnvName        string
+    ProjectDir     string
+    Verbose        bool
+    MaskFields     []string
+    CredentialVars map[string]interface{} // Already exists — used for credential + dynamic variable injection
 }
 ```
 
-The runner loads these into the variable context before executing steps.
+**Note:** The `CredentialVars` field merges with `save:` variables during execution (step saves override credential vars). This is the correct behavior for MCP — explicit variables from the user should take precedence over credentials, and step saves should take precedence over both.
 
 ### Phase 4: Build MCP Server
 
@@ -436,7 +457,7 @@ func NewServer(cwd string) (*Server, error) {
 ```go
 // go.mod addition
 require (
-    github.com/modelcontextprotocol/protocol-sdk v0.1.0
+    github.com/mark3labs/mcp-go v1.0.0
 )
 ```
 
@@ -961,11 +982,31 @@ This creates a self-healing loop — the LLM reads the error, fixes the YAML, an
 
 ---
 
+### 8.7 Already-Completed Work (Not Needing Rebuild)
+
+The following infrastructure proposed in this RFC has already been built in subsequent RFCs:
+
+| Feature | Built In | Location |
+|---------|----------|----------|
+| JSON Schema generation | RFC-15 | `internal/schema/generator.go` — multi-type, all YAML types |
+| `LoadTestFile()` exported | RFC-12 | `internal/runner/runner.go` — already public |
+| `LoadCredentials()` exported | RFC-12 | `internal/runner/credentials.go` — already public |
+| `LoadConfig()` exported | RFC-8 | `internal/runner/config.go` — already public |
+| `CredentialVars` on `RunConfig` | RFC-12 | `internal/runner/runner.go` — field exists |
+| `GetCanonicalPaths()` in engine | RFC-15 | `internal/runner/engine.go` — source of truth |
+| `GetAvailableMatchers()` in engine | RFC-15 | `internal/runner/matchers.go` — source of truth |
+| `GetCollectionFunctions()` in engine | RFC-15 | `internal/runner/engine.go` — source of truth |
+| `GetBackoffStrategies()` in engine | RFC-15 | `internal/runner/engine.go` — source of truth |
+
+These do not need to be rebuilt. The `internal/core/` packages will **wrap** these existing functions rather than duplicating them.
+
+---
+
 ## 9. Backward Compatibility
 
 - All existing CLI commands remain unchanged
 - `cmd/run.go` and `cmd/init.go` delegate to new packages — no functional change
-- The `runner.Run()` function signature changes slightly (added `Vars` field) but remains backward compatible (nil = no change)
+- The `runner.Run()` function already has `CredentialVars` field on `RunConfig` (added in RFC-12) — no signature change needed.
 - No YAML schema changes
 - No breaking changes to existing test files
 

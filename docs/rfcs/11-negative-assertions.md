@@ -1,6 +1,6 @@
 # RFC-11: Negative Assertions (not exists, schema: not)
 
-> **Status:** Draft
+> **Status:** Implemented
 > **Author:** Faris
 > **Date:** May 22, 2026
 

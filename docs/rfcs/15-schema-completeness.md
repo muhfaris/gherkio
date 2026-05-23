@@ -1,6 +1,6 @@
 # RFC-15: Schema Generator Completeness — Cover All Gherkio YAML Types
 
-**Status:** Draft  
+**Status:** Implemented  
 **Author:** Faris  
 **Date:** May 23, 2026  
 **Depends on:** RFC-14 (convert & step runner) — schema generator should be complete before feature work

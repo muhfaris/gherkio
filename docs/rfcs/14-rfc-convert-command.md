@@ -1,6 +1,6 @@
 # RFC-14: DX Tooling — Convert & Step Runner
 
-**Status:** Draft  
+**Status:** Implemented  
 **Author:** Faris  
 **Date:** May 23, 2026  
 **PRD Reference:** §7 (DSL Layer), §19 (Escape Hatch), §21 (AI Compatibility)  

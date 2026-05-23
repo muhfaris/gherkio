@@ -1,6 +1,6 @@
 # RFC-12: Multi-Account Test Execution (Credentials System)
 
-> **Status:** Draft
+> **Status:** Implemented
 > **Author:** Faris
 > **Date:** May 22, 2026
 

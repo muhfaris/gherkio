@@ -1,6 +1,6 @@
 # RFC-8: Configuration Alignment — schemas path
 
-> **Status:** Draft
+> **Status:** Implemented
 > **Author:** Faris
 > **Date:** May 22, 2026
 

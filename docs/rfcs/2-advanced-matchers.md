@@ -1,6 +1,6 @@
 # RFC-2: Advanced Matchers
 
-> **Status:** Completed
+> **Status:** Implemented
 > **Author:** Faris
 > **Date:** May 21, 2026
 

@@ -1,6 +1,6 @@
 # RFC-9: Setup and Teardown Steps
 
-> **Status:** Draft
+> **Status:** Implemented
 > **Author:** Faris
 > **Date:** May 22, 2026
 
