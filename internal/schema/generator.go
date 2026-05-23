@@ -2,9 +2,11 @@ package schema
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/invopop/jsonschema"
 	"github.com/muhfaris/gherkio/internal/model"
+	"github.com/muhfaris/gherkio/internal/runner"
 )
 
 // GenerateJSONSchema generates a JSON schema for the Gherkio DSL based on internal/model.TestFile.
@@ -17,45 +19,53 @@ func GenerateJSONSchema() ([]byte, error) {
 
 	// --- Advanced Autocomplete for Expect ---
 	if expectSchema, ok := schema.Definitions["Expect"]; ok {
-		// Define the Matcher definition
+		// Define the Matcher definition dynamically from the runner engine
+		matchers := runner.GetAvailableMatchers()
+		matcherEnums := make([]interface{}, len(matchers))
+		for i, m := range matchers {
+			matcherEnums[i] = m
+		}
+
 		matcherSchema := &jsonschema.Schema{
-			Type: "string",
-			Enum: []interface{}{
-				"exists", "not exists",
-				"uuid", "email", "datetime", "uri",
-				"string", "number", "boolean", "array", "object", "null",
-				"true", "false",
-				"contains", "startsWith", "endsWith", "regex",
-			},
+			Type:        "string",
+			Enum:        matcherEnums,
 			Description: "Gherkio assertion matchers",
 		}
 		schema.Definitions["Matcher"] = matcherSchema
 
 		// 1. Explicit properties for Autocomplete suggestions
-		// By adding these explicit keys, the editor will suggest them when typing inside 'expect:'
-		expectSchema.Properties.Set("body.", &jsonschema.Schema{
-			Ref:         "#/$defs/Matcher",
-			Description: "Assert against the JSON response body. Example: body.id, body.data.0.name",
-		})
-		expectSchema.Properties.Set("headers.", &jsonschema.Schema{
-			Ref:         "#/$defs/Matcher",
-			Description: "Assert against response headers. Example: headers.content-type",
-		})
-		expectSchema.Properties.Set("jwt.", &jsonschema.Schema{
-			Ref:         "#/$defs/Matcher",
-			Description: "Assert against decoded JWT claims. Example: jwt.role, jwt.exp",
-		})
+		// Read canonical paths directly from the engine to ensure schema matches the codebase
+		paths := runner.GetCanonicalPaths()
+
+		for _, p := range paths {
+			desc := "Assert against response " + p
+			if p == "body" {
+				desc = "Assert against the JSON response body. Example: body.id, body.data.0.name"
+			} else if p == "headers" {
+				desc = "Assert against response headers. Example: headers.content-type"
+			} else if p == "jwt" {
+				desc = "Assert against decoded JWT claims. Example: jwt.role, jwt.exp"
+			}
+
+			expectSchema.Properties.Set(p+".", &jsonschema.Schema{
+				Ref:         "#/$defs/Matcher",
+				Description: desc,
+			})
+		}
+
 		expectSchema.Properties.Set("schema", &jsonschema.Schema{
 			Type:        "string",
 			Description: "Validate response body against a predefined JSON schema name",
 		})
 
 		// 2. Pattern Properties for dynamic paths
-		// This allows ANY path starting with body., headers., jwt. to be valid and use the Matcher autocomplete
+		// Join the canonical paths into a regex group (e.g. ^(body|headers|jwt)\..+$)
 		if expectSchema.PatternProperties == nil {
 			expectSchema.PatternProperties = make(map[string]*jsonschema.Schema)
 		}
-		expectSchema.PatternProperties["^(body|headers|jwt)\\..+$"] = &jsonschema.Schema{
+
+		regexPattern := "^(" + strings.Join(paths, "|") + ")\\..+$"
+		expectSchema.PatternProperties[regexPattern] = &jsonschema.Schema{
 			Ref: "#/$defs/Matcher",
 		}
 

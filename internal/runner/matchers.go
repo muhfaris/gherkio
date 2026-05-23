@@ -324,8 +324,21 @@ func formatActual(actual interface{}) string {
 }
 
 // isMatcherKeyword fast checks if the expected string is formatted as a matcher
+// GetAvailableMatchers returns the list of all supported assertion matchers.
+// This is used by the schema generator to provide dynamic autocomplete.
+func GetAvailableMatchers() []string {
+	return []string{
+		"exists", "not exists",
+		"uuid", "email", "datetime", "uri",
+		"string", "number", "boolean", "array", "object", "null",
+		"true", "false",
+		"contains", "startsWith", "endsWith", "regex",
+	}
+}
+
 func isMatcherKeyword(expected string) bool {
 	parts := strings.SplitN(expected, " ", 2)
+
 	switch parts[0] {
 	case "exists", "not":
 		return true
