@@ -337,26 +337,35 @@ func GetAvailableMatchers() []string {
 }
 
 // isMatcherKeyword checks if the expected string is formatted as a matcher.
-// It uses GetAvailableMatchers() as the source of truth to avoid code drift.
+// It uses GetAvailableMatchers() and GetArgMatchers() as the source of truth
+// to avoid code drift.
 func isMatcherKeyword(expected string) bool {
 	matchers := GetAvailableMatchers()
+	argMatchers := GetArgMatchers()
+	argMatcherSet := make(map[string]bool, len(argMatchers))
+	for _, am := range argMatchers {
+		argMatcherSet[am] = true
+	}
+
+	// First pass: exact match with available matchers
 	for _, m := range matchers {
-		parts := strings.SplitN(m, " ", 2)
-		if len(parts) == 1 {
-			// Single-word matcher (e.g. "uuid", "email")
-			if expected == m {
-				return true
+		if expected == m {
+			// Arg matchers like "contains" need an argument — bare keyword alone is not valid
+			if argMatcherSet[m] {
+				return false
 			}
-		} else {
-			// Multi-word matcher (e.g. "not exists")
-			if expected == m {
-				return true
-			}
-			// Also check if expected starts with the keyword (for partial matching)
-			if strings.HasPrefix(expected, parts[0]+" ") {
-				return true
-			}
+			return true
 		}
 	}
+
+	// Second pass: check for "<argMatcher> <value>" form
+	// These appear as bare keywords in the matchers list for schema autocomplete,
+	// but their full form "contains <value>" is needed to be a valid matcher usage.
+	for am := range argMatcherSet {
+		if strings.HasPrefix(expected, am+" ") {
+			return true
+		}
+	}
+
 	return false
 }

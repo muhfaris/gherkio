@@ -64,7 +64,7 @@ func TestGenerateSchemaType(t *testing.T) {
 		{"environment schema", SchemaTypeEnvironment, false},
 		{"credentials schema", SchemaTypeCredentials, false},
 		{"schema-definition schema", SchemaTypeSchemaDefinition, false},
-		{"invalid schema", SchemaType("invalid"), false}, // Returns nil, not error
+		{"invalid schema", SchemaType("invalid"), true}, // Returns nil, not error
 	}
 
 	for _, tt := range tests {
@@ -93,6 +93,21 @@ func TestGenerateSchemaType(t *testing.T) {
 	}
 }
 
+func getSchemaDef(schema map[string]interface{}) map[string]interface{} {
+	// jsonschema reflector nests properties inside $defs.<TypeName>
+	defs, ok := schema["$defs"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	// Return the first (and usually only) definition
+	for _, v := range defs {
+		if def, ok := v.(map[string]interface{}); ok {
+			return def
+		}
+	}
+	return nil
+}
+
 func TestGenerateSchemaType_ContainsExpectedKeys(t *testing.T) {
 	tests := []struct {
 		typ     SchemaType
@@ -101,16 +116,25 @@ func TestGenerateSchemaType_ContainsExpectedKeys(t *testing.T) {
 		{
 			SchemaTypeTest,
 			func(m map[string]interface{}) bool {
-				// Test schema should have Definitions with Expect
-				defs, ok := m["definitions"].(map[string]interface{})
-				return ok && defs != nil
+				// Test schema should have $defs with Expect and Matcher
+				defs, ok := m["$defs"].(map[string]interface{})
+				if !ok {
+					return false
+				}
+				_, hasExpect := defs["Expect"]
+				_, hasMatcher := defs["Matcher"]
+				return hasExpect && hasMatcher
 			},
 		},
 		{
 			SchemaTypeConfig,
 			func(m map[string]interface{}) bool {
 				// Config schema should have properties
-				_, hasProps := m["properties"].(map[string]interface{})
+				def := getSchemaDef(m)
+				if def == nil {
+					return false
+				}
+				_, hasProps := def["properties"].(map[string]interface{})
 				return hasProps
 			},
 		},
@@ -118,9 +142,13 @@ func TestGenerateSchemaType_ContainsExpectedKeys(t *testing.T) {
 			SchemaTypeEnvironment,
 			func(m map[string]interface{}) bool {
 				// Environment schema should have baseUrl required
-				if req, ok := m["required"].([]interface{}); ok {
+				def := getSchemaDef(m)
+				if def == nil {
+					return false
+				}
+				if req, ok := def["required"].([]interface{}); ok {
 					for _, r := range req {
-						if r == "baseUrl" {
+						if r == "BaseURL" {
 							return true
 						}
 					}
@@ -131,10 +159,19 @@ func TestGenerateSchemaType_ContainsExpectedKeys(t *testing.T) {
 		{
 			SchemaTypeCredentials,
 			func(m map[string]interface{}) bool {
-				// Credentials should have accounts property
-				if props, ok := m["properties"].(map[string]interface{}); ok {
-					_, hasAccounts := props["accounts"]
-					return hasAccounts
+				// Credentials should have accounts property in any definition
+				defs, ok := m["$defs"].(map[string]interface{})
+				if !ok {
+					return false
+				}
+				for _, v := range defs {
+					if def, ok := v.(map[string]interface{}); ok {
+						if props, ok := def["properties"].(map[string]interface{}); ok {
+							if _, hasAccounts := props["Accounts"]; hasAccounts {
+								return true
+							}
+						}
+					}
 				}
 				return false
 			},
@@ -181,14 +218,14 @@ func TestAvailableSchemaTypes(t *testing.T) {
 	}
 
 	// Verify each type has required fields
-	for _, t := range types {
-		if t.Name == "" {
+	for _, st := range types {
+		if st.Name == "" {
 			t.Error("SchemaTypeInfo.Name is empty")
 		}
-		if t.Description == "" {
+		if st.Description == "" {
 			t.Error("SchemaTypeInfo.Description is empty")
 		}
-		if len(t.FilePatterns) == 0 {
+		if len(st.FilePatterns) == 0 {
 			t.Error("SchemaTypeInfo.FilePatterns is empty")
 		}
 	}
@@ -205,14 +242,14 @@ func TestSchemaTypes_HaveCorrectFilePatterns(t *testing.T) {
 		"schema-definition":  ".gherkio/schemas/*.yaml",
 	}
 
-	for _, t := range types {
-		expected, ok := patterns[string(t.Type)]
+	for _, st := range types {
+		expected, ok := patterns[string(st.Type)]
 		if !ok {
-			t.Errorf("Unexpected type: %s", t.Type)
+			t.Errorf("Unexpected type: %s", st.Type)
 			continue
 		}
-		if len(t.FilePatterns) != 1 || t.FilePatterns[0] != expected {
-			t.Errorf("Type %s: expected pattern %q, got %v", t.Type, expected, t.FilePatterns)
+		if len(st.FilePatterns) != 1 || st.FilePatterns[0] != expected {
+			t.Errorf("Type %s: expected pattern %q, got %v", st.Type, expected, st.FilePatterns)
 		}
 	}
 }

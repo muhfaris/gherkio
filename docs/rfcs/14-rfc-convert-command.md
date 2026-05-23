@@ -205,7 +205,9 @@ User should be warned that literal tokens in cURL commands will be embedded in t
 
 ### 3.7 YAML → cURL (Reverse)
 
-This is the simpler direction. The logic already exists in `internal/report/helpers.go` via `generateCurl()`. The command just surfaces it:
+This is the simpler direction. Similar logic already exists in `internal/report/helpers.go` via `generateCurl()`, but it is **unexported** (lowercase). The converter will need its own cURL generation or we export the report function.
+
+**Decision:** Implement cURL generation directly in `internal/converter/curl.go` rather than exporting the report function. This keeps the converter package self-contained and avoids a reverse dependency (report importing converter).
 
 ```
 gherkio convert --reverse <test-file> [--step <N>] [--env <name>]
@@ -215,6 +217,8 @@ gherkio convert --reverse <test-file> [--step <N>] [--env <name>]
 - Interpolates variables with values from the environment (if `--env` provided)
 - Outputs one or more cURL commands
 - Variable interpolation with credentials from the credentials file if `--account` is provided
+
+**Note:** The converter should use `GetCanonicalPaths()` from `engine.go` when resolving save paths for the reverse direction, keeping the source of truth pattern established in RFC-15.
 
 ### 3.8 Neovim Integration
 
@@ -437,9 +441,10 @@ No Neovim plugin is required for MVP — just the shell command.
 | `internal/converter/parser.go` | Convert | cURL string tokenizer + parser |
 | `internal/converter/parser_test.go` | Convert | Parser tests (golden file approach) |
 | `internal/converter/dsl.go` | Convert | Convert parsed cURL → Gherkio YAML (string) |
-| `internal/converter/curl.go` | Convert | Convert Gherkio step → cURL string (wrapper around `generateCurl`) |
+| `internal/converter/curl.go` | Convert | Convert Gherkio step → cURL string (standalone implementation, not wrapping unexported `generateCurl` from report pkg) |
 | `internal/runner/steplocator.go` | Step Runner | Parse YAML text → step boundaries by line number |
 | `internal/runner/steplocator_test.go` | Step Runner | Tests for step detection |
+| `internal/runner/runner.go` (modify) | Step Runner | Add `StepIndex` field to `RunConfig`, add `RunSingleStep()` function |
 | `internal/runner/executor.go` (modify) | Step Runner | Extract single-step execution from `executeSteps()` |
 | `internal/runner/printer.go` (modify) | Step Runner | Compact single-step output format |
 
@@ -449,6 +454,14 @@ No Neovim plugin is required for MVP — just the shell command.
 - The converter has zero dependency on execution logic
 - Easy to iterate without touching core runner code
 - Clean separation if we later add Postman/HAR converters
+
+### 5.2.1 Source of Truth Integration
+
+The converter should use `engine.go` from the runner package where applicable:
+- `GetCanonicalPaths()` — for path resolution hints
+- `GetAvailableMatchers()` — for matcher keyword detection in reverse direction
+
+This follows the pattern established in RFC-15.
 
 ### 5.3 Parser Architecture (Convert)
 
@@ -518,10 +531,12 @@ Shell-level tokenization is the hardest part. Two options:
 ### 5.6 Changes to Existing Code
 
 - **`cmd/run.go`**: Add `--step` (int) and `--line` (int) flags. Modify `runTest()` to detect single-step mode and call `executeSingleStep()` instead of the full pipeline.
-- **`internal/runner/runner.go`**: Add `RunSingleStep()` function — loads env + credentials, executes one step, returns `RunResult`.
+- **`internal/runner/runner.go`**: Add `StepIndex` (int, -1 = run all) field to `RunConfig`. Add `RunSingleStep()` function — loads env + credentials, executes one step, returns `RunResult`.
 - **`internal/runner/executor.go`**: Extract `executeSingleStep()` from the loop in `executeSteps()`. Currently the execution logic for one step is embedded in the `for _, step := range steps` loop — we need to isolate it.
-- **`internal/report/helpers.go`**: `generateCurl()` is already public. No changes needed — the converter calls it directly.
+- **`internal/converter/curl.go`**: Implement cURL generation from scratch (not wrapping unexported `generateCurl` from report pkg). The report package's version is private and for HTML display; the converter needs its own.
 - **`internal/runner/printer.go`**: Add `PrintStepResult()` for compact single-step output.
+
+**Note:** The `Step` struct now has a `oneOf` constraint (RFC-15, `patchStepOneOf`). The step runner must handle both `request`-type and `use`-type steps. For `use` steps, all nested steps are executed (composition is all-or-nothing).
 
 ### 5.7 Testing Strategy
 
@@ -621,17 +636,32 @@ If both are provided, `--step` wins (explicit over inferred). `--line` is ignore
 
 ### 8.2 Existing `generateCurl` in Report Package
 
-The reverse direction is already partially implemented in `internal/report/helpers.go`:
+The report package has an **unexported** helper:
 
 ```go
 func generateCurl(req *runner.RequestInfo, maskFields []string) string
 ```
 
-This function takes a `RequestInfo` (method, URL, headers, body) and outputs a cURL command string. The `convert --reverse` command wraps this, adding:
-- Reading the YAML test file
-- Extracting the request from a specific step
-- Variable interpolation with environment values
-- Output formatting
+This is used internally for HTML reports. The converter will implement its own cURL generation in `internal/converter/curl.go` to avoid creating a dependency from the converter to the report package. The implementation is straightforward — it builds a cURL command string from `RequestInfo` fields.
+
+The `convert --reverse` command will:
+- Read the YAML test file
+- Extract the request from a specific step
+- Optionally interpolate variables with environment/credential values
+- Output the cURL command
+
+### 8.2.1 `RunConfig` Fields for Step Runner
+
+The `RunConfig` struct needs a new field:
+
+```go
+type RunConfig struct {
+    // ... existing fields ...
+    StepIndex int  // -1 = run all steps, >=0 = run specific step only
+}
+```
+
+This keeps it clean — when `StepIndex >= 0`, the runner executes only that step with credential injection only (no previous step variables).
 
 ### 8.3 Example: Full Round-Trip
 

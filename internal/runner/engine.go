@@ -23,3 +23,11 @@ func GetBackoffStrategies() []string {
 func GetStepRoles() []string {
 	return []string{"setup", "steps", "teardown"}
 }
+
+// GetArgMatchers returns matchers that require an additional argument
+// (e.g. "contains <value>", "regex <pattern>"). These matchers are listed
+// as bare keywords in GetAvailableMatchers() for schema autocomplete,
+// but their full form requires an argument to be valid.
+func GetArgMatchers() []string {
+	return []string{"contains", "startsWith", "endsWith", "regex"}
+}
