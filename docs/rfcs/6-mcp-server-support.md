@@ -1,6 +1,6 @@
 # RFC-6: MCP Server Support — Internal Refactoring for LLM Integration
 
-> **Status:** Draft
+> **Status:** Implemented
 > **Author:** Faris
 > **Date:** May 22, 2026
 > **Updated:** May 23, 2026 — aligned with current codebase (RFC-14, RFC-15, engine.go)

@@ -39,11 +39,11 @@ func TestGenerateAllSchemas(t *testing.T) {
 		t.Fatal("Expected $defs in output")
 	}
 
-	// Verify all schema types are present
-	expectedTypes := []string{"test", "config", "environment", "credentials", "schema-definition"}
+	// Verify all schema types are present flatly in defs
+	expectedTypes := []string{"TestFile", "Config", "Environment", "Credentials", "Schema"}
 	for _, typ := range expectedTypes {
 		if _, ok := defs[typ]; !ok {
-			t.Errorf("Missing schema type: %s", typ)
+			t.Errorf("Missing flat schema type definition: %s", typ)
 		}
 	}
 
@@ -267,15 +267,12 @@ func TestGenerateAllSchemas_ContainsAllSchemaTypes(t *testing.T) {
 
 	defs := result["$defs"].(map[string]interface{})
 
-	// Verify test schema has Expect definition (complex type)
-	testSchema := defs["test"].(map[string]interface{})
-	if defsMap, ok := testSchema["definitions"].(map[string]interface{}); ok {
-		if _, hasExpect := defsMap["Expect"]; !hasExpect {
-			t.Error("Test schema missing Expect definition")
-		}
-		if _, hasMatcher := defsMap["Matcher"]; !hasMatcher {
-			t.Error("Test schema missing Matcher definition")
-		}
+	// Verify flat schema has Expect and Matcher definitions
+	if _, hasExpect := defs["Expect"]; !hasExpect {
+		t.Error("Schema missing Expect definition")
+	}
+	if _, hasMatcher := defs["Matcher"]; !hasMatcher {
+		t.Error("Schema missing Matcher definition")
 	}
 }
 

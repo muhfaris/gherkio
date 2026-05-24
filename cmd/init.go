@@ -81,7 +81,14 @@ steps:
 `
 
 // defaultConfigTemplate is the default config.yaml template content.
-const defaultConfigTemplate = `# Gherkio Configuration
+func defaultConfigTemplate() string {
+	version := Version
+	if version == "dev" {
+		version = "0.1.0"
+	}
+	return fmt.Sprintf(`# Gherkio Configuration
+gherkio_version: %s
+
 project:
   name: ""
   version: "1.0.0"
@@ -108,7 +115,8 @@ security:
     # Set to empty to disable masking.
     enabled: true
     fields: []
-`
+`, version)
+}
 
 // defaultExampleLoginSchemaTemplate is the default example schema for login response.
 const defaultExampleLoginSchemaTemplate = `type: object
@@ -211,7 +219,7 @@ func runInit() error {
 
 	// Create default config.yaml
 	configPath := filepath.Join(baseDir, "config.yaml")
-	if err := os.WriteFile(configPath, []byte(defaultConfigTemplate), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(defaultConfigTemplate()), 0644); err != nil {
 		return fmt.Errorf("failed to write config.yaml: %w", err)
 	}
 	fmt.Printf("  📄  %s\n", configPath)

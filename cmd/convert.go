@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/muhfaris/gherkio/internal/core/project"
 	"github.com/muhfaris/gherkio/internal/converter"
 	"github.com/muhfaris/gherkio/internal/model"
 	"github.com/muhfaris/gherkio/internal/runner"
@@ -53,7 +54,7 @@ Examples:
 		}
 
 		// Find project root if possible (optional for simple conversions)
-		projectDir, _ := findProjectRoot(cwd)
+		projectDir, _ := project.FindRoot(cwd)
 
 		if reverse {
 			// YAML -> cURL

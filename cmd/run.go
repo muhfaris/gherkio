@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/muhfaris/gherkio/internal/core/project"
 	"github.com/muhfaris/gherkio/internal/model"
 	"github.com/muhfaris/gherkio/internal/report"
 	"github.com/muhfaris/gherkio/internal/runner"
@@ -77,7 +78,7 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 	}
 
 	// Find project root (directory containing .gherkio)
-	projectDir, err := findProjectRoot(cwd)
+	projectDir, err := project.FindRoot(cwd)
 	if err != nil {
 		return fmt.Errorf("not inside a Gherkio project: %w", err)
 	}
@@ -681,20 +682,7 @@ func discoverTestFiles(dir string) ([]string, error) {
 	return files, nil
 }
 
-// findProjectRoot walks up from cwd to find a directory containing .gherkio.
-func findProjectRoot(cwd string) (string, error) {
-	dir := cwd
-	for {
-		if _, err := os.Stat(filepath.Join(dir, ".gherkio")); err == nil {
-			return dir, nil
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			return "", fmt.Errorf("no .gherkio directory found in any parent directory")
-		}
-		dir = parent
-	}
-}
+
 
 // resolveTestPath tries to find the test file.
 func resolveTestPath(cwd, projectDir, testPath string) (string, error) {

@@ -54,8 +54,17 @@ gherkio/
 │   ├── root.go                      # Base cobra command
 │   ├── init.go                      # `gherkio init` — scaffold project
 │   ├── run.go                       # `gherkio run <file>` — execute tests
-│   └── convert.go                   # `gherkio convert` — bidirectionally convert cURL/YAML
+│   ├── convert.go                   # `gherkio convert` — bidirectionally convert cURL/YAML
+│   └── mcp.go                       # `gherkio mcp` — start Model Context Protocol stdio server
 ├── internal/
+│   ├── core/                        # Reusable programmatic Gherkio domain core
+│   │   ├── project/                 # Workspace discovery & meta loader
+│   │   ├── teststore/               # Discovers scenarios, test CRUD & validations
+│   │   ├── envstore/                # Environment configuration CRUD
+│   │   └── schemastore/             # Custom schema validators CRUD
+│   ├── mcp/                         # Model Context Protocol stdio engine
+│   │   ├── protocol.go              # JSON-RPC 2.0 frames & MCP models
+│   │   └── server.go                # Handshaking, tool execution & resource provider
 │   ├── model/                       # Data model / YAML structs
 │   │   ├── test.go                  # TestFile, Step, Request, Expect, RetryConfig
 │   │   ├── config.go                # Project configuration struct
@@ -538,6 +547,7 @@ Project root detection: walks up from cwd looking for `.gherkio/` directory.
 - ✅ Negative Assertions — RFC-11 (implemented: `not exists`, `schema: not <name>`)
 - ✅ Multi-Account Credentials — RFC-12 (Credentials model, LoadCredentials, `--account`/`--all-accounts` flags, auto-use single account, per-account masking, report integration)
 - ✅ Schema Generator Completeness — RFC-15 (`--type`, `--list` flags, multi-schema output, jsonschema tags on all models, source of truth expansion)
+- ✅ MCP Server Support — RFC-6 (internal/core/ refactoring, zero-dependency JSON-RPC 2.0 stdio engine, project metadata resources, and full tools routing)
 
 ### MVP Complete
 

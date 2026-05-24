@@ -42,8 +42,10 @@ func AvailableSchemaTypes() []SchemaTypeInfo {
 // GenerateAllSchemas generates schemas for all Gherkio YAML document types.
 // Returns a JSON object containing all schemas keyed by type.
 func GenerateAllSchemas() ([]byte, error) {
-	r := new(jsonschema.Reflector)
-	r.RequiredFromJSONSchemaTags = true
+	r := &jsonschema.Reflector{
+		RequiredFromJSONSchemaTags: true,
+		Anonymous:                  true,
+	}
 
 	// Build individual schemas for each document type
 	testSchema := r.Reflect(&model.TestFile{})
@@ -58,16 +60,32 @@ func GenerateAllSchemas() ([]byte, error) {
 	// Add step oneOf constraint to test schema
 	patchStepOneOf(testSchema)
 
-	// Combine into a single output using $defs (draft-07 compatible)
+	// Combine all definitions ($defs) into a single flat map
+	allDefs := make(map[string]interface{})
+
+	mergeDefs := func(s *jsonschema.Schema) {
+		for k, v := range s.Definitions {
+			allDefs[k] = v
+		}
+	}
+
+	mergeDefs(testSchema)
+	mergeDefs(configSchema)
+	mergeDefs(envSchema)
+	mergeDefs(credSchema)
+	mergeDefs(schemaDefSchema)
+
+	// Combine into a single flat output using $defs (draft-07 compatible)
 	combined := map[string]interface{}{
 		"$schema": "http://json-schema.org/draft-07/schema#",
-		"$defs": map[string]interface{}{
-			"test":              testSchema,
-			"config":            configSchema,
-			"environment":       envSchema,
-			"credentials":       credSchema,
-			"schema-definition": schemaDefSchema,
+		"oneOf": []map[string]string{
+			{"$ref": "#/$defs/TestFile"},
+			{"$ref": "#/$defs/Config"},
+			{"$ref": "#/$defs/Environment"},
+			{"$ref": "#/$defs/Credentials"},
+			{"$ref": "#/$defs/Schema"},
 		},
+		"$defs": allDefs,
 	}
 
 	return json.MarshalIndent(combined, "", "  ")
@@ -75,8 +93,10 @@ func GenerateAllSchemas() ([]byte, error) {
 
 // GenerateSchemaType generates a schema for a specific document type.
 func GenerateSchemaType(schemaType SchemaType) ([]byte, error) {
-	r := new(jsonschema.Reflector)
-	r.RequiredFromJSONSchemaTags = true
+	r := &jsonschema.Reflector{
+		RequiredFromJSONSchemaTags: true,
+		Anonymous:                  true,
+	}
 
 	switch schemaType {
 	case SchemaTypeTest:
