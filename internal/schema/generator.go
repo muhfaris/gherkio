@@ -137,10 +137,17 @@ func patchExpectSchema(schema *jsonschema.Schema) {
 			matcherEnums[i] = m
 		}
 
-		matcherSchema := &jsonschema.Schema{
-			Type:        "string",
-			Enum:        matcherEnums,
-			Description: "Gherkio assertion matchers",
+        matcherSchema := &jsonschema.Schema{
+			AnyOf: []*jsonschema.Schema{
+				{
+					Type:        "string",
+					Enum:        matcherEnums,
+					Description: "Gherkio assertion matchers (keyword-based)",
+				},
+				{
+					Description: "Literal value for equality comparison (string, number, boolean, null, array, or object)",
+				},
+			},
 		}
 		schema.Definitions["Matcher"] = matcherSchema
 

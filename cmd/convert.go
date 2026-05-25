@@ -160,20 +160,32 @@ func runReverseConvert(testPath string, projectDir string, env string, accountNa
 		creds, _ = runner.LoadCredentials(projectDir, env)
 	}
 
-	// Determine credential vars
+	// Determine credential vars and all accounts for $accounts.<name>.<field> access
 	var credentialVars map[string]interface{}
-	if creds != nil && accountName != "" {
-		if acc, exists := creds.GetAccount(accountName); exists {
-			credentialVars = runner.CredentialsToVars(acc)
-		}
-	} else if creds != nil {
-		// Fallback to first/auto account if only one exists
-		names := creds.AccountNames()
-		if len(names) == 1 {
-			if acc, exists := creds.GetAccount(names[0]); exists {
+	allAccountsMap := make(map[string]interface{})
+	if creds != nil {
+		allAccountsMap = creds.ToMap()
+		if accountName != "" {
+			if acc, exists := creds.GetAccount(accountName); exists {
 				credentialVars = runner.CredentialsToVars(acc)
 			}
+		} else {
+			// Fallback to first/auto account if only one exists
+			names := creds.AccountNames()
+			if len(names) == 1 {
+				if acc, exists := creds.GetAccount(names[0]); exists {
+					credentialVars = runner.CredentialsToVars(acc)
+				}
+			}
 		}
+	}
+
+	// Merge all accounts into credential vars for $accounts.<name>.<field> access
+	if len(allAccountsMap) > 0 {
+		if credentialVars == nil {
+			credentialVars = make(map[string]interface{})
+		}
+		credentialVars["accounts"] = allAccountsMap
 	}
 
 	// Determine which steps to convert
@@ -189,12 +201,22 @@ func runReverseConvert(testPath string, projectDir string, env string, accountNa
 
 	var curls []string
 	for _, step := range targetSteps {
+		// Inject fresh built-in generator variables per step so each cURL command
+		// gets unique $uuid, $ulid, $randomInt, $randomEmail, $randomPhone values.
+		stepVars := make(map[string]interface{})
+		for k, v := range credentialVars {
+			stepVars[k] = v
+		}
+		for key, val := range runner.BuiltinVars() {
+			stepVars[key] = val
+		}
+
 		if step.Use != "" {
 			curls = append(curls, fmt.Sprintf("# use: %s (skipped composition)", step.Use))
 			continue
 		}
 
-		c, err := converter.ConvertStepToCurl(step.Request, projectDir, env, credentialVars)
+		c, err := converter.ConvertStepToCurl(step.Request, projectDir, env, stepVars)
 		if err != nil {
 			return fmt.Errorf("failed to convert step to cURL: %w", err)
 		}

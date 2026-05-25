@@ -198,14 +198,18 @@ func (s *Server) handleListTools(id interface{}, params json.RawMessage) {
 							"type":        "string",
 							"description": "Environment to execute against (defaults to project config default or 'local').",
 						},
-						"account": map[string]interface{}{
-							"type":        "string",
-							"description": "Optional account name from environments credentials to use for dynamic variable injection.",
-						},
-						"step": map[string]interface{}{
-							"type":        "integer",
-							"description": "Step index to execute in isolation (0-indexed). Defaults to -1 (run entire scenario).",
-						},
+					"account": map[string]interface{}{
+						"type":        "string",
+						"description": "Optional account name from environments credentials to use for dynamic variable injection. Not needed if the test uses $accounts.<name>.<field> syntax directly.",
+					},
+					"step": map[string]interface{}{
+						"type":        "integer",
+						"description": "Step index to execute in isolation (0-indexed). Defaults to -1 (run entire scenario or section if section is set).",
+					},
+					"section": map[string]interface{}{
+						"type":        "string",
+						"description": "Section to run (setup, steps, teardown). When set without step, runs ALL steps in that section only.",
+					},
 					},
 					Required: []string{"path"},
 				},
@@ -375,6 +379,12 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 			stepIndex = int(stepVal)
 		}
 
+		sectionArg, _ := call.Arguments["section"].(string)
+		// Default to "steps" when step is set without section (backward compat)
+		if stepIndex >= 0 && sectionArg == "" {
+			sectionArg = "steps"
+		}
+
 		// Set default environment name
 		if envName == "" {
 			envName = "local"
@@ -387,9 +397,11 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 		// Expose run setup similar to cmd/run.go
 		var credentialVars map[string]interface{}
 		var maskFields []string
+		var allAccountsMap map[string]interface{}
 
 		creds, _ := runner.LoadCredentials(s.projectDir, envName)
 		if creds != nil {
+			allAccountsMap = creds.ToMap()
 			// Resolve specific account or single/fallback account
 			accName := accountName
 			if accName == "" {
@@ -412,7 +424,9 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 			MaskFields:     maskFields,
 			AccountName:    accountName,
 			CredentialVars: credentialVars,
+			AllAccounts:    allAccountsMap,
 			StepIndex:      stepIndex,
+			StepSection:    sectionArg,
 		}
 
 		result, err := runner.Run(cfg)
@@ -449,6 +463,24 @@ func (s *Server) handleListResources(id interface{}, params json.RawMessage) {
 				Name:        "Gherkio DSL Canonical Examples",
 				Description: "YAML code scenarios showing request, saves, assertions, compositions, and collections in action.",
 				MimeType:    "text/yaml",
+			},
+			{
+				URI:         "gherkio://dsl/matchers",
+				Name:        "Available Matchers",
+				Description: "List of all supported assertion matchers with descriptions and usage examples.",
+				MimeType:    "application/json",
+			},
+			{
+				URI:         "gherkio://dsl/variables",
+				Name:        "Built-in Variables",
+				Description: "Built-in generator variables available in every test run ($uuid, $ulid, $randomInt, etc.).",
+				MimeType:    "application/json",
+			},
+			{
+				URI:         "gherkio://dsl/paths",
+				Name:        "Canonical Paths",
+				Description: "Canonical dot-notation paths for assertions and saves (body, headers, jwt).",
+				MimeType:    "application/json",
 			},
 		},
 	}
@@ -488,9 +520,29 @@ func (s *Server) handleReadResource(id interface{}, params json.RawMessage) {
 ### Request Config
 - **service**: (String, Optional) Named service override matching environments.
 - **method**: (String, Required) HTTP Method (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS).
-- **url**: (String, Required) Target endpoint url (appends to baseUrl).
-- **headers**: (Map of string:string, Optional) Custom HTTP headers.
-- **body**: (Free-form object/string, Optional) Request body content.
+- **url**: (String, Required) Target endpoint url (appends to baseUrl). Supports variable interpolation.
+- **headers**: (Map of string:string, Optional) Custom HTTP headers. Supports variable interpolation in values.
+- **body**: (Free-form object/string, Optional) Request body content. Supports variable interpolation in string values.
+
+### Variable Interpolation
+All string values in request fields support variable substitution:
+- **\$var** — Simple variable reference (e.g. \$username, \$token)
+- **\${var}** — Explicit braces syntax (e.g. \${accessToken})
+- **\${var:default}** — With default fallback (e.g. \${role:user})
+- **\$accounts.<name>.<field>** — Access any account's credentials directly from .gherkio/credentials/<env>.yaml without needing --account flag (e.g. \$accounts.eka.username)
+
+Variables are sourced from:
+1. **Built-in generators** — Pre-populated variables available in every test run:
+   - **\$uuid** — UUID v4 string (e.g. a1b2c3d4-e5f6-4789-abcd-ef1234567890)
+   - **\$ulid** — ULID string (e.g. 01ARZ3NDEKTSV4RRFFQ69G5FAV)
+   - **\$randomInt** — Random integer between 0 and 999999 (e.g. 74291)
+   - **\$randomEmail** — Random email at @example.com (e.g. user_123456@example.com)
+   - **\$randomPhone** — Random Indonesian-format phone number (e.g. +6281234567890)
+2. **Credentials** — Account fields from .gherkio/credentials/<env>.yaml (injected automatically when --account is used, or via \$accounts.<name>.<field>)
+3. **Step saves** — Values extracted from previous step responses via save: blocks
+4. **Saved vars override credentials** — When a step saves a variable with the same name as a credential
+
+Built-in variables can be overridden by credentials or step saves with the same name.
 
 ### Assertions (Expect)
 - **status**: (Integer) Expected HTTP status.
@@ -510,7 +562,8 @@ func (s *Server) handleReadResource(id interface{}, params json.RawMessage) {
 
 	case "gherkio://dsl/examples":
 		mime = "text/yaml"
-		content = `scenario: login and fetch profile
+		content = `# Basic example: login with inline credentials
+scenario: login and fetch profile
 
 steps:
   - request:
@@ -533,7 +586,78 @@ steps:
     expect:
       status: 200
       body.username: emilys
+
+---
+# Multi-account example: access any account without --account flag
+# Uses $accounts.<name>.<field> from .gherkio/credentials/local.yaml
+scenario: login as specific account via $accounts
+
+steps:
+  - request:
+      method: POST
+      url: /auth/login
+      body:
+        username: $accounts.eka.username
+        password: $accounts.eka.password
+        expiresInMins: 30
+    expect:
+      status: 200
+      body.accessToken: exists
+    save:
+      accessToken: body.accessToken
+
+  - request:
+      method: GET
+      url: /auth/me
+      headers:
+        Authorization: Bearer $accessToken
+    expect:
+      status: 200
+      body.role: $accounts.default.role
+
+---
+# Built-in generators example: $uuid, $ulid, $randomInt
+# These variables are available in every test with no setup needed
+scenario: using built-in generators
+
+steps:
+  - request:
+      method: POST
+      url: /auth/login
+      body:
+        username: $accounts.default.username
+        password: $accounts.default.password
+        idempotencyKey: $uuid
+        requestId: $ulid
+        otpCode: $randomInt
+    expect:
+      status: 200
+      body.accessToken: exists
+    save:
+      accessToken: body.accessToken
+
+  - request:
+      method: GET
+      url: /auth/me
+      headers:
+        Authorization: Bearer $accessToken
+        X-Idempotency: $uuid
+    expect:
+      status: 200
+      body.username: $accounts.default.username
 `
+	case "gherkio://dsl/matchers":
+		mime = "application/json"
+		content = s.buildMatchersResource()
+
+	case "gherkio://dsl/variables":
+		mime = "application/json"
+		content = s.buildVariablesResource()
+
+	case "gherkio://dsl/paths":
+		mime = "application/json"
+		content = s.buildPathsResource()
+
 	default:
 		s.writeError(id, InvalidParams, fmt.Sprintf("Unknown resource URI '%s'", read.URI), nil)
 		return

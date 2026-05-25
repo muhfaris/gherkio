@@ -36,10 +36,10 @@ type Step struct {
 type Request struct {
 	Service string            `yaml:"service,omitempty" json:"service,omitempty" jsonschema:"description=Name of the service defined in environment"`
 	Method  string            `yaml:"method" json:"method" jsonschema:"required,enum=GET,enum=POST,enum=PUT,enum=DELETE,enum=PATCH,description=HTTP method"`
-	URL     string            `yaml:"url" json:"url" jsonschema:"required,description=Request URL path or absolute URL"`
-	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty" jsonschema:"description=HTTP request headers"`
-	Body    interface{}       `yaml:"body,omitempty" json:"body,omitempty" jsonschema:"description=HTTP request body (JSON or text)"`
-	Timeout string            `yaml:"timeout,omitempty" json:"timeout,omitempty" jsonschema:"description=HTTP client timeout for this request (e.g. 5s, 30s)"` // e.g. "5s", "30s", "1m"
+	URL     string            `yaml:"url" json:"url" jsonschema:"required,description=Request URL path or absolute URL. Supports variable interpolation ($var ${var:default} $accounts.(name).(field) $uuid $ulid $randomInt $randomEmail $randomPhone)"`
+	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty" jsonschema:"description=HTTP request headers. Supports variable interpolation in values ($var ${var:default} $accounts.(name).(field) $uuid $ulid $randomInt $randomEmail $randomPhone)"`
+	Body    interface{}       `yaml:"body,omitempty" json:"body,omitempty" jsonschema:"description=HTTP request body as JSON object or string. Supports variable interpolation in string values ($var ${var:default} $accounts.(name).(field) $uuid $ulid $randomInt $randomEmail $randomPhone)"`
+	Timeout string            `yaml:"timeout,omitempty" json:"timeout,omitempty" jsonschema:"description=HTTP client timeout for this request (e.g. 5s 30s 1m)"` // e.g. "5s", "30s", "1m"
 }
 
 // Expect holds assertions for a step.

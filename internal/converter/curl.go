@@ -13,9 +13,12 @@ import (
 )
 
 // LenientInterpolateString replaces variable references in a string with values from vars.
-// If a variable is not defined, it leaves it intact as $var or ${var} instead of failing.
+// Supports simple vars ($var, ${var}), dotted paths ($accounts.eka.username, ${accounts.eka.username}),
+// and defaults (${var:default}, ${accounts.eka.username:default}).
+// If a variable is not defined, it leaves it intact instead of failing (lenient).
 func LenientInterpolateString(s string, vars map[string]interface{}) string {
-	re := regexp.MustCompile(`\$\{?([a-zA-Z_][a-zA-Z0-9_]*)(?::([^}]*))?}?`)
+	// Matches $var, ${var}, $accounts.eka.username, ${accounts.eka.username}, ${var:default}
+	re := regexp.MustCompile(`\$\{?([a-zA-Z_][a-zA-Z0-9_]+(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)(?::([^}]*))?}?`)
 
 	return re.ReplaceAllStringFunc(s, func(match string) string {
 		submatches := re.FindStringSubmatch(match)
@@ -28,7 +31,8 @@ func LenientInterpolateString(s string, vars map[string]interface{}) string {
 			defaultValue = submatches[2]
 		}
 
-		if val, ok := vars[varName]; ok {
+		// Support dotted paths via nested map navigation
+		if val, ok := resolveNestedPath(varName, vars); ok {
 			return fmt.Sprintf("%v", val)
 		}
 
@@ -38,6 +42,28 @@ func LenientInterpolateString(s string, vars map[string]interface{}) string {
 
 		return match
 	})
+}
+
+// resolveNestedPath navigates a dotted path in a nested map structure.
+// For simple names like "username", it's equivalent to vars["username"].
+// For dotted paths like "accounts.eka.username", it navigates the nested map.
+func resolveNestedPath(path string, vars map[string]interface{}) (interface{}, bool) {
+	parts := strings.Split(path, ".")
+	current := interface{}(vars)
+
+	for _, part := range parts {
+		m, ok := current.(map[string]interface{})
+		if !ok {
+			return nil, false
+		}
+		val, found := m[part]
+		if !found {
+			return nil, false
+		}
+		current = val
+	}
+
+	return current, true
 }
 
 // LenientInterpolateBody recursively processes a body structure to replace variables leniently.

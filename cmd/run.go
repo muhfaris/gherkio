@@ -47,7 +47,10 @@ Example:
   gherkio run login.yaml --verbose
   gherkio run login.yaml --report html
   gherkio run login.yaml --env staging --account alpha
-  gherkio run login.yaml --env staging --all-accounts`,
+  gherkio run login.yaml --env staging --all-accounts
+  gherkio run login.yaml --section steps        # Run all steps in 'steps' section only
+  gherkio run login.yaml --section setup        # Run all setup steps only
+  gherkio run login.yaml --section teardown     # Run all teardown steps only`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		testPath := ""
@@ -68,7 +71,7 @@ func init() {
 	runCmd.Flags().BoolVar(&allAccounts, "all-accounts", false, "Run tests against all accounts in the credentials file")
 	runCmd.Flags().IntVar(&stepIdx, "step", -1, "Index of the step to run (0-indexed)")
 	runCmd.Flags().IntVar(&lineNum, "line", -1, "Line number containing the step to run")
-	runCmd.Flags().StringVar(&stepSection, "section", "steps", "Section containing the step (setup, steps, teardown)")
+	runCmd.Flags().StringVar(&stepSection, "section", "", "Section to run (setup, steps, teardown). When used without --step or --line, runs ALL steps in that section only.")
 }
 
 func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw bool, accountName string, allAccounts bool) error {
@@ -135,9 +138,15 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 		}
 	}
 
+	// Build all accounts map for $accounts.<name>.<field> access
+	var allAccountsMap map[string]interface{}
+	if creds != nil {
+		allAccountsMap = creds.ToMap()
+	}
+
 	// No test path or directory: run all tests
 	if testPath == "" {
-		return runAllTests(projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts)
+		return runAllTests(projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap)
 	}
 
 	// Check if the path is a directory
@@ -149,7 +158,7 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 		if altInfo, altErr := os.Stat(altPath); altErr == nil && altInfo.IsDir() {
 			testDir = altPath
 		}
-		return runAllInDir(testDir, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts)
+		return runAllInDir(testDir, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap)
 	}
 
 	// Resolve single test file path
@@ -158,7 +167,7 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 		return fmt.Errorf("test file not found: %w", err)
 	}
 
-	return runSingleTest(fullPath, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts)
+	return runSingleTest(fullPath, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap)
 }
 
 func handleReport(result *runner.RunResult, projectDir string, env string, reportCfg *report.ReportConfig) {
@@ -241,16 +250,18 @@ func handleSuiteReport(results []*runner.RunResult, projectDir string, env strin
 	}
 }
 
-func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, creds *model.Credentials, accountName string, allAccounts bool) error {
+func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, creds *model.Credentials, accountName string, allAccounts bool, allAccountsMap map[string]interface{}) error {
 	// Determine which accounts to run
-	accounts, err := resolveAccounts(creds, accountName, allAccounts)
+	// Suppress hint if the test already uses $accounts.<name>.<field> syntax
+	suppressHint := testReferencesAccounts(testPath)
+	accounts, err := resolveAccounts(creds, accountName, allAccounts, suppressHint)
 	if err != nil {
 		return err
 	}
 
 	// If multiple accounts, run each sequentially
 	if len(accounts) > 1 {
-		return runSingleTestMultiAccount(testPath, projectDir, env, verbose, reportCfg, maskFields, accounts)
+		return runSingleTestMultiAccount(testPath, projectDir, env, verbose, reportCfg, maskFields, accounts, allAccountsMap)
 	}
 
 	// Single account (or no credentials)
@@ -279,6 +290,11 @@ func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *re
 		fmt.Printf("🎯 Line %d resolved to %s step %d\n", lineNum, targetSection, targetStepIdx)
 	}
 
+	// Default to "steps" section when --step is used without --section (backward compat)
+	if targetStepIdx >= 0 && targetSection == "" {
+		targetSection = "steps"
+	}
+
 	cfg := runner.RunConfig{
 		TestPath:       testPath,
 		EnvName:        env,
@@ -287,6 +303,7 @@ func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *re
 		MaskFields:     maskFields,
 		AccountName:    accName,
 		CredentialVars: credentialVars,
+		AllAccounts:    allAccountsMap,
 		StepIndex:      targetStepIdx,
 		StepSection:    targetSection,
 	}
@@ -311,9 +328,24 @@ func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *re
 	return nil
 }
 
+// testReferencesAccounts checks if a test file references $accounts.<name>.<field> syntax.
+// When true, the resolveAccounts hint should be suppressed since the user is already
+// explicitly using accounts via dotted-path access.
+func testReferencesAccounts(testPath string) bool {
+	if testPath == "" {
+		return false
+	}
+	data, err := os.ReadFile(testPath)
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(data), "$accounts.")
+}
+
 // resolveAccounts determines which accounts to use based on credentials, flags, and edge cases.
 // Returns a map of account name → Account for convenient name access.
-func resolveAccounts(creds *model.Credentials, accountName string, allAccounts bool) (map[string]model.Account, error) {
+// suppressHint suppresses the "N accounts found..." hint when the test already uses $accounts syntax.
+func resolveAccounts(creds *model.Credentials, accountName string, allAccounts bool, suppressHint bool) (map[string]model.Account, error) {
 	// No credentials file - run with no account
 	if creds == nil {
 		return nil, nil
@@ -351,12 +383,14 @@ func resolveAccounts(creds *model.Credentials, accountName string, allAccounts b
 	}
 
 	// Multiple accounts but no flag - print hint and continue without credentials
-	fmt.Printf("⚠ %d accounts found in credentials. Use --account <name> or --all-accounts to use them.\n\n", len(accountNames))
+	if !suppressHint {
+		fmt.Printf("⚠ %d accounts found in credentials. Use --account <name> or --all-accounts to use them.\n\n", len(accountNames))
+	}
 	return nil, nil
 }
 
 // runSingleTestMultiAccount runs a single test file against multiple accounts.
-func runSingleTestMultiAccount(testPath, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, accounts map[string]model.Account) error {
+func runSingleTestMultiAccount(testPath, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, accounts map[string]model.Account, allAccountsMap map[string]interface{}) error {
 	var allResults []*runner.RunResult
 	totalPass := 0
 	totalFail := 0
@@ -379,6 +413,7 @@ func runSingleTestMultiAccount(testPath, projectDir, env string, verbose bool, r
 			MaskFields:     accountMask,
 			AccountName:    accountName,
 			CredentialVars: runner.CredentialsToVars(account),
+			AllAccounts:    allAccountsMap,
 		}
 
 		result, err := runner.Run(cfg)
@@ -429,12 +464,12 @@ func runSingleTestMultiAccount(testPath, projectDir, env string, verbose bool, r
 	return nil
 }
 
-func runAllTests(projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, creds *model.Credentials, accountName string, allAccounts bool) error {
+func runAllTests(projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, creds *model.Credentials, accountName string, allAccounts bool, allAccountsMap map[string]interface{}) error {
 	testsDir := filepath.Join(projectDir, ".gherkio", "tests")
-	return runAllInDir(testsDir, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts)
+	return runAllInDir(testsDir, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap)
 }
 
-func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, creds *model.Credentials, accountName string, allAccounts bool) error {
+func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, creds *model.Credentials, accountName string, allAccounts bool, allAccountsMap map[string]interface{}) error {
 	files, err := discoverTestFiles(testDir)
 	if err != nil {
 		return fmt.Errorf("failed to discover test files: %w", err)
@@ -446,14 +481,22 @@ func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *repor
 	}
 
 	// Determine which accounts to run
-	accounts, err := resolveAccounts(creds, accountName, allAccounts)
+	// Suppress hint if any test in the directory uses $accounts.<name>.<field> syntax
+	suppressHint := false
+	for _, f := range files {
+		if testReferencesAccounts(f) {
+			suppressHint = true
+			break
+		}
+	}
+	accounts, err := resolveAccounts(creds, accountName, allAccounts, suppressHint)
 	if err != nil {
 		return err
 	}
 
 	// If multiple accounts, run each test against all accounts
 	if len(accounts) > 1 {
-		return runAllInDirMultiAccount(testDir, projectDir, env, verbose, reportCfg, maskFields, files, accounts)
+		return runAllInDirMultiAccount(testDir, projectDir, env, verbose, reportCfg, maskFields, files, accounts, allAccountsMap)
 	}
 
 	// Single account or no accounts - run each test file
@@ -490,6 +533,7 @@ func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *repor
 			MaskFields:     maskFields,
 			AccountName:    accName,
 			CredentialVars: credentialVars,
+			AllAccounts:    allAccountsMap,
 		}
 
 		result, err := runner.Run(cfg)
@@ -558,7 +602,7 @@ func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *repor
 }
 
 // runAllInDirMultiAccount runs all test files against multiple accounts.
-func runAllInDirMultiAccount(testDir, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, files []string, accounts map[string]model.Account) error {
+func runAllInDirMultiAccount(testDir, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, files []string, accounts map[string]model.Account, allAccountsMap map[string]interface{}) error {
 	var allResults []*runner.RunResult
 	totalPass := 0
 	totalFail := 0
@@ -588,6 +632,7 @@ func runAllInDirMultiAccount(testDir, projectDir, env string, verbose bool, repo
 				MaskFields:     accountMask,
 				AccountName:    accountName,
 				CredentialVars: runner.CredentialsToVars(account),
+				AllAccounts:    allAccountsMap,
 			}
 
 			result, err := runner.Run(cfg)
@@ -681,8 +726,6 @@ func discoverTestFiles(dir string) ([]string, error) {
 
 	return files, nil
 }
-
-
 
 // resolveTestPath tries to find the test file.
 func resolveTestPath(cwd, projectDir, testPath string) (string, error) {

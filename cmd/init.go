@@ -80,6 +80,81 @@ steps:
       body.refreshToken: exists
 `
 
+// defaultExampleBuiltinsTemplate shows how to use built-in generator variables ($uuid, $ulid, $randomInt).
+const defaultExampleBuiltinsTemplate = `scenario: using built-in generator variables
+
+steps:
+  - request:
+      method: POST
+      url: /auth/login
+
+      body:
+        username: $accounts.eka.username
+        password: $accounts.eka.password
+        expiresInMins: 30
+        idempotencyKey: $uuid
+        requestId: $ulid
+        otpCode: $randomInt
+        email: $randomEmail
+        phone: $randomPhone
+
+    expect:
+      status: 200
+      body.accessToken: exists
+      body.refreshToken: exists
+      schema: example/login-response
+
+    save:
+      accessToken: body.accessToken
+
+  - request:
+      method: GET
+      url: /auth/me
+      headers:
+        Authorization: Bearer $accessToken
+        X-Idempotency: $uuid
+    expect:
+      status: 200
+      body.username: $accounts.eka.username
+      schema: example/user-response
+`
+
+// defaultExampleAccountsTemplate shows how to use $accounts.<name>.<field> to access
+// any account's credentials directly without needing the --account flag.
+const defaultExampleAccountsTemplate = `scenario: login as eka via $accounts variable
+
+steps:
+  - request:
+      method: POST
+      url: /auth/login
+
+      body:
+        username: $accounts.eka.username
+        password: $accounts.eka.password
+        expiresInMins: 30
+
+    expect:
+      status: 200
+      body.accessToken: exists
+      body.refreshToken: exists
+      body.email: email
+      schema: example/login-response
+
+    save:
+      accessToken: body.accessToken
+      refreshToken: body.refreshToken
+
+  - request:
+      method: GET
+      url: /auth/me
+      headers:
+        Authorization: Bearer $accessToken
+    expect:
+      status: 200
+      body.username: $accounts.eka.username
+      schema: example/user-response
+`
+
 // defaultConfigTemplate is the default config.yaml template content.
 func defaultConfigTemplate() string {
 	version := Version
@@ -256,6 +331,32 @@ func runInit() error {
 	}
 	fmt.Printf("  📄  %s\n", refreshPath)
 
+	// Create built-in variables example showing $uuid, $ulid, $randomInt
+	builtinsExampleDir := filepath.Join(baseDir, "tests", "example", "builtins")
+	if err := os.MkdirAll(builtinsExampleDir, dirPerm); err != nil {
+		return fmt.Errorf("failed to create builtins example directory: %w", err)
+	}
+	fmt.Printf("  📁  %s\n", builtinsExampleDir)
+
+	builtinsPath := filepath.Join(builtinsExampleDir, "login-with-generators.yaml")
+	if err := os.WriteFile(builtinsPath, []byte(defaultExampleBuiltinsTemplate), 0644); err != nil {
+		return fmt.Errorf("failed to write builtins example test file: %w", err)
+	}
+	fmt.Printf("  📄  %s\n", builtinsPath)
+
+	// Create accounts example showing $accounts.<name>.<field> access
+	accountsExampleDir := filepath.Join(baseDir, "tests", "example", "accounts")
+	if err := os.MkdirAll(accountsExampleDir, dirPerm); err != nil {
+		return fmt.Errorf("failed to create accounts example directory: %w", err)
+	}
+	fmt.Printf("  📁  %s\n", accountsExampleDir)
+
+	accountsPath := filepath.Join(accountsExampleDir, "login-as-eka.yaml")
+	if err := os.WriteFile(accountsPath, []byte(defaultExampleAccountsTemplate), 0644); err != nil {
+		return fmt.Errorf("failed to write accounts example test file: %w", err)
+	}
+	fmt.Printf("  📄  %s\n", accountsPath)
+
 	// Create example schema files
 	schemaExampleDir := filepath.Join(baseDir, "schemas", "example")
 	if err := os.MkdirAll(schemaExampleDir, dirPerm); err != nil {
@@ -286,6 +387,11 @@ accounts:
     password: emilyspass
     role: user
 
+  eka:
+    username: "0000002"
+    password: "0000002"
+    role: user
+
   # admin:
   #   username: admin@example.com
   #   password: admin-secret
@@ -303,5 +409,11 @@ accounts:
 	fmt.Println("    gherkio run example/auth/me.yaml")
 	fmt.Println("    gherkio run example/auth/refresh.yaml")
 	fmt.Println("    gherkio run example/auth/me.yaml --verbose")
+	fmt.Println("")
+	fmt.Println("  Multi-account (no --account flag needed):")
+	fmt.Println("    gherkio run example/accounts/login-as-eka.yaml")
+	fmt.Println("")
+	fmt.Println("  Built-in generators ($uuid, $ulid, $randomInt):")
+	fmt.Println("    gherkio run example/builtins/login-with-generators.yaml")
 	return nil
 }

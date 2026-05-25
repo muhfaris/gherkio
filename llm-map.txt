@@ -128,7 +128,8 @@ gherkio/
 │   │   ├── 12-multi-account-credentials.md
 │   │   ├── 13-credentials-system.md
 │   │   ├── 14-rfc-convert-command.md
-│   │   └── 15-schema-completeness.md
+│   └── 15-schema-completeness.md
+│   └── 16-qa-experience-improvements.md
 │   └── http/                        # HTTP request examples
 │       └── dummy/
 │           └── login.http
@@ -396,10 +397,44 @@ Assertion and save paths follow dot-notation:
 
 ### 6. Variable Interpolation
 
-- Syntax: `$var` or `${var}` or `${var:default}`
+- Syntax: `$var` or `${var}` or `${var:default}` or `$accounts.eka.username`
+- Dotted-path syntax: `$accounts.<name>.<field>` navigates nested maps (e.g. all injected credentials)
 - Applied to: URL, headers, body (recursive string/map/array)
-- See `internal/runner/interpolator.go`
+- Resolution (strict): `resolveNestedVar()` in `internal/runner/interpolator.go` splits by `.` and walks the nested map, returns error on undefined
+- Resolution (lenient): `resolveNestedPath()` in `internal/converter/curl.go` same navigation but leaves unresolved vars intact — used by cURL converter
 - Variables are stored in `map[string]interface{}` and passed between steps
+- **Order of precedence** (later overrides earlier):1. Built-in generators →2. Credential vars →3. Step saves
+
+#### Built-in Generator Variables
+Available in every test run with no setup. Generated once per `Run()` call via `BuiltinVars()` in `internal/runner/builtins.go`:
+
+| Variable | Description | Example |
+|----------|-------------|--------|
+| `$uuid` | UUID v4 string | `a1b2c3d4-e5f6-4789-abcd-ef1234567890` |
+| `$ulid` | ULID (timestamp + random) | `01ARZ3NDEKTSV4RRFFQ69G5FAV` |
+| `$randomInt` | Random integer 0–999999 | `74291` |
+| `$randomEmail` | Random email at @example.com | `user_123456@example.com` |
+| `$randomPhone` | Random Indonesian-format phone number | `+6281234567890` |
+
+**Per-step regeneration:** Built-in variables are regenerated fresh at the start of each step iteration (inside `executeSteps()` in `runner.go`). This means each request in a scenario gets unique values — critical for real QA testing where every API call needs distinct IDs, idempotency keys, or random data.
+
+Within a single step, all occurrences of `$uuid` (URL, headers, body) resolve to the same value. But step 2 will get a different `$uuid` than step1.
+
+**Variable precedence (per step):**
+1. Built-in generators (fresh each step)
+2. Credential vars (from account selection or `$accounts`)
+3. Step saves from previous steps (override above)
+
+Built-in vars also resolve in cURL conversion (`gherkio convert -r`), also regenerated per step.
+
+Example usage:
+```yaml
+body:
+  idempotencyKey: $uuid
+  requestId: $ulid
+  otpCode: $randomInt
+```
+- **cURL converter** (`gherkio convert -r`) also resolves `$accounts.<name>.<field>` by loading credentials and injecting all accounts into `vars["accounts"]` in `cmd/convert.go::runReverseConvert()`
 
 ### 7. JWT Auto-Decoding
 
@@ -517,6 +552,10 @@ gherkio run <test-file> --report json --report-raw # Unmasked JSON
 gherkio run <test-file> -v                    # Shorthand for --verbose
 gherkio run <test-file> --env staging --account alpha   # Run with specific account
 gherkio run <test-file> --env staging --all-accounts    # Run against all accounts
+gherkio run <test-file> --section <section>            # Run ALL steps in a section only (setup, steps, teardown)
+gherkio run <test-file> --step <N>                      # Run a single step (0-indexed)
+gherkio run <test-file> --step <N> --section <section>  # Run a single step in a specific section
+gherkio run <test-file> --line <N>                      # Run the step at a specific line number
 gherkio schema                              # Generate JSON Schema for YAML autocomplete
 ```
 
@@ -652,6 +691,49 @@ gherkio schema --list                  # List available types
 
 
 ### 11. Multi-Account Credentials System (RFC-12)
+
+#### Namespaced Account Access (`$accounts.<name>.<field>`)
+
+All accounts from the credentials file are automatically injected into a special `$accounts` variable as a nested map. This allows accessing any account's fields directly in test YAML without passing `--account`:
+
+```yaml
+steps:
+  - request:
+      method: POST
+      url: /auth/login
+      body:
+        username: $accounts.eka.username      # → "0000002"
+        password: $accounts.eka.password      # → "0000002"
+
+  - request:
+      method: GET
+      url: /users/me
+      headers:
+        Authorization: Bearer $token
+    expect:
+      body.role: $accounts.default.role       # → "user"
+```
+
+**How it works:**
+- `internal/model/credentials.go` — `Credentials.ToMap()` converts all accounts to `map[string]interface{}`
+- `cmd/run.go` calls `ToMap()` after loading credentials and passes the result as `AllAccounts` on `RunConfig`
+- `internal/runner/runner.go` injects `vars["accounts"]` in both `Run()` and `RunSingleStep()`
+- `internal/runner/interpolator.go` — `resolveNestedVar()` splits dotted paths by `.` and navigates the nested map, supporting syntax like `$accounts.eka.username` or `${accounts.eka.username}`
+
+**Backward compatibility:**
+- `$username`, `$password` still work for the selected account (via `CredentialVars`)
+- `--account` and `--all-accounts` flags unchanged
+- `$accounts.<name>.<field>` is additive — no breaking changes
+
+**Hint suppression:**
+When a test file references `$accounts.`, the "N accounts found..." hint is automatically suppressed (the user is already using accounts explicitly). Implemented via `testReferencesAccounts()` in `cmd/run.go` which scans the test YAML for `$accounts.` string.
+
+**MCP Server updates:**
+- `gherkio://dsl/spec` resource now documents variable interpolation including `$accounts.<name>.<field>`
+- `gherkio://dsl/examples` resource includes a multi-account example using `$accounts`
+- `run_test` handler passes `AllAccounts` from `Credentials.ToMap()` so LLM-generated tests using `$accounts` work via MCP
+- `run_test` MCP tool has a `section` parameter: when set without `step`, runs ALL steps in that section only (setup/steps/teardown)
+- New MCP resources: `gherkio://dsl/matchers` (all assertion matchers with descriptions), `gherkio://dsl/variables` (built-in generator variables), `gherkio://dsl/paths` (canonical assertion/save paths) — exposed as JSON, fully dynamic via `runner.GetMatchersInfo()`, `runner.GetVariableInfo()`, `runner.GetPathInfo()`
 
 Gherkio supports running the same test scenarios against multiple accounts via a credentials system.
 

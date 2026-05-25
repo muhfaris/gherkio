@@ -3,6 +3,7 @@ package runner
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/muhfaris/gherkio/internal/model"
 )
@@ -47,17 +48,22 @@ func InterpolateRequest(req model.Request, vars map[string]interface{}) (model.R
 }
 
 // interpolateString replaces variable references in a string with values from the vars map.
+// Supports:
+//   - Simple vars: $var, ${var}
+//   - Nested/dotted paths: $accounts.eka.username, ${accounts.eka.username}
+//   - Default values: ${var:default}, ${accounts.eka.username:default}
 func interpolateString(s string, vars map[string]interface{}) (string, error) {
-	// This regex matches both $var and ${var} syntax
-	re := regexp.MustCompile(`\$\{?([a-zA-Z_][a-zA-Z0-9_]*)(?::([^}]*))?}?`)
+	// This regex matches $var, ${var}, dotted paths like $accounts.eka.username,
+	// and defaults like ${var:default}
+	re := regexp.MustCompile(`\$\{?([a-zA-Z_][a-zA-Z0-9_]+(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)(?::([^}]*))?}?`)
 
 	result := re.ReplaceAllStringFunc(s, func(match string) string {
-		// Extract the variable name and default value
-		varName := re.FindStringSubmatch(match)[1]
-		defaultValue := re.FindStringSubmatch(match)[2]
+		submatch := re.FindStringSubmatch(match)
+		varName := submatch[1]
+		defaultValue := submatch[2]
 
-		// Check if the variable exists
-		if val, ok := vars[varName]; ok {
+		// Check if the variable exists (supports dotted paths)
+		if val, ok := resolveNestedVar(varName, vars); ok {
 			return fmt.Sprintf("%v", val)
 		}
 
@@ -66,7 +72,7 @@ func interpolateString(s string, vars map[string]interface{}) (string, error) {
 			return defaultValue
 		}
 
-		// Otherwise, leave the original match (or could return an error)
+		// Otherwise, leave the original match
 		return match
 	})
 
@@ -74,12 +80,34 @@ func interpolateString(s string, vars map[string]interface{}) (string, error) {
 	matches := re.FindAllStringSubmatch(result, -1)
 	for _, match := range matches {
 		varName := match[1]
-		if _, ok := vars[varName]; !ok && match[2] == "" {
+		if _, ok := resolveNestedVar(varName, vars); !ok && match[2] == "" {
 			return "", fmt.Errorf("undefined variable: %s", varName)
 		}
 	}
 
 	return result, nil
+}
+
+// resolveNestedVar looks up a potentially dotted variable path in the vars map.
+// For simple names like "username", it's equivalent to vars["username"].
+// For dotted paths like "accounts.eka.username", it navigates the nested map structure.
+func resolveNestedVar(path string, vars map[string]interface{}) (interface{}, bool) {
+	parts := strings.Split(path, ".")
+	current := interface{}(vars)
+
+	for _, part := range parts {
+		m, ok := current.(map[string]interface{})
+		if !ok {
+			return nil, false
+		}
+		val, found := m[part]
+		if !found {
+			return nil, false
+		}
+		current = val
+	}
+
+	return current, true
 }
 
 // interpolateBody recursively processes a body structure to replace variable references.

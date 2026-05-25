@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -33,14 +34,19 @@ func LoadCredentials(projectDir, envName string) (*model.Credentials, error) {
 }
 
 // CredentialsToVars converts account credentials to a variables map.
+// Only includes non-empty standard fields, allowing accounts that are just namespaces.
 func CredentialsToVars(account model.Account) map[string]interface{} {
 	vars := make(map[string]interface{})
-	vars["username"] = account.Username
-	vars["password"] = account.Password
+	if account.Username != "" {
+		vars["username"] = account.Username
+	}
+	if account.Password != "" {
+		vars["password"] = account.Password
+	}
 	if account.Role != "" {
 		vars["role"] = account.Role
 	}
-	// Add any extra fields
+	// Add any extra fields (supports nested values via dotted-path access)
 	for key, val := range account.Extra {
 		vars[key] = val
 	}
@@ -61,7 +67,8 @@ func GetSensitiveFieldsFromCredentials(account model.Account) []string {
 			}
 		}
 		// Also check if the value looks like a secret
-		if isLikelySecret(key, val) {
+		valStr := fmt.Sprintf("%v", val)
+		if isLikelySecret(key, valStr) {
 			fields = append(fields, key)
 		}
 	}

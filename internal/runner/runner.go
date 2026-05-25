@@ -21,6 +21,7 @@ type RunConfig struct {
 	MaskFields     []string               // Sensitive field names to mask in output (nil = use defaults)
 	AccountName    string                 // Account name to use from credentials (optional)
 	CredentialVars map[string]interface{} // Pre-injected credential variables (optional)
+	AllAccounts    map[string]interface{} // All accounts for $accounts.<name>.<field> access (optional)
 	StepIndex      int                    // Index of step to run (0-indexed). Negative means run all steps.
 	StepSection    string                 // Section of the step ("setup", "steps", "teardown")
 }
@@ -53,7 +54,8 @@ func Run(cfg RunConfig) (*RunResult, error) {
 		return nil, fmt.Errorf("failed to load test file: %w", err)
 	}
 
-	if cfg.StepIndex >= 0 {
+	// Route to single-step or section-only execution
+	if cfg.StepIndex >= 0 || cfg.StepSection != "" {
 		return RunSingleStep(cfg, env, testFile)
 	}
 
@@ -65,11 +67,16 @@ func Run(cfg RunConfig) (*RunResult, error) {
 
 	vars := make(map[string]interface{})
 
-	// Inject credential variables first (can be overridden by save:)
+	// Inject credential variables (can be overridden by save:)
 	if cfg.CredentialVars != nil {
 		for key, val := range cfg.CredentialVars {
 			vars[key] = val
 		}
+	}
+
+	// Inject all accounts as $accounts.<name>.<field> for dotted-path access
+	if cfg.AllAccounts != nil {
+		vars["accounts"] = cfg.AllAccounts
 	}
 
 	currentDir := filepath.Dir(cfg.TestPath)
@@ -142,6 +149,12 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 			Original: step,
 			Depth:    depth,
 			Role:     role,
+		}
+
+		// Inject fresh built-in generator variables per step so each request
+		// gets unique $uuid, $ulid, $randomInt, $randomEmail, $randomPhone values.
+		for key, val := range BuiltinVars() {
+			vars[key] = val
 		}
 
 		// Handle 'use' step recursively
@@ -526,18 +539,30 @@ func RunSingleStep(cfg RunConfig, env *model.Environment, testFile *model.TestFi
 		return nil, fmt.Errorf("invalid step section: %s", cfg.StepSection)
 	}
 
-	if cfg.StepIndex < 0 || cfg.StepIndex >= len(stepList) {
-		return nil, fmt.Errorf("step index %d out of bounds for section %q (contains %d steps)", cfg.StepIndex, section, len(stepList))
+	// Determine which steps to run
+	var stepsToRun []model.Step
+	if cfg.StepIndex >= 0 {
+		// Single step mode
+		if cfg.StepIndex >= len(stepList) {
+			return nil, fmt.Errorf("step index %d out of bounds for section %q (contains %d steps)", cfg.StepIndex, section, len(stepList))
+		}
+		stepsToRun = []model.Step{stepList[cfg.StepIndex]}
+	} else {
+		// Section-only mode: run ALL steps in the section
+		stepsToRun = stepList
 	}
 
-	targetStep := stepList[cfg.StepIndex]
-	stepsToRun := []model.Step{targetStep}
-
 	vars := make(map[string]interface{})
+
 	if cfg.CredentialVars != nil {
 		for key, val := range cfg.CredentialVars {
 			vars[key] = val
 		}
+	}
+
+	// Inject all accounts as $accounts.<name>.<field> for dotted-path access
+	if cfg.AllAccounts != nil {
+		vars["accounts"] = cfg.AllAccounts
 	}
 
 	currentDir := filepath.Dir(cfg.TestPath)
@@ -588,15 +613,21 @@ func RunSingleStep(cfg RunConfig, env *model.Environment, testFile *model.TestFi
 					}
 				}
 
+				// Compute step limit: cfg.StepIndex for single-step, len(stepList) for section-all
+				stepLimit := cfg.StepIndex
+				if stepLimit < 0 {
+					stepLimit = len(stepList)
+				}
+
 				if section == "setup" {
-					checkPreceding(testFile.Setup, "setup", cfg.StepIndex)
+					checkPreceding(testFile.Setup, "setup", stepLimit)
 				} else if section == "steps" {
 					checkPreceding(testFile.Setup, "setup", len(testFile.Setup))
-					checkPreceding(testFile.Steps, "steps", cfg.StepIndex)
+					checkPreceding(testFile.Steps, "steps", stepLimit)
 				} else if section == "teardown" {
 					checkPreceding(testFile.Setup, "setup", len(testFile.Setup))
 					checkPreceding(testFile.Steps, "steps", len(testFile.Steps))
-					checkPreceding(testFile.Teardown, "teardown", cfg.StepIndex)
+					checkPreceding(testFile.Teardown, "teardown", stepLimit)
 				}
 
 				if len(matches) > 0 {
