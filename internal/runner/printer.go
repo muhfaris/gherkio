@@ -118,7 +118,27 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 		scenarioName = fmt.Sprintf("%s (%s)", result.Scenario, result.Account)
 	}
 
-	fmt.Printf("\n%s %s\n\n", statusIcon, scenarioName)
+	// Check if this is a dry-run result (has request but no response)
+	isDryRun := false
+	for _, step := range result.Steps {
+		if step.Request != nil && step.Response == nil && step.Error == "" {
+			isDryRun = true
+			break
+		}
+	}
+
+	fmt.Printf("\n%s %s", statusIcon, scenarioName)
+	if isDryRun {
+		fmt.Printf(" [DRY RUN]")
+	}
+	fmt.Println()
+
+	// Print resolved variables in verbose mode
+	if verbose && result.ResolvedVars != nil && len(result.ResolvedVars) > 0 {
+		fmt.Println("── Resolved Variables ──")
+		printVariables(result.ResolvedVars, maskFields)
+		fmt.Println()
+	}
 
 	stepCounter := 1
 	var lastRole string
@@ -398,6 +418,64 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 	fmt.Printf("Duration: %s\n", FormatDuration(result.Duration))
 	fmt.Println()
 }
+
+// printVariables outputs the variable map in a formatted way for verbose output.
+func printVariables(vars map[string]interface{}, maskFields []string) {
+	// Sort keys for deterministic output
+	keys := make([]string, 0, len(vars))
+	for k := range vars {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		val := vars[key]
+
+		// Handle special nested types like $accounts
+		if nestedMap, ok := val.(map[string]interface{}); ok {
+			// Print as $accounts.name.field format
+			nestedKeys := make([]string, 0, len(nestedMap))
+			for k := range nestedMap {
+				nestedKeys = append(nestedKeys, k)
+			}
+			sort.Strings(nestedKeys)
+
+			for _, subKey := range nestedKeys {
+				subVal := nestedMap[subKey]
+				if subValMap, ok := subVal.(map[string]interface{}); ok {
+					// This is an account entry - show fields
+					fieldKeys := make([]string, 0, len(subValMap))
+					for k := range subValMap {
+						fieldKeys = append(fieldKeys, k)
+					}
+					sort.Strings(fieldKeys)
+
+					for _, fieldKey := range fieldKeys {
+						fieldVal := subValMap[fieldKey]
+						displayKey := fmt.Sprintf("$accounts.%s.%s", subKey, fieldKey)
+
+						if isSensitiveField(fieldKey, maskFields) {
+							fmt.Printf("  %-30s→ ***masked***\n", displayKey)
+						} else {
+							fmt.Printf("  %-30s→ %v\n", displayKey, fieldVal)
+						}
+					}
+				}
+			}
+		} else {
+			// Simple variable
+			displayKey := "$" + key
+
+			// Check if the value itself should be masked
+			if isSensitiveField(key, maskFields) {
+				fmt.Printf("  %-30s→ ***masked***\n", displayKey)
+			} else {
+				fmt.Printf("  %-30s→ %v\n", displayKey, val)
+			}
+		}
+	}
+}
+
 func FormatDuration(d time.Duration) string {
 	if d < time.Second {
 		return fmt.Sprintf("%dms", d.Milliseconds())

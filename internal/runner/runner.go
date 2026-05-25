@@ -24,18 +24,20 @@ type RunConfig struct {
 	AllAccounts    map[string]interface{} // All accounts for $accounts.<name>.<field> access (optional)
 	StepIndex      int                    // Index of step to run (0-indexed). Negative means run all steps.
 	StepSection    string                 // Section of the step ("setup", "steps", "teardown")
+	DryRun         bool                  // Preview without executing HTTP requests
 }
 
 // RunResult holds the overall execution result.
 type RunResult struct {
-	Scenario  string        `json:"scenario"`
-	TestFile  string        `json:"testFile,omitempty"`
-	Account   string        `json:"account,omitempty"` // Account name used (if any)
-	Steps     []StepResult  `json:"steps"`
-	TotalPass int           `json:"totalPass"`
-	TotalFail int           `json:"totalFail"`
-	Duration  time.Duration `json:"duration"`
-	Passed    bool          `json:"passed"`
+	Scenario    string        `json:"scenario"`
+	TestFile    string        `json:"testFile,omitempty"`
+	Account     string        `json:"account,omitempty"` // Account name used (if any)
+	Steps       []StepResult  `json:"steps"`
+	ResolvedVars map[string]interface{} `json:"resolvedVars,omitempty"` // Variables available at start of scenario
+	TotalPass   int           `json:"totalPass"`
+	TotalFail   int           `json:"totalFail"`
+	Duration    time.Duration `json:"duration"`
+	Passed      bool          `json:"passed"`
 }
 
 // Run executes a test file and returns the result.
@@ -79,13 +81,16 @@ func Run(cfg RunConfig) (*RunResult, error) {
 		vars["accounts"] = cfg.AllAccounts
 	}
 
+	// Capture initial variable state for verbose output
+	result.ResolvedVars = snapshotVars(vars, cfg.MaskFields)
+
 	currentDir := filepath.Dir(cfg.TestPath)
 	var allSteps []StepResult
 	setupFailed := false
 
 	// Execute setup steps first
 	if len(testFile.Setup) > 0 {
-		setupSteps, setupPass, setupFail, setupPassed := executeSteps(testFile.Setup, env, vars, cfg.ProjectDir, currentDir, 0, "setup")
+		setupSteps, setupPass, setupFail, setupPassed := executeSteps(testFile.Setup, env, vars, cfg.ProjectDir, currentDir, 0, "setup", cfg.DryRun)
 		for i := range setupSteps {
 			setupSteps[i].ScenarioName = testFile.Scenario
 			setupSteps[i].TestFile = cfg.TestPath
@@ -100,7 +105,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 
 	// Execute main steps (skip if setup failed)
 	if !setupFailed {
-		mainSteps, mainPass, mainFail, mainPassed := executeSteps(testFile.Steps, env, vars, cfg.ProjectDir, currentDir, 0, "steps")
+		mainSteps, mainPass, mainFail, mainPassed := executeSteps(testFile.Steps, env, vars, cfg.ProjectDir, currentDir, 0, "steps", cfg.DryRun)
 		for i := range mainSteps {
 			mainSteps[i].ScenarioName = testFile.Scenario
 			mainSteps[i].TestFile = cfg.TestPath
@@ -116,7 +121,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 	// Execute teardown steps (always, even if setup or steps failed)
 	// Teardown failures are recorded but don't affect overall pass/fail
 	if len(testFile.Teardown) > 0 {
-		teardownSteps, _, _, _ := executeSteps(testFile.Teardown, env, vars, cfg.ProjectDir, currentDir, 0, "teardown")
+		teardownSteps, _, _, _ := executeSteps(testFile.Teardown, env, vars, cfg.ProjectDir, currentDir, 0, "teardown", cfg.DryRun)
 		for i := range teardownSteps {
 			teardownSteps[i].ScenarioName = testFile.Scenario
 			teardownSteps[i].TestFile = cfg.TestPath
@@ -137,7 +142,8 @@ func Run(cfg RunConfig) (*RunResult, error) {
 	return result, nil
 }
 
-func executeSteps(steps []model.Step, env *model.Environment, vars map[string]interface{}, projectDir string, currentDir string, depth int, role string) ([]StepResult, int, int, bool) {
+// executeSteps executes a list of steps. If dryRun is true, skips HTTP calls and produces preview output.
+func executeSteps(steps []model.Step, env *model.Environment, vars map[string]interface{}, projectDir string, currentDir string, depth int, role string, dryRun bool) ([]StepResult, int, int, bool) {
 	var stepResults []StepResult
 	totalPass := 0
 	totalFail := 0
@@ -196,7 +202,7 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 			}
 
 			usedCurrentDir := filepath.Dir(resolvedPath)
-			nestedSteps, nestedPass, nestedFail, _ := executeSteps(usedTest.Steps, env, vars, projectDir, usedCurrentDir, depth+1, role)
+			nestedSteps, nestedPass, nestedFail, _ := executeSteps(usedTest.Steps, env, vars, projectDir, usedCurrentDir, depth+1, role, dryRun)
 
 			// Flatten the results
 			stepResults = append(stepResults, nestedSteps...)
@@ -240,6 +246,13 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 			} else {
 				stepResult.Request.Body = fmt.Sprintf("%v", interpolatedRequest.Body)
 			}
+		}
+
+		// Dry-run mode: skip HTTP execution and mark step as preview
+		if dryRun {
+			stepResult.Duration = time.Since(stepStart)
+			stepResults = append(stepResults, stepResult)
+			continue
 		}
 
 		var (
@@ -565,8 +578,11 @@ func RunSingleStep(cfg RunConfig, env *model.Environment, testFile *model.TestFi
 		vars["accounts"] = cfg.AllAccounts
 	}
 
+	// Capture initial variable state for verbose output
+	initialVars := snapshotVars(vars, cfg.MaskFields)
+
 	currentDir := filepath.Dir(cfg.TestPath)
-	runSteps, pass, fail, passed := executeSteps(stepsToRun, env, vars, cfg.ProjectDir, currentDir, 0, section)
+	runSteps, pass, fail, passed := executeSteps(stepsToRun, env, vars, cfg.ProjectDir, currentDir, 0, section, cfg.DryRun)
 
 	for i := range runSteps {
 		runSteps[i].ScenarioName = testFile.Scenario
@@ -643,15 +659,80 @@ func RunSingleStep(cfg RunConfig, env *model.Environment, testFile *model.TestFi
 	}
 
 	result := &RunResult{
-		Scenario:  testFile.Scenario,
-		TestFile:  cfg.TestPath,
-		Account:   cfg.AccountName,
-		Steps:     runSteps,
-		TotalPass: pass,
-		TotalFail: fail,
-		Duration:  time.Since(start),
-		Passed:    passed,
+		Scenario:    testFile.Scenario,
+		TestFile:    cfg.TestPath,
+		Account:     cfg.AccountName,
+		Steps:       runSteps,
+		ResolvedVars: initialVars,
+		TotalPass:   pass,
+		TotalFail:   fail,
+		Duration:    time.Since(start),
+		Passed:      passed,
 	}
 
 	return result, nil
+}
+
+// snapshotVars creates a copy of the variables map with sensitive fields masked.
+// This is used for verbose output to show what values were available at runtime.
+func snapshotVars(vars map[string]interface{}, maskFields []string) map[string]interface{} {
+	if vars == nil {
+		return nil
+	}
+
+	result := make(map[string]interface{})
+
+	// If no mask fields provided, use defaults
+	if len(maskFields) == 0 {
+		maskFields = defaultSensitiveFields
+	}
+
+	for key, val := range vars {
+		// Check if this key should be masked
+		if isSensitiveField(key, maskFields) {
+			result[key] = "***masked***"
+		} else if valMap, ok := val.(map[string]interface{}); ok {
+			// Handle $accounts map - mask sensitive fields inside accounts
+			maskedMap := make(map[string]interface{})
+			for k, v := range valMap {
+				if isSensitiveField(k, maskFields) {
+					maskedMap[k] = "***masked***"
+				} else {
+					maskedMap[k] = v
+				}
+			}
+			result[key] = maskedMap
+		} else {
+			result[key] = val
+		}
+	}
+
+	return result
+}
+
+// defaultSensitiveFields for masking (same as in printer.go)
+var defaultSensitiveFields = []string{
+	"token",
+	"accessToken",
+	"access_token",
+	"refreshToken",
+	"refresh_token",
+	"password",
+	"secret",
+	"clientSecret",
+	"client_secret",
+	"apiKey",
+	"api_key",
+	"authorization",
+}
+
+// isSensitiveField checks if a field name matches any sensitive field (case-insensitive).
+func isSensitiveField(name string, fields []string) bool {
+	lower := strings.ToLower(name)
+	for _, f := range fields {
+		if strings.ToLower(f) == lower {
+			return true
+		}
+	}
+	return false
 }

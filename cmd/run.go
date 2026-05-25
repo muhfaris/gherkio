@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/muhfaris/gherkio/internal/core/project"
 	"github.com/muhfaris/gherkio/internal/model"
@@ -15,15 +17,18 @@ import (
 )
 
 var (
-	envName      string
-	verbose      bool
-	reportFormat string
-	reportRaw    bool
-	accountName  string
-	allAccounts  bool
-	stepIdx      int
-	lineNum      int
-	stepSection  string
+	envName       string
+	verbose       bool
+	reportFormat  string
+	reportRaw     bool
+	accountName   string
+	allAccounts   bool
+	stepIdx       int
+	lineNum       int
+	stepSection   string
+	filterTags    []string
+	parallelCount int
+	dryRun        bool
 )
 
 // runCmd represents the gherkio run command.
@@ -72,6 +77,9 @@ func init() {
 	runCmd.Flags().IntVar(&stepIdx, "step", -1, "Index of the step to run (0-indexed)")
 	runCmd.Flags().IntVar(&lineNum, "line", -1, "Line number containing the step to run")
 	runCmd.Flags().StringVar(&stepSection, "section", "", "Section to run (setup, steps, teardown). When used without --step or --line, runs ALL steps in that section only.")
+	runCmd.Flags().StringSliceVarP(&filterTags, "tag", "t", nil, "Filter tests by tags (AND logic: test must have ALL specified tags)")
+	runCmd.Flags().IntVarP(&parallelCount, "parallel", "p", 0, "Number of tests to run in parallel (0 = auto-detect CPU count)")
+	runCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview test execution without making HTTP requests")
 }
 
 func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw bool, accountName string, allAccounts bool) error {
@@ -306,6 +314,7 @@ func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *re
 		AllAccounts:    allAccountsMap,
 		StepIndex:      targetStepIdx,
 		StepSection:    targetSection,
+		DryRun:         dryRun,
 	}
 
 	result, err := runner.Run(cfg)
@@ -414,6 +423,7 @@ func runSingleTestMultiAccount(testPath, projectDir, env string, verbose bool, r
 			AccountName:    accountName,
 			CredentialVars: runner.CredentialsToVars(account),
 			AllAccounts:    allAccountsMap,
+			DryRun:         dryRun,
 		}
 
 		result, err := runner.Run(cfg)
@@ -480,6 +490,16 @@ func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *repor
 		return nil
 	}
 
+	// Filter tests by tags if --tag is specified
+	if len(filterTags) > 0 {
+		files = filterTestsByTags(files, filterTags)
+		if len(files) == 0 {
+			fmt.Println("No tests match the specified tags.")
+			return nil
+		}
+		fmt.Printf("Running %d test(s) matching tags: %s...\n\n", len(files), strings.Join(filterTags, ", "))
+	}
+
 	// Determine which accounts to run
 	// Suppress hint if any test in the directory uses $accounts.<name>.<field> syntax
 	suppressHint := false
@@ -496,10 +516,18 @@ func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *repor
 
 	// If multiple accounts, run each test against all accounts
 	if len(accounts) > 1 {
+		if parallelCount > 1 {
+			return runAllInDirParallel(testDir, projectDir, env, verbose, reportCfg, maskFields, files, accounts, allAccountsMap)
+		}
 		return runAllInDirMultiAccount(testDir, projectDir, env, verbose, reportCfg, maskFields, files, accounts, allAccountsMap)
 	}
 
 	// Single account or no accounts - run each test file
+	// Use parallel execution if --parallel is specified
+	if parallelCount > 1 {
+		return runAllInDirParallel(testDir, projectDir, env, verbose, reportCfg, maskFields, files, accounts, allAccountsMap)
+	}
+
 	totalPass := 0
 	totalFail := 0
 	anyFailed := false
@@ -534,6 +562,7 @@ func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *repor
 			AccountName:    accName,
 			CredentialVars: credentialVars,
 			AllAccounts:    allAccountsMap,
+			DryRun:         dryRun,
 		}
 
 		result, err := runner.Run(cfg)
@@ -611,6 +640,17 @@ func runAllInDirMultiAccount(testDir, projectDir, env string, verbose bool, repo
 
 	fmt.Printf("Running %d test(s) against %d account(s)...\n\n", len(files), accountCount)
 
+	// Filter tests by tags if --tag is specified
+	if len(filterTags) > 0 {
+		files = filterTestsByTags(files, filterTags)
+		if len(files) == 0 {
+			fmt.Println("No tests match the specified tags.")
+			return nil
+		}
+		fmt.Printf("Running %d test(s) matching tags: %s against %d account(s)...\n\n", len(files), strings.Join(filterTags, ", "), accountCount)
+		totalScenarios = len(files) * accountCount
+	}
+
 	for i, file := range files {
 		relPath, _ := filepath.Rel(projectDir, file)
 
@@ -633,6 +673,7 @@ func runAllInDirMultiAccount(testDir, projectDir, env string, verbose bool, repo
 				AccountName:    accountName,
 				CredentialVars: runner.CredentialsToVars(account),
 				AllAccounts:    allAccountsMap,
+				DryRun:         dryRun,
 			}
 
 			result, err := runner.Run(cfg)
@@ -727,6 +768,45 @@ func discoverTestFiles(dir string) ([]string, error) {
 	return files, nil
 }
 
+// filterTestsByTags filters test files based on required tags.
+// Tests must have ALL specified tags to be included (AND logic).
+func filterTestsByTags(files []string, requiredTags []string) []string {
+	var filtered []string
+
+	for _, file := range files {
+		test, err := runner.LoadTestFile(file)
+		if err != nil {
+			continue // Skip files that can't be parsed
+		}
+
+		// Check if test has all required tags
+		if hasAllTags(test.Tags, requiredTags) {
+			filtered = append(filtered, file)
+		}
+	}
+
+	return filtered
+}
+
+// hasAllTags checks if a test's tags include all required tags.
+func hasAllTags(testTags, requiredTags []string) bool {
+	if len(requiredTags) == 0 {
+		return true
+	}
+
+	testTagSet := make(map[string]bool)
+	for _, tag := range testTags {
+		testTagSet[tag] = true
+	}
+
+	for _, required := range requiredTags {
+		if !testTagSet[required] {
+			return false
+		}
+	}
+	return true
+}
+
 // resolveTestPath tries to find the test file.
 func resolveTestPath(cwd, projectDir, testPath string) (string, error) {
 	// Try as-is
@@ -750,4 +830,127 @@ func resolveTestPath(cwd, projectDir, testPath string) (string, error) {
 	}
 
 	return "", fmt.Errorf("test file '%s' not found (checked: cwd and .gherkio/tests/)", testPath)
+}
+
+// runAllInDirParallel runs tests in parallel using goroutines.
+func runAllInDirParallel(testDir, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, files []string, accounts map[string]model.Account, allAccountsMap map[string]interface{}) error {
+	// Determine concurrency
+	concurrency := parallelCount
+	if concurrency <= 0 {
+		concurrency = runtime.NumCPU()
+	}
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var results []*runner.RunResult
+	totalPass := 0
+	totalFail := 0
+	anyFailed := false
+
+	fmt.Printf("Running %d test(s) in parallel (concurrency: %d)...\n\n", len(files), concurrency)
+
+	// Create a semaphore-like channel for limiting concurrency
+	sem := make(chan struct{}, concurrency)
+
+	for i, file := range files {
+		wg.Add(1)
+		go func(file string, idx int) {
+			defer wg.Done()
+
+			// Acquire semaphore
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			relPath, _ := filepath.Rel(projectDir, file)
+
+			var credentialVars map[string]interface{}
+			var accName string
+			if len(accounts) == 1 {
+				for name, acc := range accounts {
+					accName = name
+					credentialVars = runner.CredentialsToVars(acc)
+				}
+				// Merge credential-sensitive fields into mask
+				accountMask := append([]string{}, maskFields...)
+				for _, acc := range accounts {
+					accountMask = append(accountMask, runner.GetSensitiveFieldsFromCredentials(acc)...)
+				}
+				maskFields = accountMask
+			}
+
+			cfg := runner.RunConfig{
+				TestPath:       file,
+				EnvName:        env,
+				ProjectDir:     projectDir,
+				Verbose:        verbose,
+				MaskFields:     maskFields,
+				AccountName:    accName,
+				CredentialVars: credentialVars,
+				AllAccounts:    allAccountsMap,
+				DryRun:         dryRun,
+			}
+
+			result, err := runner.Run(cfg)
+			if err != nil {
+				fmt.Printf("[%d/%d] ✗ %s — error: %v\n", idx+1, len(files), relPath, err)
+				mu.Lock()
+				anyFailed = true
+				totalFail++
+				failedResult := &runner.RunResult{
+					Scenario:  filepath.Base(relPath),
+					TestFile:  file,
+					Account:   accName,
+					Passed:    false,
+					TotalFail: 1,
+					Steps: []runner.StepResult{
+						{
+							Original:     model.Step{Request: model.Request{URL: relPath}},
+							ScenarioName: filepath.Base(relPath),
+							TestFile:     file,
+							Error:        err.Error(),
+						},
+					},
+				}
+				results = append(results, failedResult)
+				mu.Unlock()
+				return
+			}
+
+			mu.Lock()
+			defer mu.Unlock()
+
+			if !result.Passed {
+				anyFailed = true
+			}
+			totalPass += result.TotalPass
+			totalFail += result.TotalFail
+			results = append(results, result)
+		}(file, i)
+	}
+
+	wg.Wait()
+
+	// Summary
+	statusIcon := "✓"
+	statusWord := "PASS"
+	if anyFailed {
+		statusIcon = "✗"
+		statusWord = "FAIL"
+	}
+
+	fmt.Println()
+	fmt.Println(strings.Repeat("═", 40))
+	fmt.Printf("%s %s — across %d scenario(s)\n", statusIcon, statusWord, len(files))
+	fmt.Printf("%d passed, %d failed, %d total assertions\n", totalPass, totalFail, totalPass+totalFail)
+
+	// Generate suite report
+	if reportCfg != nil {
+		handleSuiteReport(results, projectDir, env, reportCfg)
+	}
+
+	if anyFailed {
+		os.Exit(1)
+	}
+
+	return nil
 }
