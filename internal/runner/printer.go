@@ -3,6 +3,7 @@ package runner
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 )
@@ -137,6 +138,9 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 	if verbose && result.ResolvedVars != nil && len(result.ResolvedVars) > 0 {
 		fmt.Println("── Resolved Variables ──")
 		printVariables(result.ResolvedVars, maskFields)
+		fmt.Println()
+	} else {
+		// Blank line between scenario name and first step (when no variables section)
 		fmt.Println()
 	}
 

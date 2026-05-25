@@ -240,9 +240,6 @@ func validateVariableReferences(test *model.TestFile, creds *model.Credentials) 
 	setupSteps, stepsSteps, teardownSteps := collectAllSteps(test)
 	allSteps := append(append(setupSteps, stepsSteps...), teardownSteps...)
 
-	// First pass: collect all saved variables (from previous steps only)
-	visitedOrder := make(map[*model.Step]bool)
-
 	// Add built-in variable names
 	builtinVars := map[string]bool{
 		"uuid": true, "ulid": true, "randomInt": true, "randomEmail": true, "randomPhone": true,
@@ -250,7 +247,7 @@ func validateVariableReferences(test *model.TestFile, creds *model.Credentials) 
 
 	for _, step := range allSteps {
 		// Collect variables used in this step
-		usedVars := extractVariables(step, varPattern)
+		usedVars := extractVariables(&step, varPattern)
 
 		for _, v := range usedVars {
 			// Skip built-in variables
@@ -265,7 +262,6 @@ func validateVariableReferences(test *model.TestFile, creds *model.Credentials) 
 					parts := strings.Split(v, ".")
 					if len(parts) >= 3 {
 						accountName := parts[1]
-						fieldName := parts[2]
 						if _, exists := creds.GetAccount(accountName); !exists {
 							issues = append(issues, ValidationIssue{
 								Field:   "variables",
@@ -273,18 +269,7 @@ func validateVariableReferences(test *model.TestFile, creds *model.Credentials) 
 								Msg:     fmt.Sprintf("account %q not found in credentials for %q", accountName, v),
 							})
 						} else {
-							// Check if field exists
-							acc, _ := creds.GetAccount(accountName)
-							if acc != nil {
-								fieldExists := false
-								switch acc.(type) {
-								case map[string]interface{}:
-									if _, ok := acc.(map[string]interface{})[fieldName]; ok {
-										fieldExists = true
-									}
-								}
-								_ = fieldExists // We don't require fields to exist in validation
-							}
+							// Account exists — no need to validate fields further
 						}
 					}
 				}
@@ -341,7 +326,7 @@ func extractVariables(step *model.Step, pattern *regexp.Regexp) []string {
 
 	// Expect extra (for schema references, etc.)
 	for key, val := range step.Expect.Extra {
-		if schemaVal, ok := val.(string); ok && key == "schema" {
+		if _, ok := val.(string); ok && key == "schema" {
 			continue // Schema is handled separately
 		}
 		valStr := fmt.Sprintf("%v", val)
@@ -399,13 +384,11 @@ func validateUseFiles(test *model.TestFile, projectDir, currentFile string) []Va
 				usePath += ".yaml"
 			}
 
-			var resolvedPath string
 			var found bool
 
 			// Try relative to current file's directory
 			fullPath := filepath.Join(currentDir, usePath)
 			if _, err := os.Stat(fullPath); err == nil {
-				resolvedPath = fullPath
 				found = true
 			}
 
@@ -413,7 +396,6 @@ func validateUseFiles(test *model.TestFile, projectDir, currentFile string) []Va
 			if !found {
 				fullPath = filepath.Join(projectDir, ".gherkio", "tests", usePath)
 				if _, err := os.Stat(fullPath); err == nil {
-					resolvedPath = fullPath
 					found = true
 				}
 			}

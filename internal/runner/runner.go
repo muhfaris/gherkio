@@ -674,6 +674,7 @@ func RunSingleStep(cfg RunConfig, env *model.Environment, testFile *model.TestFi
 }
 
 // snapshotVars creates a copy of the variables map with sensitive fields masked.
+// snapshotVars creates a copy of the variables map with sensitive fields masked.
 // This is used for verbose output to show what values were available at runtime.
 func snapshotVars(vars map[string]interface{}, maskFields []string) map[string]interface{} {
 	if vars == nil {
@@ -708,31 +709,4 @@ func snapshotVars(vars map[string]interface{}, maskFields []string) map[string]i
 	}
 
 	return result
-}
-
-// defaultSensitiveFields for masking (same as in printer.go)
-var defaultSensitiveFields = []string{
-	"token",
-	"accessToken",
-	"access_token",
-	"refreshToken",
-	"refresh_token",
-	"password",
-	"secret",
-	"clientSecret",
-	"client_secret",
-	"apiKey",
-	"api_key",
-	"authorization",
-}
-
-// isSensitiveField checks if a field name matches any sensitive field (case-insensitive).
-func isSensitiveField(name string, fields []string) bool {
-	lower := strings.ToLower(name)
-	for _, f := range fields {
-		if strings.ToLower(f) == lower {
-			return true
-		}
-	}
-	return false
 }
