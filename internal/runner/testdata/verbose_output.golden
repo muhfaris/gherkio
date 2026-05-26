@@ -1,0 +1,41 @@
+
+✗ login example
+
+1. POST https://dummyjson.com/auth/login
+   ✗ failed
+
+   Request:
+   POST https://dummyjson.com/auth/login
+   Body:    {
+     "expiresInMins": 30,
+     "password": "***masked***",
+     "username": "emilys"
+   }
+
+   Response:
+   Status: 200
+
+   Body:
+   {
+     "accessToken": "***masked***",
+     "email": "emily.johnson@x.dummyjson.com",
+     "firstName": "Emily",
+     "gender": "female",
+     "id": 1,
+     "image": "https://dummyjson.com/icon/emilys/128",
+     "lastName": "Johnson",
+     "refreshToken": "***masked***",
+     "username": "emilys"
+   }
+
+Assertions:
+  ✓ status = 200
+  ✓ body.accessToken exists
+  ✓ body.refreshToken exists
+  ✗ body.username = emily
+      └─ got: emilys
+
+✗ FAIL (login example)
+3 passed, 1 failed, 4 total
+Duration: 388ms
+

@@ -1,0 +1,24 @@
+### Vendor
+vendor/
+
+### Gherkio
+gherkio
+.gherkio/reports/
+.gherkio/credentials/
+.gherkio-schema.json
+
+### IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+### OS
+.DS_Store
+Thumbs.db
+
+### Go
+*.test
+*.out
+coverage.out

@@ -1,0 +1,19 @@
+scenario: Create a new product (Reusable Step)
+
+steps:
+  - request:
+      method: POST
+      url: /products/add
+      headers:
+        Content-Type: application/json
+      body:
+        title: "Test Laptop"
+        price: 1999.99
+
+    expect:
+      status: 201
+      body.id: exists
+      body.title: "Test Laptop"
+
+    save:
+      created_id: body.id
