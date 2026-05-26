@@ -11,18 +11,23 @@ Gherkio lets you describe HTTP-based integration tests as declarative YAML scena
 - **Declarative YAML DSL** — Describe test scenarios, not implementation
 - **HTTP Request Execution** — POST, GET, PUT, DELETE with full header/body support
 - **Rich Assertion Engine** — Status codes, field matching, type validation, and more
-- **Advanced Matchers** — `uuid`, `email`, `datetime`, `uri`, `string`, `number`, `boolean`, `array`, `object`, `null`, `true`, `false`, and string matchers (`contains`, `startsWith`, `endsWith`, `regex`)
+- **Advanced Matchers** — `uuid`, `email`, `datetime`, `uri`, `string`, `number`, `boolean`, `array`, `object`, `null`, `true`, `false`, `empty`, `ipv4`, `ipv6`, `base64`, `mac`, and string matchers (`contains`, `startsWith`, `endsWith`, `regex`) plus numeric comparisons (`gt`, `gte`, `lt`, `lte`)
 - **Collection Matchers** — `count(path)` for array length, `all(path)` for element-wise assertions
 - **Variable Interpolation** — Pass values between steps with `$var` / `${var}` syntax
 - **JWT Auto-Decoding** — Automatically decode and assert JWT claims from responses
 - **Scenario Composition** — Reuse scenarios with `use:` for test orchestration
-- **Timing Assertions** — Enforce max step durations (e.g. `max: 500ms`)
+- **Timing Assertions** — Enforce step durations (e.g. `timing.duration: lte 500ms`)
 - **Request Timeout** — Configure per-request HTTP client timeout (e.g. `timeout: 60s`)
 - **Request Retries** — Handle eventual consistency with configurable attempts, intervals, backoff strategies (linear, exponential), and status code conditions.
 - **Environment Management** — Switch between `local`, `staging`, `production` with a flag
 - **Sensitive Field Masking** — Tokens, passwords, and secrets are masked in output
 - **Contextual Diagnostics** — Failed assertions show available fields and full response body
 - **Setup & Teardown** — Pre-condition and post-condition steps (teardown always runs, even on failure)
+- **Test Organization with Tags** — Filter tests by tags with `--tag` flag (AND logic)
+- **Dry-Run Mode** — Preview expanded requests without executing HTTP calls with `--dry-run`
+- **Parallel Execution** — Run tests concurrently with `--parallel` flag
+- **Test Validation** — Lint test files without running them with `gherkio validate`
+- **Verbose Variable Preview** — See resolved variables in `--verbose` output
 - **Negative Assertions** — Assert field absence (`not exists`) or schema mismatch (`schema: not <name>`)
 - **Multi-Account Credentials** — Run the same tests against multiple accounts with `--account` or `--all-accounts`
 
@@ -227,7 +232,7 @@ services:
     status: 200
 
   timing:
-    max: 500ms    # Fails if response takes longer than 500ms
+    max: 500ms    # Shorthand: enforces timing.duration: lte 500ms
 ```
 
 ### Request timeout
@@ -432,7 +437,21 @@ expect:
   body.slug: startsWith item-    # Prefix match
   body.status: endsWith ed       # Suffix match
   body.code: regex ^[A-Z]{3}$    # Regex pattern match
+  body.price: gt 100          # Greater than (numeric)
+  body.count: gte 0           # Greater than or equal (numeric)
+  body.temp: lt 40            # Less than (numeric)
+  body.rating: lte 5          # Less than or equal (numeric)
 ```
+
+### Format matchers
+
+```yaml
+expect:
+  body.ip: ipv4              # Valid IPv4 address (e.g. 192.168.1.1)
+  body.ipv6: ipv6            # Valid IPv6 address (e.g. ::1)
+  body.token: base64         # Valid base64 encoded string
+  body.macAddr: mac           # Valid MAC address (e.g. aa:bb:cc:dd:ee:ff)
+  body.emptyField: empty      # String, array, or object is empty/null```
 
 ### Collection matchers
 
@@ -624,6 +643,11 @@ security:
 | `gherkio run <test-file> -v` | Shorthand for --verbose |
 | `gherkio run <test-file> --account <name>` | Run with a specific account from credentials |
 | `gherkio run <test-file> --all-accounts` | Run against all accounts in the credentials file |
+| `gherkio run --report json --report-raw` | Unmasked JSON report |
+| `gherkio run --tag <tag>` | Filter tests by tag (AND logic) |
+| `gherkio run --parallel <N>` | Run tests concurrently |
+| `gherkio run --dry-run` | Preview without HTTP execution |
+| `gherkio validate` | Lint test files statically |
 | `gherkio schema` | Generate JSON Schema for YAML autocomplete |
 
 ### Test file resolution
@@ -675,7 +699,7 @@ Shows full request and response payloads, including headers and bodies (with sen
 | `headers.<name>` | expect / save | Response header |
 | `status` | expect only | HTTP status code (use `expect.status`) |
 | `jwt.<claim>` | expect / save | Decoded JWT claim (auto-decoded from `body.token` or `body.accessToken`) |
-| `timing.max` | auto | Step duration must be ≤ max |
+| `timing.duration` | expect (`lte <duration>`) | Step duration must be ≤ max (e.g. `lte 500ms`) |
 
 ---
 
@@ -687,6 +711,8 @@ Shows full request and response payloads, including headers and bodies (with sen
 | Variable interpolation (`$var`, `${var}`, `${var:default}`) | ✅ |
 | Type matchers (uuid, email, datetime, uri, string, number, boolean, array, object, null, true, false) | ✅ |
 | String matchers (contains, startsWith, endsWith, regex) | ✅ |
+| Numeric comparison matchers (gt, gte, lt, lte) | ✅ |
+| Format matchers (ipv4, ipv6, base64, mac, empty) | ✅ |
 | Collection matchers (count, all) | ✅ |
 | Negative assertions (`not exists`, `schema: not`) | ✅ |
 | JWT auto-decoding | ✅ |
@@ -704,6 +730,12 @@ Shows full request and response payloads, including headers and bodies (with sen
 | Editor autocomplete (`gherkio schema`) | ✅ |
 | cURL ↔ DSL conversion (`gherkio convert`) | ✅ |
 | Step runner (`gherkio run --step/--line`) | ✅ |
+| Section runner (`gherkio run --section`) | ✅ |
+| Tags filter (`gherkio run --tag`) | ✅ |
+| Parallel execution (`gherkio run --parallel`) | ✅ |
+| Dry-run mode (`gherkio run --dry-run`) | ✅ |
+| Test validation (`gherkio validate`) | ✅ |
+| Verbose variable preview | ✅ |
 | JSON Schema generation (all YAML types) | ✅ |
 | Go unit tests | ✅ |
 | CI/CD (GitHub Actions) | ✅ |

@@ -232,8 +232,8 @@ func validateFile(filePath, projectDir string, creds *model.Credentials, schemas
 func validateVariableReferences(test *model.TestFile, creds *model.Credentials) []ValidationIssue {
 	var issues []ValidationIssue
 
-	// Regex to match variable references: $var, ${var}, $accounts.name.field
-	varPattern := regexp.MustCompile(`\$([a-zA-Z_][a-zA-Z0-9_]*|\{[a-zA-Z_][a-zA-Z0-9_.]*\}|accounts\.[a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*)`)
+	// Regex to match variable references: $var, ${var}, ${randomInt(1,100)}, $accounts.name.field
+	varPattern := regexp.MustCompile(`\$([a-zA-Z_][a-zA-Z0-9_]*|\{[a-zA-Z_][a-zA-Z0-9_.]*(?:\([^}]*\))?\}|accounts\.[a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*)`)
 
 	// Collect variable sources
 	savedVars := make(map[string]bool)
@@ -300,27 +300,35 @@ func validateVariableReferences(test *model.TestFile, creds *model.Credentials) 
 func extractVariables(step *model.Step, pattern *regexp.Regexp) []string {
 	var vars []string
 
+	extract := func(match string) string {
+		v := strings.TrimPrefix(strings.TrimPrefix(match, "$"), "{")
+		v = strings.TrimSuffix(v, "}")
+		// Strip parenthesized arguments (e.g. randomInt(1,100) -> randomInt)
+		if idx := strings.Index(v, "("); idx >= 0 {
+			v = v[:idx]
+		}
+		return v
+	}
+
 	// Check request fields
 	req := step.Request
 
 	// URL
 	for _, match := range pattern.FindAllString(req.URL, -1) {
-		vars = append(vars, strings.TrimPrefix(strings.TrimPrefix(match, "$"), "{"))
+		vars = append(vars, extract(match))
 	}
 
 	// Headers
 	for _, v := range req.Headers {
 		for _, match := range pattern.FindAllString(v, -1) {
-			v := strings.TrimPrefix(strings.TrimPrefix(match, "$"), "{")
-			vars = append(vars, v)
+			vars = append(vars, extract(match))
 		}
 	}
 
 	// Body (if string)
 	if bodyStr, ok := req.Body.(string); ok {
 		for _, match := range pattern.FindAllString(bodyStr, -1) {
-			v := strings.TrimPrefix(strings.TrimPrefix(match, "$"), "{")
-			vars = append(vars, v)
+			vars = append(vars, extract(match))
 		}
 	}
 
@@ -331,8 +339,7 @@ func extractVariables(step *model.Step, pattern *regexp.Regexp) []string {
 		}
 		valStr := fmt.Sprintf("%v", val)
 		for _, match := range pattern.FindAllString(valStr, -1) {
-			v := strings.TrimPrefix(strings.TrimPrefix(match, "$"), "{")
-			vars = append(vars, v)
+			vars = append(vars, extract(match))
 		}
 	}
 

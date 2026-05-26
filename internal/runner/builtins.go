@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -108,13 +110,48 @@ func generateULID() string {
 	return tsEncoded + randomEncoded
 }
 
-// generateRandomInt generates a random integer between 0 and 999999.
+// generateRandomInt generates a random integer between 0 and 999999 (inclusive).
 func generateRandomInt() int {
-	n, err := rand.Int(rand.Reader, big.NewInt(1000000))
-	if err != nil {
-		return 0
+	return generateRandomIntInRange(0, 999999)
+}
+
+// generateRandomIntInRange returns a random integer in [min, max] inclusive.
+// If min > max, they are swapped to ensure a valid range.
+func generateRandomIntInRange(min, max int) int {
+	if min > max {
+		min, max = max, min
 	}
-	return int(n.Int64())
+	rangeSize := big.NewInt(int64(max - min + 1))
+	n, err := rand.Int(rand.Reader, rangeSize)
+	if err != nil {
+		return min
+	}
+	return min + int(n.Int64())
+}
+
+// GeneratorFunc is a function that generates a value from a comma-separated arguments string.
+type GeneratorFunc func(args string) (interface{}, error)
+
+// GetGeneratorFuncs returns a map of parametrized generator functions keyed by variable name.
+// These support the ${func(arg1,arg2)} syntax in variable interpolation.
+func GetGeneratorFuncs() map[string]GeneratorFunc {
+	return map[string]GeneratorFunc{
+		"randomInt": func(args string) (interface{}, error) {
+			parts := strings.SplitN(args, ",", 2)
+			if len(parts) != 2 {
+				return nil, fmt.Errorf("randomInt requires exactly 2 arguments (min,max), got %d", len(parts))
+			}
+			min, err := strconv.Atoi(strings.TrimSpace(parts[0]))
+			if err != nil {
+				return nil, fmt.Errorf("randomInt min argument is not a valid integer: %s", parts[0])
+			}
+			max, err := strconv.Atoi(strings.TrimSpace(parts[1]))
+			if err != nil {
+				return nil, fmt.Errorf("randomInt max argument is not a valid integer: %s", parts[1])
+			}
+			return generateRandomIntInRange(min, max), nil
+		},
+	}
 }
 
 // generateRandomEmail generates a random email address at example.com.

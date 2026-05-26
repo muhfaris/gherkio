@@ -281,16 +281,21 @@ type RunConfig struct {
     MaskFields     []string               // Sensitive field names to mask (nil = use defaults)
     AccountName    string                 // Account name from credentials (optional)
     CredentialVars map[string]interface{} // Pre-injected credential variables (optional)
+    AllAccounts    map[string]interface{} // All accounts for $accounts.<name>.<field> access (optional)
+    StepIndex      int                    // Index of step to run (0-indexed). Negative means run all.
+    StepSection    string                 // Section of the step ("setup", "steps", "teardown")
+    DryRun         bool                   // Preview without executing HTTP requests
 }
 type RunResult struct {
-    Scenario  string
-    TestFile  string          // File path of the scenario
-    Account   string          // Account name used (if any)
-    Steps     []StepResult
-    TotalPass int
-    TotalFail int
-    Duration  time.Duration
-    Passed    bool
+    Scenario    string
+    TestFile    string          // File path of the scenario
+    Account     string          // Account name used (if any)
+    Steps       []StepResult
+    ResolvedVars map[string]interface{} // Variables available at start of scenario
+    TotalPass   int
+    TotalFail   int
+    Duration    time.Duration
+    Passed      bool
 }
 
 // internal/runner/executor.go
@@ -389,7 +394,7 @@ Assertion and save paths follow dot-notation:
 | `startsWith <prefix>` | String starts with prefix |
 | `endsWith <suffix>` | String ends with suffix |
 | `regex <pattern>` | String matches regex pattern |
-| `count(path): <N>` | Array has exactly N items (collection matcher) |
+| `count(path): <N>` | Array has exactly N items (collection matcher). Also: `count(path).gte`, `.gt`, `.lte`, `.lt` for range checks (e.g. `count(body.items).gte: 1` means "has data") |
 | `all(path): <matcher>` | Every element in array matches (collection matcher) |
 | Literal value (e.g. `admin`, `200`) | Equality comparison (string) |
 | `schema: <name>` | Validate full response body against a YAML schema |
@@ -397,9 +402,15 @@ Assertion and save paths follow dot-notation:
 
 ### 6. Variable Interpolation
 
-- Syntax: `$var` or `${var}` or `${var:default}` or `$accounts.eka.username`
+- Syntax: `$var` or `${var}` or `${var:default}` or `$accounts.eka.username` or `${randomInt(min,max)}`
+- Function-call syntax: `${func(arg1,arg2)}` for parametrized built-in generators (e.g. `${randomInt(1,100)}`). Falls back to normal variable lookup if function name is not recognized.
 - Dotted-path syntax: `$accounts.<name>.<field>` navigates nested maps (e.g. all injected credentials)
-- Applied to: URL, headers, body (recursive string/map/array)
+### 7. Variable Interpolation
+
+- Syntax: `$var` or `${var}` or `${var:default}` or `$accounts.eka.username` or `${randomInt(min,max)}`
+- Function-call syntax: `${func(arg1,arg2)}` for parametrized built-in generators (e.g. `${randomInt(1,100)}`). Falls back to normal variable lookup if function name is not recognized.
+- Dotted-path syntax: `$accounts.<name>.<field>` navigates nested maps (e.g. all injected credentials)
+- Applied to: URL, headers, body (recursive string/map/array)**and save paths** — save paths also support interpolation, so you can use `body.data[$randomInt(0,9)].id` to dynamically pick an array element.
 - Resolution (strict): `resolveNestedVar()` in `internal/runner/interpolator.go` splits by `.` and walks the nested map, returns error on undefined
 - Resolution (lenient): `resolveNestedPath()` in `internal/converter/curl.go` same navigation but leaves unresolved vars intact — used by cURL converter
 - Variables are stored in `map[string]interface{}` and passed between steps
@@ -412,9 +423,12 @@ Available in every test run with no setup. Generated once per `Run()` call via `
 |----------|-------------|--------|
 | `$uuid` | UUID v4 string | `a1b2c3d4-e5f6-4789-abcd-ef1234567890` |
 | `$ulid` | ULID (timestamp + random) | `01ARZ3NDEKTSV4RRFFQ69G5FAV` |
-| `$randomInt` | Random integer 0–999999 | `74291` |
+| `$randomInt` | Random integer 0–999999. Use `${randomInt(min,max)}` for custom range (e.g. `${randomInt(1,100)}`) | `74291` |
 | `$randomEmail` | Random email at @example.com | `user_123456@example.com` |
 | `$randomPhone` | Random Indonesian-format phone number | `+6281234567890` |
+
+**Parametrized generators (function-call syntax):** The `${randomInt(min,max)}` syntax is handled by `GetGeneratorFuncs()` in `internal/runner/builtins.go`, which returns a map of generator names to handler functions. The interpolator (`interpolator.go`) detects parenthesized arguments in variable references and dispatches to the appropriate generator. Currently supported:
+- `randomInt(min, max)` — Random integer in range [min, max] inclusive
 
 **Per-step regeneration:** Built-in variables are regenerated fresh at the start of each step iteration (inside `executeSteps()` in `runner.go`). This means each request in a scenario gets unique values — critical for real QA testing where every API call needs distinct IDs, idempotency keys, or random data.
 
@@ -556,6 +570,10 @@ gherkio run <test-file> --section <section>            # Run ALL steps in a sect
 gherkio run <test-file> --step <N>                      # Run a single step (0-indexed)
 gherkio run <test-file> --step <N> --section <section>  # Run a single step in a specific section
 gherkio run <test-file> --line <N>                      # Run the step at a specific line number
+gherkio run <test-file> --dry-run                     # Preview execution without HTTP requests
+gherkio run <test-file> --tag <tag>                    # Filter tests by tag (AND logic)
+gherkio run --parallel <N>                             # Run tests concurrently
+gherkio validate                                       # Lint test files statically
 gherkio schema                              # Generate JSON Schema for YAML autocomplete
 ```
 
@@ -587,10 +605,18 @@ Project root detection: walks up from cwd looking for `.gherkio/` directory.
 - ✅ Multi-Account Credentials — RFC-12 (Credentials model, LoadCredentials, `--account`/`--all-accounts` flags, auto-use single account, per-account masking, report integration)
 - ✅ Schema Generator Completeness — RFC-15 (`--type`, `--list` flags, multi-schema output, jsonschema tags on all models, source of truth expansion)
 - ✅ MCP Server Support — RFC-6 (internal/core/ refactoring, zero-dependency JSON-RPC 2.0 stdio engine, project metadata resources, and full tools routing)
+- ✅ Dry-Run Mode (`--dry-run`) — Preview expanded requests without executing HTTP calls
+- ✅ Tags Filter (`--tag`) — Filter tests by tags with AND logic
+- ✅ Parallel Execution (`--parallel`) — Run tests concurrently with configurable parallelism
+- ✅ Test Validation (`gherkio validate`) — Lint test files statically
+- ✅ Verbose Variable Preview — See resolved variables in `--verbose` output
+- ✅ cURL ↔ DSL Conversion (`gherkio convert`) — Bidirectional cURL and YAML DSL converter
+- ✅ Parametrized randomInt (`${randomInt(min,max)}`) — Random integer with custom range via function-call syntax in interpolator
+- ✅ count().gte/gt/lte/lt — Range-based array length assertions (e.g. `count(body.items).gte: 1` for "has data")
 
 ### MVP Complete
 
-All features from PRD §26.1 (MVP Scope) are implemented. The remaining gaps are either internal architecture (Capability System RFC-10), explicitly out-of-MVP scope (plugin system, escape hatch, parallel execution, filter tags), or non-functional (CI/CD).
+All features from PRD §26.1 (MVP Scope) are implemented, plus post-MVP features including dry-run mode, tags, parallel execution, cURL conversion, and test validation.
 
 ### Future / Out of MVP
 
@@ -734,6 +760,8 @@ When a test file references `$accounts.`, the "N accounts found..." hint is auto
 - `run_test` handler passes `AllAccounts` from `Credentials.ToMap()` so LLM-generated tests using `$accounts` work via MCP
 - `run_test` MCP tool has a `section` parameter: when set without `step`, runs ALL steps in that section only (setup/steps/teardown)
 - New MCP resources: `gherkio://dsl/matchers` (all assertion matchers with descriptions), `gherkio://dsl/variables` (built-in generator variables), `gherkio://dsl/paths` (canonical assertion/save paths) — exposed as JSON, fully dynamic via `runner.GetMatchersInfo()`, `runner.GetVariableInfo()`, `runner.GetPathInfo()`
+- New MCP resource: `gherkio://project/structure` — explains the `.gherkio/` directory layout so LLMs know where to create files
+- New MCP tools for LLM self-service: `create_credential`, `update_credential`, `read_credential`, `create_environment`, `update_environment`, `create_schema`, `update_schema`
 
 Gherkio supports running the same test scenarios against multiple accounts via a credentials system.
 

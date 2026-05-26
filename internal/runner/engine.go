@@ -29,7 +29,7 @@ func GetStepRoles() []string {
 // as bare keywords in GetAvailableMatchers() for schema autocomplete,
 // but their full form requires an argument to be valid.
 func GetArgMatchers() []string {
-	return []string{"contains", "startsWith", "endsWith", "regex"}
+	return []string{"contains", "startsWith", "endsWith", "regex", "gt", "gte", "lt", "lte"}
 }
 
 // MatcherInfo holds metadata about a single assertion matcher.
@@ -68,6 +68,15 @@ func GetMatchersInfo() []MatcherInfo {
 		"startsWith": "String starts with prefix",
 		"endsWith":   "String ends with suffix",
 		"regex":      "String matches regex pattern",
+		"gt":         "Value is greater than (numeric)",
+		"gte":        "Value is greater than or equal to (numeric)",
+		"lt":         "Value is less than (numeric)",
+		"lte":        "Value is less than or equal to (numeric)",
+		"empty":      "String, array, or object is empty",
+		"ipv4":       "Valid IPv4 address format",
+		"ipv6":       "Valid IPv6 address format",
+		"base64":     "Valid base64 encoded string",
+		"mac":        "Valid MAC address format (e.g. aa:bb:cc:dd:ee:ff)",
 	}
 
 	var info []MatcherInfo
@@ -94,7 +103,7 @@ func GetVariableInfo() []VariableInfo {
 	return []VariableInfo{
 		{Name: "$uuid", Description: "UUID v4 string", Example: "a1b2c3d4-e5f6-4789-abcd-ef1234567890"},
 		{Name: "$ulid", Description: "ULID (timestamp + random)", Example: "01ARZ3NDEKTSV4RRFFQ69G5FAV"},
-		{Name: "$randomInt", Description: "Random integer 0-999999", Example: "74291"},
+		{Name: "$randomInt", Description: "Random integer 0-999999; use ${randomInt(min,max)} for custom range", Example: "74291"},
 		{Name: "$randomEmail", Description: "Random email at @example.com", Example: "user_123456@example.com"},
 		{Name: "$randomPhone", Description: "Random Indonesian-format phone number", Example: "+6281234567890"},
 		{Name: "$accounts.<name>.<field>", Description: "Access specific account fields from credentials", Example: "$accounts.alpha.username"},

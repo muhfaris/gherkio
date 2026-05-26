@@ -4,7 +4,7 @@
 1. GET https://dummyjson.com/health
    ✓ success
    ✓ status = 200
-   ✓ timing.max = max 500ms (actual: 312ms)
+   ✓ timing.duration = lte 500ms (actual: 312ms)
 
 ✓ PASS (timing test)
 2 passed, 0 failed, 2 total

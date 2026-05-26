@@ -274,7 +274,7 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 					}
 
 					// Timing assertions always show actual value
-					isTiming := a.Path == "timing.max"
+					isTiming := a.Path == "timing.duration"
 
 					if a.Expected == "exists" {
 						if isTiming {
@@ -337,7 +337,7 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 					}
 
 					// Timing assertions always show actual value
-					isTiming := a.Path == "timing.max"
+					isTiming := a.Path == "timing.duration"
 
 					if a.Expected == "exists" {
 						if isTiming {
@@ -559,7 +559,7 @@ func PrintStepResult(result *RunResult, verbose bool, maskFields []string) {
 				icon = "  ✗"
 			}
 
-			isTiming := a.Path == "timing.max"
+			isTiming := a.Path == "timing.duration"
 			assertionText := ""
 			if a.Expected == "exists" {
 				if isTiming {

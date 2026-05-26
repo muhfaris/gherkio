@@ -220,7 +220,7 @@ func TestPrintResult_WithTimingAssertion(t *testing.T) {
 				Response: mkResp(200, map[string]interface{}{"status": "ok"}),
 				Assertions: []AssertionResult{
 					{Path: "status", Expected: "200", Actual: "200", Passed: true},
-					{Path: "timing.max", Expected: "max 500ms", Actual: "312ms", Passed: true},
+					{Path: "timing.duration", Expected: "lte 500ms", Actual: "312ms", Passed: true},
 				},
 				Duration: 312 * time.Millisecond,
 			},

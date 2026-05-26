@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/muhfaris/gherkio/internal/core/envstore"
+	"github.com/muhfaris/gherkio/internal/core/credentialstore"
 	"github.com/muhfaris/gherkio/internal/core/project"
 	"github.com/muhfaris/gherkio/internal/core/schemastore"
 	"github.com/muhfaris/gherkio/internal/core/teststore"
@@ -210,8 +211,138 @@ func (s *Server) handleListTools(id interface{}, params json.RawMessage) {
 						"type":        "string",
 						"description": "Section to run (setup, steps, teardown). When set without step, runs ALL steps in that section only.",
 					},
+"dryRun": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Preview test execution without making HTTP requests (dry-run mode).",
+					},
+					"verbose": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Show full request/response payloads and resolved variables. Defaults to true.",
+					},
 					},
 					Required: []string{"path"},
+				},
+			},
+			{
+				Name:        "create_credential",
+				Description: "Create a new credentials file for an environment in .gherkio/credentials/<env>.yaml",
+				InputSchema: InputSchema{
+					Type: "object",
+					Properties: map[string]interface{}{
+						"env": map[string]interface{}{
+							"type":        "string",
+							"description": "Environment name (e.g. local, staging, production)",
+						},
+						"yaml": map[string]interface{}{
+							"type":        "string",
+							"description": "Credentials YAML content with accounts mapping",
+						},
+					},
+					Required: []string{"env", "yaml"},
+				},
+			},
+			{
+				Name:        "update_credential",
+				Description: "Update an existing credentials file for an environment",
+				InputSchema: InputSchema{
+					Type: "object",
+					Properties: map[string]interface{}{
+						"env": map[string]interface{}{
+							"type":        "string",
+							"description": "Environment name (e.g. local, staging, production)",
+						},
+						"yaml": map[string]interface{}{
+							"type":        "string",
+							"description": "Updated credentials YAML content",
+						},
+					},
+					Required: []string{"env", "yaml"},
+				},
+			},
+			{
+				Name:        "read_credential",
+				Description: "Read a credentials file for a specific environment",
+				InputSchema: InputSchema{
+					Type: "object",
+					Properties: map[string]interface{}{
+						"env": map[string]interface{}{
+							"type":        "string",
+							"description": "Environment name (e.g. local, staging, production)",
+						},
+					},
+					Required: []string{"env"},
+				},
+			},
+			{
+				Name:        "create_environment",
+				Description: "Create a new environment config file in .gherkio/environments/<name>.yaml",
+				InputSchema: InputSchema{
+					Type: "object",
+					Properties: map[string]interface{}{
+						"name": map[string]interface{}{
+							"type":        "string",
+							"description": "Environment name (e.g. staging, production)",
+						},
+						"yaml": map[string]interface{}{
+							"type":        "string",
+							"description": "Environment YAML content (baseUrl, services)",
+						},
+					},
+					Required: []string{"name", "yaml"},
+				},
+			},
+			{
+				Name:        "update_environment",
+				Description: "Update an existing environment config file",
+				InputSchema: InputSchema{
+					Type: "object",
+					Properties: map[string]interface{}{
+						"name": map[string]interface{}{
+							"type":        "string",
+							"description": "Environment name (e.g. staging)",
+						},
+						"yaml": map[string]interface{}{
+							"type":        "string",
+							"description": "Updated environment YAML content",
+						},
+					},
+					Required: []string{"name", "yaml"},
+				},
+			},
+			{
+				Name:        "create_schema",
+				Description: "Create a new schema definition file in .gherkio/schemas/<name>.yaml",
+				InputSchema: InputSchema{
+					Type: "object",
+					Properties: map[string]interface{}{
+						"name": map[string]interface{}{
+							"type":        "string",
+							"description": "Schema name (e.g. user-profile, api-response)",
+						},
+						"yaml": map[string]interface{}{
+							"type":        "string",
+							"description": "Schema YAML content defining expected structure",
+						},
+					},
+					Required: []string{"name", "yaml"},
+				},
+			},
+			{
+				Name:        "update_schema",
+				Description: "Update an existing schema definition file",
+				InputSchema: InputSchema{
+					Type: "object",
+					Properties: map[string]interface{}{
+						"name": map[string]interface{}{
+							"type":        "string",
+							"description": "Schema name (e.g. user-profile)",
+						},
+						"yaml": map[string]interface{}{
+							"type":        "string",
+							"description": "Updated schema YAML content",
+						},
+					},
+					Required: []string{"name", "yaml"},
 				},
 			},
 		},
@@ -366,7 +497,12 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 		path, _ := call.Arguments["path"].(string)
 		envName, _ := call.Arguments["env"].(string)
 		accountName, _ := call.Arguments["account"].(string)
-		stepVal, _ := call.Arguments["step"].(float64)
+stepVal, _ := call.Arguments["step"].(float64)
+		dryRun, _ := call.Arguments["dryRun"].(bool)
+		verbose := true
+		if v, ok := call.Arguments["verbose"].(bool); ok {
+			verbose = v
+		}
 
 		if path == "" {
 			s.writeToolError(id, "Missing required argument 'path'")
@@ -420,13 +556,14 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 			TestPath:       fullPath,
 			EnvName:        envName,
 			ProjectDir:     s.projectDir,
-			Verbose:        true,
+Verbose:        verbose,
 			MaskFields:     maskFields,
 			AccountName:    accountName,
 			CredentialVars: credentialVars,
 			AllAccounts:    allAccountsMap,
 			StepIndex:      stepIndex,
 			StepSection:    sectionArg,
+			DryRun:         dryRun,
 		}
 
 		result, err := runner.Run(cfg)
@@ -437,6 +574,132 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 
 		data, _ := json.MarshalIndent(result, "", "  ")
 		s.writeToolResponse(id, string(data))
+
+	case "create_credential":
+		env, _ := call.Arguments["env"].(string)
+		yamlContent, _ := call.Arguments["yaml"].(string)
+		if env == "" || yamlContent == "" {
+			s.writeToolError(id, "Missing required arguments 'env' and 'yaml'")
+			return
+		}
+		var creds model.Credentials
+		if err := yaml.Unmarshal([]byte(yamlContent), &creds); err != nil {
+			s.writeToolError(id, fmt.Sprintf("Invalid YAML: %v", err))
+			return
+		}
+		if err := creds.Validate(); err != nil {
+			s.writeToolError(id, fmt.Sprintf("Invalid credentials: %v", err))
+			return
+		}
+		if err := credentialstore.Create(s.projectDir, env, &creds); err != nil {
+			s.writeToolError(id, fmt.Sprintf("Failed to create credentials: %v", err))
+			return
+		}
+		s.writeToolResponse(id, fmt.Sprintf("✓ Created credentials for '%s' at .gherkio/credentials/%s.yaml", env, env))
+
+	case "update_credential":
+		env, _ := call.Arguments["env"].(string)
+		yamlContent, _ := call.Arguments["yaml"].(string)
+		if env == "" || yamlContent == "" {
+			s.writeToolError(id, "Missing required arguments 'env' and 'yaml'")
+			return
+		}
+		var creds model.Credentials
+		if err := yaml.Unmarshal([]byte(yamlContent), &creds); err != nil {
+			s.writeToolError(id, fmt.Sprintf("Invalid YAML: %v", err))
+			return
+		}
+		if err := credentialstore.Update(s.projectDir, env, &creds); err != nil {
+			s.writeToolError(id, fmt.Sprintf("Failed to update credentials: %v", err))
+			return
+		}
+		s.writeToolResponse(id, fmt.Sprintf("✓ Updated credentials for '%s'", env))
+
+	case "read_credential":
+		env, _ := call.Arguments["env"].(string)
+		if env == "" {
+			s.writeToolError(id, "Missing required argument 'env'")
+			return
+		}
+		creds, err := credentialstore.Read(s.projectDir, env)
+		if err != nil {
+			s.writeToolError(id, fmt.Sprintf("Failed to read credentials: %v", err))
+			return
+		}
+		data, _ := json.MarshalIndent(creds, "", "  ")
+		s.writeToolResponse(id, string(data))
+
+	case "create_environment":
+		name, _ := call.Arguments["name"].(string)
+		yamlContent, _ := call.Arguments["yaml"].(string)
+		if name == "" || yamlContent == "" {
+			s.writeToolError(id, "Missing required arguments 'name' and 'yaml'")
+			return
+		}
+		var env model.Environment
+		if err := yaml.Unmarshal([]byte(yamlContent), &env); err != nil {
+			s.writeToolError(id, fmt.Sprintf("Invalid YAML: %v", err))
+			return
+		}
+		if err := envstore.Create(s.projectDir, name, &env); err != nil {
+			s.writeToolError(id, fmt.Sprintf("Failed to create environment: %v", err))
+			return
+		}
+		s.writeToolResponse(id, fmt.Sprintf("✓ Created environment '%s' at .gherkio/environments/%s.yaml", name, name))
+
+	case "update_environment":
+		name, _ := call.Arguments["name"].(string)
+		yamlContent, _ := call.Arguments["yaml"].(string)
+		if name == "" || yamlContent == "" {
+			s.writeToolError(id, "Missing required arguments 'name' and 'yaml'")
+			return
+		}
+		var env model.Environment
+		if err := yaml.Unmarshal([]byte(yamlContent), &env); err != nil {
+			s.writeToolError(id, fmt.Sprintf("Invalid YAML: %v", err))
+			return
+		}
+		if err := envstore.Update(s.projectDir, name, &env); err != nil {
+			s.writeToolError(id, fmt.Sprintf("Failed to update environment: %v", err))
+			return
+		}
+		s.writeToolResponse(id, fmt.Sprintf("✓ Updated environment '%s'", name))
+
+	case "create_schema":
+		name, _ := call.Arguments["name"].(string)
+		yamlContent, _ := call.Arguments["yaml"].(string)
+		if name == "" || yamlContent == "" {
+			s.writeToolError(id, "Missing required arguments 'name' and 'yaml'")
+			return
+		}
+		var schema model.Schema
+		if err := yaml.Unmarshal([]byte(yamlContent), &schema); err != nil {
+			s.writeToolError(id, fmt.Sprintf("Invalid YAML: %v", err))
+			return
+		}
+		if err := schemastore.Create(s.projectDir, name, &schema); err != nil {
+			s.writeToolError(id, fmt.Sprintf("Failed to create schema: %v", err))
+			return
+		}
+		s.writeToolResponse(id, fmt.Sprintf("✓ Created schema '%s' at .gherkio/schemas/%s.yaml", name, name))
+
+	case "update_schema":
+		name, _ := call.Arguments["name"].(string)
+		yamlContent, _ := call.Arguments["yaml"].(string)
+		if name == "" || yamlContent == "" {
+			s.writeToolError(id, "Missing required arguments 'name' and 'yaml'")
+			return
+		}
+		var schema model.Schema
+		if err := yaml.Unmarshal([]byte(yamlContent), &schema); err != nil {
+			s.writeToolError(id, fmt.Sprintf("Invalid YAML: %v", err))
+			return
+		}
+		if err := schemastore.Update(s.projectDir, name, &schema); err != nil {
+			s.writeToolError(id, fmt.Sprintf("Failed to update schema: %v", err))
+			return
+		}
+		s.writeToolResponse(id, fmt.Sprintf("✓ Updated schema '%s'", name))
 
 	default:
 		s.writeError(id, MethodNotFound, fmt.Sprintf("Tool not found: '%s'", call.Name), nil)
@@ -482,6 +745,12 @@ func (s *Server) handleListResources(id interface{}, params json.RawMessage) {
 				Description: "Canonical dot-notation paths for assertions and saves (body, headers, jwt).",
 				MimeType:    "application/json",
 			},
+			{
+				URI:         "gherkio://project/structure",
+				Name:        "Project Directory Structure",
+				Description: "The .gherkio/ directory layout explaining where each file type belongs.",
+				MimeType:    "text/markdown",
+			},
 		},
 	}
 	s.writeResponse(id, result, nil)
@@ -514,7 +783,7 @@ func (s *Server) handleReadResource(id interface{}, params json.RawMessage) {
 - **use**: (String, Conditional) Path to compose/execute another scenario. Mutually exclusive with request.
 - **request**: (Request object, Conditional) HTTP Request config. Mutually exclusive with use.
 - **expect**: (Expect object, Optional) Response assertions.
-- **save**: (Map of name:path, Optional) Extract dynamic values to context variables.
+- **save**: (Map of name:path, Optional) Extract dynamic values to context variables. Paths support variable interpolation (e.g. 'body.data[$randomInt(0,9)].id').
 - **timing**: (TimingConfig, Optional) Execution latency check.
 
 ### Request Config
@@ -530,12 +799,13 @@ All string values in request fields support variable substitution:
 - **\${var}** — Explicit braces syntax (e.g. \${accessToken})
 - **\${var:default}** — With default fallback (e.g. \${role:user})
 - **\$accounts.<name>.<field>** — Access any account's credentials directly from .gherkio/credentials/<env>.yaml without needing --account flag (e.g. \$accounts.eka.username)
+- **\${func(arg1,arg2)}** — Parametrized built-in generator with arguments (e.g. \${randomInt(1,100)})
 
 Variables are sourced from:
 1. **Built-in generators** — Pre-populated variables available in every test run:
    - **\$uuid** — UUID v4 string (e.g. a1b2c3d4-e5f6-4789-abcd-ef1234567890)
    - **\$ulid** — ULID string (e.g. 01ARZ3NDEKTSV4RRFFQ69G5FAV)
-   - **\$randomInt** — Random integer between 0 and 999999 (e.g. 74291)
+   - **\$randomInt** — Random integer between 0 and 999999 (e.g. 74291). Use **\${randomInt(min,max)}** for custom range (e.g. \${randomInt(1,100)})
    - **\$randomEmail** — Random email at @example.com (e.g. user_123456@example.com)
    - **\$randomPhone** — Random Indonesian-format phone number (e.g. +6281234567890)
 2. **Credentials** — Account fields from .gherkio/credentials/<env>.yaml (injected automatically when --account is used, or via \$accounts.<name>.<field>)
@@ -545,11 +815,47 @@ Variables are sourced from:
 Built-in variables can be overridden by credentials or step saves with the same name.
 
 ### Assertions (Expect)
-- **status**: (Integer) Expected HTTP status.
-- **body.<path>**: Assert matches on JSON body values (e.g. body.id: exists).
-- **headers.<name>**: Assert matches on response header keys.
-- **jwt.<claim>**: Assert on decoded JWT values.
-- **schema**: Name of a custom validator schema file in .gherkio/schemas/.
+- **status**: (Integer) Expected HTTP status (e.g. 'status: 200').
+- **body.<path>**: Assert on JSON body fields using a matcher or literal value (e.g. 'body.id: exists', 'body.name: Emily').
+- **headers.<name>**: Assert on response header values (e.g. 'headers.content-type: contains application/json').
+- **jwt.<claim>**: Assert on decoded JWT claims (e.g. 'jwt.role: admin').
+- **schema**: Validate full body against a YAML schema file in .gherkio/schemas/ (e.g. 'schema: user-profile').
+  Negative form: 'schema: not <name>' asserts the response does NOT match the schema.
+
+**Available Matchers:**
+- 'exists' / 'not exists' — Field present / absent
+- 'uuid', 'email', 'datetime', 'uri' — Format validators
+- 'string', 'number', 'boolean', 'array', 'object', 'null', 'true', 'false' — Type checkers
+- 'empty' — String, array, or object is empty
+- 'contains <substring>', 'startsWith <prefix>', 'endsWith <suffix>' — String matchers
+- 'regex <pattern>' — Regex match
+- 'gt <N>', 'gte <N>', 'lt <N>', 'lte <N>' — Numeric comparisons
+- 'ipv4', 'ipv6', 'base64', 'mac' — Format validators
+
+**Collection Matchers (for arrays):**
+- 'count(<path>): <N>' — Array has exactly N items (e.g. 'count(body.items): 3')
+- 'count(<path>).gte: <N>' — Array has >= N items (e.g. 'count(body.items).gte: 1' means "has data")
+- 'count(<path>).gt: <N>' — Array has > N items
+- 'count(<path>).lte: <N>' — Array has <= N items
+- 'count(<path>).lt: <N>' — Array has < N items
+- 'all(<path>): <matcher>' — Every element matches (e.g. 'all(body.items.status): active')
+- 'all(<path>.<field>): <matcher>' — Every element's field matches (e.g. 'all(body.items.id): uuid')
+
+**Examples:**
+
+    expect:
+      status: 200
+      body.data: exists
+      body.token: uuid
+      body.items: array
+      body.email: email
+      body.role: admin          # literal equality
+      body.count: gt 10         # numeric > 10
+      body.name: contains John
+      count(body.items): 5      # exactly 5 items
+      count(body.items).gte: 1  # at least 1 item (has data)
+      schema: user-profile
+      schema: not error-payload
 `
 	case "gherkio://dsl/schema.json":
 		mime = "application/json"
@@ -645,6 +951,26 @@ steps:
     expect:
       status: 200
       body.username: $accounts.default.username
+
+---
+# Parametrized randomInt example: custom range with ${randomInt(min,max)}
+# Also demonstrates count().gte for checking array has data
+scenario: parametrized randomInt and array length check
+
+steps:
+  - request:
+      method: POST
+      url: /products
+      body:
+        name: "Product ${randomInt(1000,9999)}"
+        price: ${randomInt(1000,500000)}
+        quantity: ${randomInt(1,100)}
+    expect:
+      status: 201
+      count(body.items).gte: 1
+    save:
+      productId: body.id
+      sku: body.sku
 `
 	case "gherkio://dsl/matchers":
 		mime = "application/json"
@@ -657,6 +983,10 @@ steps:
 	case "gherkio://dsl/paths":
 		mime = "application/json"
 		content = s.buildPathsResource()
+
+	case "gherkio://project/structure":
+		mime = "text/markdown"
+		content = s.buildProjectStructureResource()
 
 	default:
 		s.writeError(id, InvalidParams, fmt.Sprintf("Unknown resource URI '%s'", read.URI), nil)

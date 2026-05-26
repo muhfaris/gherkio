@@ -52,15 +52,33 @@ func InterpolateRequest(req model.Request, vars map[string]interface{}) (model.R
 //   - Simple vars: $var, ${var}
 //   - Nested/dotted paths: $accounts.eka.username, ${accounts.eka.username}
 //   - Default values: ${var:default}, ${accounts.eka.username:default}
+//   - Parametrized generators: ${randomInt(1,100)}, ${randomInt()}
 func interpolateString(s string, vars map[string]interface{}) (string, error) {
 	// This regex matches $var, ${var}, dotted paths like $accounts.eka.username,
-	// and defaults like ${var:default}
-	re := regexp.MustCompile(`\$\{?([a-zA-Z_][a-zA-Z0-9_]+(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)(?::([^}]*))?}?`)
+	// defaults like ${var:default}, and parametrized generators like ${randomInt(1,100)}
+	// Capture groups:
+	//   1: variable/function name (e.g. randomInt, accounts.eka.username)
+	//   2: arguments inside parens (e.g. 1,100) — optional
+	//   3: default value after colon (e.g. 42 in ${var:42}) — optional
+	re := regexp.MustCompile(`\$\{?([a-zA-Z_][a-zA-Z0-9_]+(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)(?:\(([^)]*)\))?(?::([^}]*))?}?`)
 
 	result := re.ReplaceAllStringFunc(s, func(match string) string {
 		submatch := re.FindStringSubmatch(match)
 		varName := submatch[1]
-		defaultValue := submatch[2]
+		args := submatch[2]
+		defaultValue := submatch[3]
+
+		// Check if this is a parametrized generator function call (has arguments)
+		if args != "" {
+			funcs := GetGeneratorFuncs()
+			if fn, ok := funcs[varName]; ok {
+				val, err := fn(args)
+				if err == nil {
+					return fmt.Sprintf("%v", val)
+				}
+				// If generation fails, fall through to normal lookup / default
+			}
+		}
 
 		// Check if the variable exists (supports dotted paths)
 		if val, ok := resolveNestedVar(varName, vars); ok {
@@ -80,7 +98,24 @@ func interpolateString(s string, vars map[string]interface{}) (string, error) {
 	matches := re.FindAllStringSubmatch(result, -1)
 	for _, match := range matches {
 		varName := match[1]
-		if _, ok := resolveNestedVar(varName, vars); !ok && match[2] == "" {
+		args := match[2]
+		defaultValue := match[3]
+
+		// Skip parametrized generator functions (e.g. ${randomInt(1,100)})
+		if args != "" {
+			funcs := GetGeneratorFuncs()
+			if _, ok := funcs[varName]; ok {
+				continue
+			}
+		}
+
+		// Skip if there's a default value
+		if defaultValue != "" {
+			continue
+		}
+
+		// Error if variable is not defined
+		if _, ok := resolveNestedVar(varName, vars); !ok {
 			return "", fmt.Errorf("undefined variable: %s", varName)
 		}
 	}

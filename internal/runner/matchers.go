@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -306,9 +307,215 @@ func evaluateMatcher(path string, expected string, actual interface{}) (Assertio
 			Passed:   passed,
 			Reason:   reason,
 		}, true
+
+	case "gt", "gte", "lt", "lte":
+		if len(parts) < 2 {
+			return AssertionResult{}, false
+		}
+		targetStr := parts[1]
+		actualStr := fmt.Sprintf("%v", actual)
+
+		// Parse both as float64 for comparison
+		actualFloat, actualOk := toFloat64(actual)
+		targetFloat, targetErr := toFloat64FromString(targetStr)
+
+		if !actualOk {
+			return AssertionResult{
+				Path:     path,
+				Expected: fmt.Sprintf("%s %s", keyword, targetStr),
+				Actual:   actualStr,
+				Passed:   false,
+				Reason:   "value is not a number",
+			}, true
+		}
+		if targetErr != nil {
+			return AssertionResult{
+				Path:     path,
+				Expected: fmt.Sprintf("%s %s", keyword, targetStr),
+				Actual:   actualStr,
+				Passed:   false,
+				Reason:   fmt.Sprintf("target %q is not a number", targetStr),
+			}, true
+		}
+
+		var passed bool
+		switch keyword {
+		case "gt":
+			passed = actualFloat > targetFloat
+		case "gte":
+			passed = actualFloat >= targetFloat
+		case "lt":
+			passed = actualFloat < targetFloat
+		case "lte":
+			passed = actualFloat <= targetFloat
+		}
+
+		reason := ""
+		if !passed {
+			reason = fmt.Sprintf("expected %s %s, got %v", keyword, targetStr, actualFloat)
+		}
+		return AssertionResult{
+			Path:     path,
+			Expected: fmt.Sprintf("%s %s", keyword, targetStr),
+			Actual:   fmt.Sprintf("%v", actualFloat),
+			Passed:   passed,
+			Reason:   reason,
+		}, true
+
+	case "empty":
+		passed := false
+		reason := ""
+		switch v := actual.(type) {
+		case nil:
+			passed = true
+		case string:
+			passed = v == ""
+			if !passed {
+				reason = fmt.Sprintf("string has length %d", len(v))
+			}
+		case []interface{}:
+			passed = len(v) == 0
+			if !passed {
+				reason = fmt.Sprintf("array has %d items", len(v))
+			}
+		case map[string]interface{}:
+			passed = len(v) == 0
+			if !passed {
+				reason = fmt.Sprintf("object has %d fields", len(v))
+			}
+		default:
+			reason = "value is not a string, array, object, or null"
+		}
+		return AssertionResult{
+			Path:     path,
+			Expected: "empty",
+			Actual:   fmt.Sprintf("%v", actual),
+			Passed:   passed,
+			Reason:   reason,
+		}, true
+
+	case "ipv4":
+		actualStr := fmt.Sprintf("%v", actual)
+		ipMatch, _ := regexp.MatchString(`^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$`, actualStr)
+		passed := false
+		reason := ""
+		if ipMatch {
+			parts := strings.Split(actualStr, ".")
+			allValid := true
+			for _, p := range parts {
+				var val int
+				fmt.Sscanf(p, "%d", &val)
+				if val < 0 || val > 255 {
+					allValid = false
+					break
+				}
+			}
+			passed = allValid
+		}
+		if !passed {
+			if _, ok := actual.(string); !ok {
+				reason = "value is not a string"
+			} else {
+				reason = "string does not match IPv4 format"
+			}
+		}
+		return AssertionResult{
+			Path:     path,
+			Expected: "valid IPv4 format",
+			Actual:   actualStr,
+			Passed:   passed,
+			Reason:   reason,
+		}, true
+
+	case "ipv6":
+		actualStr := fmt.Sprintf("%v", actual)
+		// IPv6 regex — supports full and compressed forms
+		ipv6Pattern := `^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|` +
+			`^::([0-9a-fA-F]{1,4}:){0,5}[0-9a-fA-F]{1,4}$|` +
+			`^([0-9a-fA-F]{1,4}:){1,6}:$|` +
+			`^([0-9a-fA-F]{1,4}:){1,5}:[0-9a-fA-F]{1,4}$|` +
+			`^([0-9a-fA-F]{1,4}:){1,4}:[0-9a-fA-F]{1,4}$|` +
+			`^([0-9a-fA-F]{1,4}:){1,3}:[0-9a-fA-F]{1,4}$|` +
+			`^([0-9a-fA-F]{1,4}:){1,2}:[0-9a-fA-F]{1,4}$|` +
+			`^[0-9a-fA-F]{1,4}::[0-9a-fA-F]{1,4}$|` +
+			`^::$`
+		passed, _ := regexp.MatchString(ipv6Pattern, actualStr)
+		reason := ""
+		if !passed {
+			if _, ok := actual.(string); !ok {
+				reason = "value is not a string"
+			} else {
+				reason = "string does not match IPv6 format"
+			}
+		}
+		return AssertionResult{
+			Path:     path,
+			Expected: "valid IPv6 format",
+			Actual:   actualStr,
+			Passed:   passed,
+			Reason:   reason,
+		}, true
+
+	case "base64":
+		actualStr := fmt.Sprintf("%v", actual)
+		_, err := decodeBase64(actualStr)
+		passed := err == nil
+		reason := ""
+		if _, ok := actual.(string); !ok {
+			reason = "value is not a string"
+		} else if err != nil {
+			reason = "string is not valid base64"
+		}
+		return AssertionResult{
+			Path:     path,
+			Expected: "valid base64",
+			Actual:   actualStr,
+			Passed:   passed,
+			Reason:   reason,
+		}, true
+
+	case "mac":
+		actualStr := fmt.Sprintf("%v", actual)
+		passed, _ := regexp.MatchString(`^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$`, actualStr)
+		reason := ""
+		if !passed {
+			if _, ok := actual.(string); !ok {
+				reason = "value is not a string"
+			} else {
+				reason = "string does not match MAC address format (e.g. aa:bb:cc:dd:ee:ff)"
+			}
+		}
+		return AssertionResult{
+			Path:     path,
+			Expected: "valid MAC address",
+			Actual:   actualStr,
+			Passed:   passed,
+			Reason:   reason,
+		}, true
 	}
 
 	return AssertionResult{}, false
+}
+
+// toFloat64FromString parses a string as float64.
+func toFloat64FromString(s string) (float64, error) {
+	var f float64
+	_, err := fmt.Sscanf(s, "%f", &f)
+	if err != nil {
+		return 0, err
+	}
+	return f, nil
+}
+
+// decodeBase64 attempts to decode a base64 string (supports standard and URL-safe variants).
+func decodeBase64(s string) ([]byte, error) {
+	// Try standard base64 first
+	data, err := base64.StdEncoding.DecodeString(s)
+	if err == nil {
+		return data, nil
+	}
+	// Try URL-safe base64 (no padding required)
+	return base64.RawURLEncoding.DecodeString(s)
 }
 
 // formatActual returns a string representation of the actual value suitable for output.
@@ -333,6 +540,11 @@ func GetAvailableMatchers() []string {
 		"string", "number", "boolean", "array", "object", "null",
 		"true", "false",
 		"contains", "startsWith", "endsWith", "regex",
+		"gt", "gte", "lt", "lte",
+		"empty",
+		"ipv4", "ipv6",
+		"base64",
+		"mac",
 	}
 }
 

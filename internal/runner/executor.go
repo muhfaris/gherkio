@@ -198,12 +198,13 @@ func executeRequest(method, url string, headers map[string]string, body interfac
 }
 
 // evaluateTiming checks that step duration is within the expected max.
+// Uses the lte matcher for consistency with the matcher system.
 func evaluateTiming(actual time.Duration, maxStr string) AssertionResult {
 	maxDuration, err := time.ParseDuration(maxStr)
 	if err != nil {
 		return AssertionResult{
-			Path:     "timing.max",
-			Expected: maxStr,
+			Path:     "timing.duration",
+			Expected: "lte " + maxStr,
 			Actual:   fmt.Sprintf("invalid: %s", err.Error()),
 			Passed:   false,
 		}
@@ -211,8 +212,8 @@ func evaluateTiming(actual time.Duration, maxStr string) AssertionResult {
 
 	passed := actual <= maxDuration
 	return AssertionResult{
-		Path:     "timing.max",
-		Expected: maxStr,
+		Path:     "timing.duration",
+		Expected: "lte " + maxStr,
 		Actual:   FormatDuration(actual),
 		Passed:   passed,
 	}
@@ -327,16 +328,62 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 		}
 	}
 
-	// Collection Matchers: count(path)
-	if strings.HasPrefix(path, "count(") && strings.HasSuffix(path, ")") {
-		innerPath := path[6 : len(path)-1]
+	// Collection Matchers: count(path) with optional comparator suffix
+	// Supports:
+	//   count(path): <N>        — exact match (e.g. count(items): 3)
+	//   count(path).gte: <N>    — >= N items (e.g. count(items).gte: 1)
+	//   count(path).gt: <N>     — > N items
+	//   count(path).lte: <N>    — <= N items
+	//   count(path).lt: <N>     — < N items
+	if strings.HasPrefix(path, "count(") {
+		// Check for comparator suffix: count(path).gte, count(path).gt, etc.
+		comparator := "eq" // default: exact match
+		innerPath := path
+
+		closeParen := strings.LastIndex(path, ")")
+		if closeParen < 0 {
+			return AssertionResult{
+				Path:     path,
+				Expected: expectedStr,
+				Actual:   "(invalid syntax)",
+				Passed:   false,
+				Reason:   "missing closing parenthesis in count()",
+			}
+		}
+
+		// Check if there's a suffix after the closing paren
+		if closeParen < len(path)-1 {
+			suffix := path[closeParen+1:]
+			switch suffix {
+			case ".gte":
+				comparator = "gte"
+			case ".gt":
+				comparator = "gt"
+			case ".lte":
+				comparator = "lte"
+			case ".lt":
+				comparator = "lt"
+			default:
+				return AssertionResult{
+					Path:     path,
+					Expected: expectedStr,
+					Actual:   "(invalid syntax)",
+					Passed:   false,
+					Reason:   fmt.Sprintf("unknown count comparator: %s (use .gte, .gt, .lte, or .lt)", suffix),
+				}
+			}
+			innerPath = path[6:closeParen]
+		} else {
+			innerPath = path[6 : len(path)-1]
+		}
+
 		// Strip body. prefix for consistency with regular assertions
 		innerPath = strings.TrimPrefix(innerPath, "body.")
 		actualVal, found := resolvePath(resp.Parsed, innerPath)
 		if !found {
 			return AssertionResult{
 				Path:     path,
-				Expected: fmt.Sprintf("exactly %s items", expectedStr),
+				Expected: fmt.Sprintf("%s %s items", comparatorLabel(comparator), expectedStr),
 				Actual:   "(not found)",
 				Passed:   false,
 			}
@@ -346,7 +393,7 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 		if !ok {
 			return AssertionResult{
 				Path:     path,
-				Expected: fmt.Sprintf("exactly %s items", expectedStr),
+				Expected: fmt.Sprintf("%s %s items", comparatorLabel(comparator), expectedStr),
 				Actual:   fmt.Sprintf("%v", actualVal),
 				Passed:   false,
 				Reason:   "value is not an array",
@@ -365,16 +412,35 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 			}
 		}
 
+		var passed bool
+		switch comparator {
+		case "gte":
+			passed = actualLen >= expectedLen
+		case "gt":
+			passed = actualLen > expectedLen
+		case "lte":
+			passed = actualLen <= expectedLen
+		case "lt":
+			passed = actualLen < expectedLen
+		default:
+			passed = actualLen == expectedLen
+		}
+
 		reason := ""
-		if actualLen != expectedLen {
+		if !passed {
 			reason = fmt.Sprintf("array has %d items", actualLen)
+		}
+
+		expectedDesc := fmt.Sprintf("%s %d items", comparatorLabel(comparator), expectedLen)
+		if comparator == "eq" {
+			expectedDesc = fmt.Sprintf("exactly %d items", expectedLen)
 		}
 
 		return AssertionResult{
 			Path:     path,
-			Expected: fmt.Sprintf("exactly %d items", expectedLen),
+			Expected: expectedDesc,
 			Actual:   fmt.Sprintf("%d", actualLen),
-			Passed:   actualLen == expectedLen,
+			Passed:   passed,
 			Reason:   reason,
 		}
 	}
@@ -830,6 +896,15 @@ func resolvePath(data interface{}, path string) (interface{}, bool) {
 //   - jwt.<claim>           → decoded JWT claim
 func extractValues(vars map[string]interface{}, save map[string]string, resp *ResponseInfo, jwtClaims map[string]interface{}) {
 	for name, path := range save {
+		// Interpolate the path to resolve variables like $randomInt(1,10) or $previousVar
+		// before using it as a path expression. In practice the save key acts as the
+		// variable name and the path supports variables inside array indexes etc.
+		interpolatedPath, err := interpolateString(path, vars)
+		if err == nil {
+			path = interpolatedPath
+		}
+		// If interpolation fails (e.g. undefined var), fall back to the original path
+
 		switch {
 		case strings.HasPrefix(path, "jwt."):
 			claimPath := strings.TrimPrefix(path, "jwt.")
@@ -907,4 +982,20 @@ func decodeJWT(tokenString string) (map[string]interface{}, error) {
 
 func base64Decode(s string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(s)
+}
+
+// comparatorLabel returns a human-readable label for count() comparator suffixes.
+func comparatorLabel(c string) string {
+	switch c {
+	case "gte":
+		return ">="
+	case "gt":
+		return ">"
+	case "lte":
+		return "<="
+	case "lt":
+		return "<"
+	default:
+		return "=="
+	}
 }

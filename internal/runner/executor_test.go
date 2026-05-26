@@ -393,6 +393,62 @@ func TestEvaluateAssertion_CollectionCount(t *testing.T) {
 	}
 }
 
+func TestEvaluateAssertion_CollectionCountComparators(t *testing.T) {
+	resp := &ResponseInfo{
+		Status: 200,
+		Parsed: map[string]interface{}{
+			"items": []interface{}{
+				map[string]interface{}{"id": 1},
+				map[string]interface{}{"id": 2},
+				map[string]interface{}{"id": 3},
+			},
+			"empty": []interface{}{},
+			"single": []interface{}{"only"},
+		},
+	}
+
+	tests := []struct {
+		name     string
+		path     string
+		expected string
+		wantPass bool
+	}{
+		// gte (>=)
+		{"items gte 1", "count(items).gte", "1", true},
+		{"items gte 3", "count(items).gte", "3", true},
+		{"items gte 4", "count(items).gte", "4", false},
+		{"empty gte 0", "count(empty).gte", "0", true},
+		{"empty gte 1", "count(empty).gte", "1", false},
+		// gt (>)
+		{"items gt 2", "count(items).gt", "2", true},
+		{"items gt 3", "count(items).gt", "3", false},
+		{"empty gt 0", "count(empty).gt", "0", false},
+		// lte (<=)
+		{"items lte 3", "count(items).lte", "3", true},
+		{"items lte 4", "count(items).lte", "4", true},
+		{"items lte 2", "count(items).lte", "2", false},
+		{"empty lte 0", "count(empty).lte", "0", true},
+		{"empty lte 1", "count(empty).lte", "1", true},
+		// lt (<)
+		{"items lt 4", "count(items).lt", "4", true},
+		{"items lt 3", "count(items).lt", "3", false},
+		{"empty lt 1", "count(empty).lt", "1", true},
+		{"empty lt 0", "count(empty).lt", "0", false},
+		// exact count still works (no suffix)
+		{"items exact 3", "count(items)", "3", true},
+		{"items exact 2", "count(items)", "2", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := evaluateAssertion(tt.path, tt.expected, resp, nil, "")
+			if result.Passed != tt.wantPass {
+				t.Errorf("evaluateAssertion(%q, %q) passed = %v, want %v\n  result: %+v", tt.path, tt.expected, result.Passed, tt.wantPass, result)
+			}
+		})
+	}
+}
+
 func TestEvaluateAssertion_CollectionAll(t *testing.T) {
 	resp := &ResponseInfo{
 		Status: 200,

@@ -113,7 +113,7 @@ func MapResultToReportData(result *runner.RunResult, env string, maskFields []st
 				stepPassed = false
 			}
 
-			if a.Path == "timing.max" && !a.Passed {
+		if a.Path == "timing.duration" && !a.Passed {
 				timingFailed = true
 			}
 
