@@ -75,7 +75,7 @@ sudo mv gherkio /usr/local/bin/
 ### Using install script
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/muhfaris/gherkio/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/muhfaris/gherkio/main/install.sh | sudo bash
 ```
 
 ---

@@ -60,6 +60,9 @@ main() {
   fi
 
   echo "Latest release: $tag_name"
+  
+  # Strip leading 'v' from tag name for GoReleaser asset matching
+  version_number=$(echo "$tag_name" | sed 's/^v//')
 
   # ── Find the right asset ──
   # GoReleaser naming: gherkio_{version}_{Os}_{Arch}.tar.gz (or .zip for Windows)
@@ -72,7 +75,7 @@ main() {
   fi
 
   # Match the asset name — GoReleaser uses title-case OS (Linux, Darwin, Windows)
-  asset_pattern="gherkio_${tag_name}_${os}_${arch}${extension}"
+  asset_pattern="gherkio_${version_number}_${os}_${arch}${extension}"
 
   download_url=$(echo "$release_data" | \
     grep -o "https://github.com/${github_repo}/releases/download/${tag_name}/${asset_pattern}" | \
