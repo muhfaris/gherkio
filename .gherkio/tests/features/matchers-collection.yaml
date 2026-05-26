@@ -1,0 +1,39 @@
+scenario: matchers — collection (count, all)
+
+# Demonstrates count() and all() collection matchers.
+
+steps:
+  # Single product — tags is an array with known items
+  - request:
+      method: GET
+      url: /products/1
+
+    expect:
+      status: 200
+
+      # count() — exact array length
+      count(body.tags): 2
+      count(body.images): 1
+      count(body.reviews): 3
+
+      # all() — every element in the array satisfies a matcher
+      all(body.tags): string
+      all(body.images): string
+      all(body.reviews): object
+
+    timing:
+      max: 5s
+
+  # Products list — use count() on the response
+  - request:
+      method: GET
+      url: /products?limit=5
+
+    expect:
+      status: 200
+
+      # count() on a nested array
+      count(body.products): 5
+      all(body.products): object
+      all(body.products.title): string
+      all(body.products.price): number

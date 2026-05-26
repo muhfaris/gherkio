@@ -1,0 +1,108 @@
+type: object
+required:
+  - id
+  - title
+  - description
+  - category
+  - price
+  - rating
+  - tags
+  - brand
+  - dimensions
+  - reviews
+  - meta
+properties:
+  id:
+    type: integer
+  title:
+    type: string
+  description:
+    type: string
+  category:
+    type: string
+  price:
+    type: number
+  discountPercentage:
+    type: number
+  rating:
+    type: number
+  stock:
+    type: integer
+  tags:
+    type: array
+    items:
+      type: string
+  brand:
+    type: string
+  sku:
+    type: string
+  weight:
+    type: integer
+  dimensions:
+    type: object
+    required:
+      - width
+      - height
+      - depth
+    properties:
+      width:
+        type: number
+      height:
+        type: number
+      depth:
+        type: number
+  warrantyInformation:
+    type: string
+  shippingInformation:
+    type: string
+  availabilityStatus:
+    type: string
+  reviews:
+    type: array
+    items:
+      type: object
+      required:
+        - rating
+        - comment
+        - reviewerName
+        - reviewerEmail
+      properties:
+        rating:
+          type: integer
+        comment:
+          type: string
+        date:
+          type: string
+          format: datetime
+        reviewerName:
+          type: string
+        reviewerEmail:
+          type: string
+          format: email
+  returnPolicy:
+    type: string
+  minimumOrderQuantity:
+    type: integer
+  meta:
+    type: object
+    required:
+      - createdAt
+      - updatedAt
+      - barcode
+    properties:
+      createdAt:
+        type: string
+        format: datetime
+      updatedAt:
+        type: string
+        format: datetime
+      barcode:
+        type: string
+      qrCode:
+        type: string
+  images:
+    type: array
+    items:
+      type: string
+  thumbnail:
+    type: string

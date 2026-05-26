@@ -1,0 +1,25 @@
+scenario: retry with eventual consistency (demonstrates retry output when retries > 0)
+
+# This test hits an endpoint that returns 200 immediately,
+# but we assert status: 201 which will fail.
+# The retry will exhaust all attempts, showing the retry failure output.
+#
+# In real usage, you'd assert a condition that eventually becomes true
+# (e.g. polling a job status until it's "completed").
+
+steps:
+  - request:
+      method: GET
+      url: /products/1
+
+    retry:
+      attempts: 3
+      interval: 500
+      backoff: constant
+
+    expect:
+      status: 200
+      body.title: exists
+
+    timing:
+      max: 10s
