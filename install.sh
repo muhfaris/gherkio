@@ -1,107 +1,132 @@
 #!/bin/sh
-# This script is for installing gherkio from a release archive.
+# install.sh — Gherkio installer
 #
-# It is intended to be run like this:
+# Usage:
+#   curl -fsSL https://raw.githubusercontent.com/muhfaris/gherkio/main/install.sh | sh
 #
-#   curl -sSL https://raw.githubusercontent.com/muhfaris/gherkio/main/install.sh | sh
-#
-# This script will:
-#
-#   1. Detect the user's OS and architecture.
-#   2. Download the latest release of gherkio for that platform.
-#   3. Unpack the binary into /usr/local/bin.
-#
-# This script is inspired by the install script for fly.io's flyctl.
+# Detects OS and architecture, downloads the latest release from GitHub,
+# and installs the binary to /usr/local/bin.
 
 set -e
 
 main() {
-  if [ -z "$OS" ]; then
-    OS=$(uname -s)
-  fi
-
-  if [ -z "$ARCH" ]; then
-    ARCH=$(uname -m)
-  fi
-
-  case $OS in
-    Linux)
-      OS=linux
-      ;;
-    Darwin)
-      OS=darwin
-      ;;
+  # ── Detect OS ──
+  raw_os=$(uname -s)
+  case "$raw_os" in
+    Linux)  os="Linux" ;;
+    Darwin) os="Darwin" ;;
+    MINGW*|MSYS*|CYGWIN*) os="Windows" ;;
     *)
-      echo "OS $OS is not supported."
+      echo "Unsupported OS: $raw_os"
+      echo "Supported: Linux, macOS, Windows"
       exit 1
       ;;
   esac
 
-  case $ARCH in
-    x86_64)
-      ARCH=x86_64
-      ;;
-    amd64)
-      ARCH=x86_64
-      ;;
-    arm64)
-      ARCH=arm64
-      ;;
-    aarch64)
-      ARCH=arm64
-      ;;
+  # ── Detect architecture ──
+  raw_arch=$(uname -m)
+  case "$raw_arch" in
+    x86_64|amd64) arch="x86_64" ;;
+    arm64|aarch64) arch="arm64" ;;
     *)
-      echo "Architecture $ARCH is not supported."
+      echo "Unsupported architecture: $raw_arch"
+      echo "Supported: x86_64 (amd64), arm64 (aarch64)"
       exit 1
       ;;
   esac
 
-  # The `tr` command is used to convert the output of `uname` to lowercase.
-  os_arch_suffix=$(echo "${OS}_${ARCH}" | tr '[:upper:]' '[:lower:]')
+  echo "Detected: ${os} / ${arch}"
 
-  # The github release URL.
-  github_url="https://github.com/muhfaris/gherkio"
+  # ── GitHub API — find latest release ──
+  github_repo="muhfaris/gherkio"
+  api_url="https://api.github.com/repos/${github_repo}/releases"
 
-  # The URL to download the latest release from.
-  download_url=$(curl -sL "${github_url}/releases" | \
-                  grep -o "/muhfaris/gherkio/releases/download/.*/gherkio_.*_${os_arch_suffix}.tar.gz" | \
-                  head -n 1)
+  # Fetch releases, find the first non-draft, non-prerelease? Allow prerelease (alpha).
+  # We use the latest (first) release regardless of draft/prerelease status.
+  release_data=$(curl -sfL "${api_url}" 2>/dev/null || echo "")
 
-  if [ -z "$download_url" ]; then
-    echo "Could not find a release for your OS/Arch"
+  if [ -z "$release_data" ] || [ "$release_data" = "[]" ]; then
+    echo "No releases found for ${github_repo}."
+    echo "The project may not have published a release yet."
+    echo "See: https://github.com/${github_repo}/releases"
     exit 1
   fi
 
-  # The full URL to download the latest release from.
-  download_url="${github_url}${download_url}"
+  # Pick the first release (latest), get its tag name
+  tag_name=$(echo "$release_data" | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p' | head -1)
+  if [ -z "$tag_name" ]; then
+    echo "Could not determine latest release tag."
+    exit 1
+  fi
 
-  # The destination to download the release to.
-  download_dest=$(mktemp -t gherkio.XXXXXXXXXX)
+  echo "Latest release: $tag_name"
 
-  echo "Downloading gherkio from $download_url"
+  # ── Find the right asset ──
+  # GoReleaser naming: gherkio_{version}_{Os}_{Arch}.tar.gz (or .zip for Windows)
+  if [ "$os" = "Windows" ]; then
+    extension=".zip"
+    binary_name="gherkio.exe"
+  else
+    extension=".tar.gz"
+    binary_name="gherkio"
+  fi
 
-  # Download the latest release.
-  curl -fL "$download_url" -o "$download_dest"
+  # Match the asset name — GoReleaser uses title-case OS (Linux, Darwin, Windows)
+  asset_pattern="gherkio_${tag_name}_${os}_${arch}${extension}"
 
-  # The directory to unpack the release to.
-  unpack_dir=$(mktemp -d -t gherkio.XXXXXXXXXX)
+  download_url=$(echo "$release_data" | \
+    grep -o "https://github.com/${github_repo}/releases/download/${tag_name}/${asset_pattern}" | \
+    head -1)
 
-  # Unpack the release.
-  tar -C "$unpack_dir" -xzf "$download_dest"
+  if [ -z "$download_url" ]; then
+    # Fallback: try to find any matching asset by name
+    echo "Could not find asset: ${asset_pattern}"
+    echo "Available assets for this release:"
+    echo "$release_data" | grep -o '"name": "[^"]*' | sed 's/"name": "//' | while read -r name; do
+      echo "  - $name"
+    done
+    exit 1
+  fi
 
-  # The path to the binary.
-  binary_path="$unpack_dir/gherkio"
+  # ── Download ──
+  tmp_dir=$(mktemp -d -t gherkio.XXXXXXXXXX)
+  archive_file="${tmp_dir}/gherkio${extension}"
 
-  # The destination to install the binary to.
-  install_path="/usr/local/bin/gherkio"
+  echo "Downloading ${asset_pattern}..."
+  curl -fL "$download_url" -o "$archive_file"
 
-  echo "Installing gherkio to $install_path"
+  # ── Extract ──
+  if [ "$os" = "Windows" ]; then
+    unzip -qo "$archive_file" -d "$tmp_dir" 2>/dev/null || {
+      echo "Extraction failed. Requires 'unzip'."
+      exit 1
+    }
+  else
+    tar -C "$tmp_dir" -xzf "$archive_file" 2>/dev/null || {
+      echo "Extraction failed. Requires 'tar'."
+      exit 1
+    }
+  fi
 
-  # Install the binary.
+  binary_path="${tmp_dir}/${binary_name}"
+  if [ ! -f "$binary_path" ]; then
+    echo "Binary not found in archive: ${binary_name}"
+    ls -la "$tmp_dir"
+    exit 1
+  fi
+
+  # ── Install ──
+  install_path="/usr/local/bin/${binary_name}"
+  echo "Installing to ${install_path}..."
+
   install -d "$(dirname "$install_path")"
   install "$binary_path" "$install_path"
 
-  echo "gherkio installed successfully."
+  # Cleanup
+  rm -rf "$tmp_dir"
+
+  echo "Gherkio ${tag_name} installed successfully."
+  echo "Run 'gherkio --help' to get started."
 }
 
 main "$@"
