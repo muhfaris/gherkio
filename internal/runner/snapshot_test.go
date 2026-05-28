@@ -29,10 +29,9 @@ func TestWriteFailureSnapshot(t *testing.T) {
 			Body:    `{"username":"testuser","password":"supersecret"}`,
 		},
 		Response: &ResponseInfo{
-			Status:   401,
-			Duration: 150 * time.Millisecond,
-			Headers:  map[string]string{"Content-Type": "application/json"},
-			Body:     `{"error":"Invalid credentials"}`,
+			Status:  401,
+			Headers: map[string]string{"Content-Type": "application/json"},
+			Body:    `{"error":"Invalid credentials"}`,
 		},
 		Assertions: []AssertionResult{
 			{
@@ -222,6 +221,7 @@ func TestParseBodyAsInterface(t *testing.T) {
 		maskFields     []string
 		expectParsed   bool
 		expectMasked   bool
+		expectKey      string // for nested JSON, the key to check for masking
 	}{
 		{
 			name:          "valid JSON",
@@ -255,6 +255,7 @@ func TestParseBodyAsInterface(t *testing.T) {
 			maskFields:    []string{"token"},
 			expectParsed:  true,
 			expectMasked:  true,
+			expectKey:     "user",
 		},
 	}
 
@@ -264,7 +265,14 @@ func TestParseBodyAsInterface(t *testing.T) {
 
 			if tt.expectParsed {
 				if m, ok := result.(map[string]interface{}); ok {
-					if tt.expectMasked {
+					if tt.expectMasked && tt.expectKey != "" {
+						// Nested case: check the inner object
+						if inner, ok := m[tt.expectKey].(map[string]interface{}); ok {
+							if inner["token"] != "***masked***" {
+								t.Errorf("expected token to be masked, got %v", inner["token"])
+							}
+						}
+					} else if tt.expectMasked {
 						if m["password"] != "***masked***" {
 							t.Errorf("expected password to be masked, got %v", m["password"])
 						}
@@ -431,13 +439,13 @@ steps:
 		},
 	}
 
-	err = writeFailureSnapshot(cfg, result, 1, "test scenario", testFile, "steps", map[string]interface{}{})
-	if err != nil {
-		t.Fatalf("writeFailureSnapshot failed: %v", err)
+	snapshotErr := writeFailureSnapshot(cfg, result, 1, "test scenario", testFile, "steps", map[string]interface{}{})
+	if snapshotErr != nil {
+		t.Fatalf("writeFailureSnapshot failed: %v", snapshotErr)
 	}
 
 	// Read and verify the snapshot has line number
-	content, err := os.ReadFile(filepath.Join(tmpDir, "failure-test-scenario-step1-"+func() string {
+	findFilename := func() string {
 		entries, _ := os.ReadDir(tmpDir)
 		for _, e := range entries {
 			if strings.Contains(e.Name(), "step1") {
@@ -445,9 +453,19 @@ steps:
 			}
 		}
 		return ""
-	}()))
-	if err != nil {
-		t.Fatalf("failed to read snapshot: %v", err)
+	}
+
+	filename := findFilename()
+	if filename == "" {
+		t.Fatal("failed to find snapshot file")
+	}
+
+	// The filename is just the found filename, not prepended with the pattern
+	snapshotFile := filepath.Join(tmpDir, filename)
+
+	content, readErr := os.ReadFile(snapshotFile)
+	if readErr != nil {
+		t.Fatalf("failed to read snapshot: %v", readErr)
 	}
 
 	var snapshot FailureSnapshot

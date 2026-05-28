@@ -190,7 +190,7 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 	// Also check if path exists relative to .gherkio/tests/ (for paths like "configurations/partner-status/")
 	altFullPath := filepath.Join(projectDir, ".gherkio", "tests", testPath)
 	if info, err := os.Stat(altFullPath); err == nil && info.IsDir() {
-		return runAllInDir(altFullPath, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap)
+		return runAllInDir(altFullPath, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap, snapshotCfg)
 	}
 
 	// Resolve single test file path
@@ -199,7 +199,7 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 		return fmt.Errorf("test file not found: %w", err)
 	}
 
-	return runSingleTest(fullPath, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap)
+	return runSingleTest(fullPath, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap, snapshotCfg)
 }
 
 func handleReport(result *runner.RunResult, projectDir string, env string, reportCfg *report.ReportConfig) {
@@ -292,7 +292,7 @@ func handleSuiteReport(results []*runner.RunResult, projectDir string, env strin
 	}
 }
 
-func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, creds *model.Credentials, accountName string, allAccounts bool, allAccountsMap map[string]interface{}) error {
+func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, creds *model.Credentials, accountName string, allAccounts bool, allAccountsMap map[string]interface{}, snapshotCfg runner.SnapshotConfig) error {
 	// Determine which accounts to run
 	// Suppress hint if the test already uses $accounts.<name>.<field> syntax
 	suppressHint := testReferencesAccounts(testPath)
@@ -303,7 +303,7 @@ func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *re
 
 	// If multiple accounts, run each sequentially
 	if len(accounts) > 1 {
-		return runSingleTestMultiAccount(testPath, projectDir, env, verbose, reportCfg, maskFields, accounts, allAccountsMap)
+		return runSingleTestMultiAccount(testPath, projectDir, env, verbose, reportCfg, maskFields, accounts, allAccountsMap, snapshotCfg)
 	}
 
 	// Single account (or no credentials)
@@ -434,7 +434,7 @@ func resolveAccounts(creds *model.Credentials, accountName string, allAccounts b
 }
 
 // runSingleTestMultiAccount runs a single test file against multiple accounts.
-func runSingleTestMultiAccount(testPath, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, accounts map[string]model.Account, allAccountsMap map[string]interface{}) error {
+func runSingleTestMultiAccount(testPath, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, accounts map[string]model.Account, allAccountsMap map[string]interface{}, snapshotCfg runner.SnapshotConfig) error {
 	var allResults []*runner.RunResult
 	totalPass := 0
 	totalFail := 0
@@ -514,7 +514,7 @@ func runSingleTestMultiAccount(testPath, projectDir, env string, verbose bool, r
 
 func runAllTests(projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, creds *model.Credentials, accountName string, allAccounts bool, allAccountsMap map[string]interface{}, snapshotCfg runner.SnapshotConfig) error {
 	testsDir := filepath.Join(projectDir, ".gherkio", "tests")
-	return runAllInDir(testsDir, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap)
+	return runAllInDir(testsDir, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap, snapshotCfg)
 }
 
 func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, creds *model.Credentials, accountName string, allAccounts bool, allAccountsMap map[string]interface{}, snapshotCfg runner.SnapshotConfig) error {

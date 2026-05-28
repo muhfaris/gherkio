@@ -145,8 +145,9 @@ func writeFailureSnapshot(
 		}
 	}
 
-	// Add variable store
-	snapshot.Diagnostics.VariableStore = snapshotVars(vars, cfg.MaskFields, cfg.MaskSensitive)
+	// Add variable store - use the existing snapshotVars from runner.go
+	maskedVars := snapshotVars(vars, cfg.MaskFields, cfg.MaskSensitive)
+	snapshot.Diagnostics.VariableStore = maskedVars
 
 	// Ensure the directory exists
 	if err := os.MkdirAll(cfg.Path, 0755); err != nil {
@@ -199,7 +200,6 @@ func parseBodyAsInterface(body string, maskFields []string, maskSensitive bool) 
 
 	return parsed
 }
-
 
 // pruneFailureSnapshots removes old snapshots beyond the retain count.
 func pruneFailureSnapshots(dir string, retainCount int) error {
