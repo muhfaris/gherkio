@@ -111,6 +111,22 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 		maskFields = appCfg.Security.Mask.Fields
 	}
 
+	// Build snapshot configuration from config file
+	var snapshotCfg runner.SnapshotConfig
+	if appCfg != nil {
+		snapshotCfg = runner.SnapshotConfig{
+			Enabled:       appCfg.Reports.Failures.Enabled,
+			MaskSensitive:  appCfg.Reports.Failures.MaskSensitive,
+			MaskFields:    maskFields,
+			RetainCount:   appCfg.Reports.Failures.RetainCount,
+		}
+		if appCfg.Reports.Failures.Path != "" {
+			snapshotCfg.Path = appCfg.Reports.Failures.Path
+		} else {
+			snapshotCfg.Path = filepath.Join(projectDir, ".gherkio", "reports", "failures")
+		}
+	}
+
 	// Build common report configuration
 	var reportCfg *report.ReportConfig
 	if reportFormat != "" {
@@ -156,7 +172,7 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 
 	// No test path or directory: run all tests
 	if testPath == "" {
-		return runAllTests(projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap)
+		return runAllTests(projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap, snapshotCfg)
 	}
 
 	// Check if the path is a directory
@@ -168,13 +184,13 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 		if altInfo, altErr := os.Stat(altPath); altErr == nil && altInfo.IsDir() {
 			testDir = altPath
 		}
-		return runAllInDir(testDir, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap)
+		return runAllInDir(testDir, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap, snapshotCfg)
 	}
 
 	// Also check if path exists relative to .gherkio/tests/ (for paths like "configurations/partner-status/")
 	altFullPath := filepath.Join(projectDir, ".gherkio", "tests", testPath)
 	if info, err := os.Stat(altFullPath); err == nil && info.IsDir() {
-		return runAllInDir(altFullPath, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap)
+		return runAllInDir(altFullPath, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap, snapshotCfg)
 	}
 
 	// Resolve single test file path
@@ -183,7 +199,7 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 		return fmt.Errorf("test file not found: %w", err)
 	}
 
-	return runSingleTest(fullPath, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap)
+	return runSingleTest(fullPath, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap, snapshotCfg)
 }
 
 func handleReport(result *runner.RunResult, projectDir string, env string, reportCfg *report.ReportConfig) {
@@ -276,7 +292,7 @@ func handleSuiteReport(results []*runner.RunResult, projectDir string, env strin
 	}
 }
 
-func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, creds *model.Credentials, accountName string, allAccounts bool, allAccountsMap map[string]interface{}) error {
+func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, creds *model.Credentials, accountName string, allAccounts bool, allAccountsMap map[string]interface{}, snapshotCfg runner.SnapshotConfig) error {
 	// Determine which accounts to run
 	// Suppress hint if the test already uses $accounts.<name>.<field> syntax
 	suppressHint := testReferencesAccounts(testPath)
@@ -287,7 +303,7 @@ func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *re
 
 	// If multiple accounts, run each sequentially
 	if len(accounts) > 1 {
-		return runSingleTestMultiAccount(testPath, projectDir, env, verbose, reportCfg, maskFields, accounts, allAccountsMap)
+		return runSingleTestMultiAccount(testPath, projectDir, env, verbose, reportCfg, maskFields, accounts, allAccountsMap, snapshotCfg)
 	}
 
 	// Single account (or no credentials)
@@ -333,6 +349,7 @@ func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *re
 		StepIndex:      targetStepIdx,
 		StepSection:    targetSection,
 		DryRun:         dryRun,
+		Snapshot:       snapshotCfg,
 	}
 
 	result, err := runner.Run(cfg)
@@ -417,7 +434,7 @@ func resolveAccounts(creds *model.Credentials, accountName string, allAccounts b
 }
 
 // runSingleTestMultiAccount runs a single test file against multiple accounts.
-func runSingleTestMultiAccount(testPath, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, accounts map[string]model.Account, allAccountsMap map[string]interface{}) error {
+func runSingleTestMultiAccount(testPath, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, accounts map[string]model.Account, allAccountsMap map[string]interface{}, snapshotCfg runner.SnapshotConfig) error {
 	var allResults []*runner.RunResult
 	totalPass := 0
 	totalFail := 0
@@ -444,6 +461,7 @@ func runSingleTestMultiAccount(testPath, projectDir, env string, verbose bool, r
 			StepIndex:      -1,
 			StepSection:    "",
 			DryRun:         dryRun,
+			Snapshot:       snapshotCfg,
 		}
 
 		result, err := runner.Run(cfg)
@@ -494,12 +512,12 @@ func runSingleTestMultiAccount(testPath, projectDir, env string, verbose bool, r
 	return nil
 }
 
-func runAllTests(projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, creds *model.Credentials, accountName string, allAccounts bool, allAccountsMap map[string]interface{}) error {
+func runAllTests(projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, creds *model.Credentials, accountName string, allAccounts bool, allAccountsMap map[string]interface{}, snapshotCfg runner.SnapshotConfig) error {
 	testsDir := filepath.Join(projectDir, ".gherkio", "tests")
-	return runAllInDir(testsDir, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap)
+	return runAllInDir(testsDir, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap, snapshotCfg)
 }
 
-func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, creds *model.Credentials, accountName string, allAccounts bool, allAccountsMap map[string]interface{}) error {
+func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, creds *model.Credentials, accountName string, allAccounts bool, allAccountsMap map[string]interface{}, snapshotCfg runner.SnapshotConfig) error {
 	files, err := discoverTestFiles(testDir)
 	if err != nil {
 		return fmt.Errorf("failed to discover test files: %w", err)
@@ -537,15 +555,15 @@ func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *repor
 	// If multiple accounts, run each test against all accounts
 	if len(accounts) > 1 {
 		if parallelCount > 1 {
-			return runAllInDirParallel(testDir, projectDir, env, verbose, reportCfg, maskFields, files, accounts, allAccountsMap)
+			return runAllInDirParallel(testDir, projectDir, env, verbose, reportCfg, maskFields, files, accounts, allAccountsMap, snapshotCfg)
 		}
-		return runAllInDirMultiAccount(testDir, projectDir, env, verbose, reportCfg, maskFields, files, accounts, allAccountsMap)
+		return runAllInDirMultiAccount(testDir, projectDir, env, verbose, reportCfg, maskFields, files, accounts, allAccountsMap, snapshotCfg)
 	}
 
 	// Single account or no accounts - run each test file
 	// Use parallel execution if --parallel is specified
 	if parallelCount > 1 {
-		return runAllInDirParallel(testDir, projectDir, env, verbose, reportCfg, maskFields, files, accounts, allAccountsMap)
+		return runAllInDirParallel(testDir, projectDir, env, verbose, reportCfg, maskFields, files, accounts, allAccountsMap, snapshotCfg)
 	}
 
 	totalPass := 0
@@ -585,6 +603,7 @@ func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *repor
 			StepIndex:      -1,
 			StepSection:    "",
 			DryRun:         dryRun,
+			Snapshot:       snapshotCfg,
 		}
 
 		result, err := runner.Run(cfg)
@@ -653,7 +672,7 @@ func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *repor
 }
 
 // runAllInDirMultiAccount runs all test files against multiple accounts.
-func runAllInDirMultiAccount(testDir, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, files []string, accounts map[string]model.Account, allAccountsMap map[string]interface{}) error {
+func runAllInDirMultiAccount(testDir, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, files []string, accounts map[string]model.Account, allAccountsMap map[string]interface{}, snapshotCfg runner.SnapshotConfig) error {
 	var allResults []*runner.RunResult
 	totalPass := 0
 	totalFail := 0
@@ -698,6 +717,7 @@ func runAllInDirMultiAccount(testDir, projectDir, env string, verbose bool, repo
 				StepIndex:      -1,
 				StepSection:    "",
 				DryRun:         dryRun,
+				Snapshot:       snapshotCfg,
 			}
 
 			result, err := runner.Run(cfg)
@@ -857,7 +877,7 @@ func resolveTestPath(cwd, projectDir, testPath string) (string, error) {
 }
 
 // runAllInDirParallel runs tests in parallel using goroutines.
-func runAllInDirParallel(testDir, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, files []string, accounts map[string]model.Account, allAccountsMap map[string]interface{}) error {
+func runAllInDirParallel(testDir, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, files []string, accounts map[string]model.Account, allAccountsMap map[string]interface{}, snapshotCfg runner.SnapshotConfig) error {
 	// Determine concurrency
 	concurrency := parallelCount
 	if concurrency <= 0 {
@@ -914,6 +934,7 @@ func runAllInDirParallel(testDir, projectDir, env string, verbose bool, reportCf
 				StepIndex:      -1,
 				StepSection:    "",
 				DryRun:         dryRun,
+				Snapshot:       snapshotCfg,
 			}
 
 			result, err := runner.Run(cfg)
