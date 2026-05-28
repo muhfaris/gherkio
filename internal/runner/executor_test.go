@@ -911,9 +911,15 @@ func TestBuildMultipartBody(t *testing.T) {
 			},
 		}
 
-		_, _, err := buildMultipartBody(mp, tmpDir)
+		reader, _, err := buildMultipartBody(mp, tmpDir)
+		if err != nil {
+			t.Fatalf("buildMultipartBody should not return error immediately for async pipe: %v", err)
+		}
+
+		// Read from pipe to trigger the goroutine error
+		_, err = io.ReadAll(reader)
 		if err == nil {
-			t.Error("expected error for missing file")
+			t.Error("expected error for missing file when reading from pipe")
 		}
 	})
 }
