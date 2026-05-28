@@ -74,6 +74,7 @@ type ReportConfig struct {
 	Path          string
 	MaskSensitive bool
 	MaskFields    []string
+	Retention     int
 }
 
 // MapResultToReportData converts a runner.RunResult into a ReportData struct.
