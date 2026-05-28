@@ -22,3 +22,6 @@ Thumbs.db
 *.test
 *.out
 coverage.out
+
+### Graphify
+graphify-out/cache
