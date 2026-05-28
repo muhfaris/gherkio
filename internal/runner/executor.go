@@ -222,20 +222,31 @@ func executeRequest(method, url string, headers map[string]string, body interfac
 // buildMultipartBody constructs a multipart/form-data body from the given configuration.
 // It returns the body bytes, the content-type header value, and any error encountered.
 //
-// NOTE: Current implementation buffers everything into RAM using bytes.Buffer.
-// This is safe for standard API testing (files <10MB) and highly performant.
-// For extremely large uploads (>100MB), consider switching to io.Pipe streaming:
-//   r, w := io.Pipe()
-//   writer := multipart.NewWriter(w)
-//   go func() { defer w.Close(); writeMultipartParts(writer, mp, projectDir) }()
-// This avoids loading the entire payload into memory.
+// Uses a temporary file for buffering to safely handle large file uploads without
+// loading everything into memory. This is important for API testing with large payloads.
 func buildMultipartBody(mp *model.MultipartConfig, projectDir string) (io.Reader, string, error) {
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
+	// Create temp file for streaming multipart body
+	tmpFile, err := os.CreateTemp("", "gherkio-multipart-*")
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to create temp file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+	tmpFile.Close()
+
+	// Open the temp file for writing
+	file, err := os.OpenFile(tmpPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		os.Remove(tmpPath)
+		return nil, "", fmt.Errorf("failed to open temp file: %w", err)
+	}
+
+	writer := multipart.NewWriter(file)
 
 	// Write form fields
 	for key, value := range mp.Fields {
 		if err := writer.WriteField(key, value); err != nil {
+			file.Close()
+			os.Remove(tmpPath)
 			return nil, "", fmt.Errorf("failed to write field '%s': %w", key, err)
 		}
 	}
@@ -243,16 +254,53 @@ func buildMultipartBody(mp *model.MultipartConfig, projectDir string) (io.Reader
 	// Write file fields
 	for key, item := range mp.Files {
 		if err := writeMultipartFile(writer, key, item, projectDir); err != nil {
+			file.Close()
+			os.Remove(tmpPath)
 			return nil, "", err
 		}
 	}
 
-	// Close the writer to finalize the boundary
+	// Close writer to finalize boundary
 	if err := writer.Close(); err != nil {
+		file.Close()
+		os.Remove(tmpPath)
 		return nil, "", fmt.Errorf("failed to close multipart writer: %w", err)
 	}
 
-	return bytes.NewReader(body.Bytes()), writer.FormDataContentType(), nil
+	contentType := writer.FormDataContentType()
+
+	// Seek to beginning for reading
+	if _, err := file.Seek(0, 0); err != nil {
+		file.Close()
+		os.Remove(tmpPath)
+		return nil, "", fmt.Errorf("failed to seek temp file: %w", err)
+	}
+
+	// Return a reader that will clean up the temp file when closed
+	reader := &tempFileReader{
+		File:     file,
+		path:     tmpPath,
+		closed:   false,
+	}
+
+	return reader, contentType, nil
+}
+
+// tempFileReader wraps an os.File and cleans up the temp file when closed.
+type tempFileReader struct {
+	*os.File
+	path   string
+	closed bool
+}
+
+func (r *tempFileReader) Close() error {
+	if r.closed {
+		return nil
+	}
+	r.closed = true
+	err := r.File.Close()
+	os.Remove(r.path)
+	return err
 }
 
 // writeMultipartFile writes a single file part to the multipart writer.
