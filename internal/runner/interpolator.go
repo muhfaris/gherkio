@@ -112,21 +112,30 @@ func interpolateString(s string, vars map[string]interface{}) (string, error) {
 	//   3: default value after colon (e.g. 42 in ${var:42}) — optional
 	re := regexp.MustCompile(`\$\{?([a-zA-Z_][a-zA-Z0-9_]+(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)(?:\(([^)]*)\))?(?::([^}]*))?}?`)
 
+	var evalErr error
+
 	result := re.ReplaceAllStringFunc(s, func(match string) string {
+		if evalErr != nil {
+			return match
+		}
+
 		submatch := re.FindStringSubmatch(match)
 		varName := submatch[1]
 		args := submatch[2]
 		defaultValue := submatch[3]
 
-		// Check if this is a parametrized generator function call (has arguments)
-		if args != "" {
+		hasParens := strings.Contains(match, "(") && strings.Contains(match, ")")
+
+		// Check if this is a parametrized generator function call (has parens or arguments)
+		if hasParens {
 			funcs := GetGeneratorFuncs()
 			if fn, ok := funcs[varName]; ok {
 				val, err := fn(args)
-				if err == nil {
-					return fmt.Sprintf("%v", val)
+				if err != nil {
+					evalErr = fmt.Errorf("function '%s' failed: %w", varName, err)
+					return match
 				}
-				// If generation fails, fall through to normal lookup / default
+				return fmt.Sprintf("%v", val)
 			}
 		}
 
@@ -144,15 +153,20 @@ func interpolateString(s string, vars map[string]interface{}) (string, error) {
 		return match
 	})
 
+	if evalErr != nil {
+		return "", evalErr
+	}
+
 	// Check if there are any unmatched variables
 	matches := re.FindAllStringSubmatch(result, -1)
 	for _, match := range matches {
 		varName := match[1]
-		args := match[2]
 		defaultValue := match[3]
 
+		hasParens := strings.Contains(match[0], "(") && strings.Contains(match[0], ")")
+
 		// Skip parametrized generator functions (e.g. ${randomInt(1,100)})
-		if args != "" {
+		if hasParens {
 			funcs := GetGeneratorFuncs()
 			if _, ok := funcs[varName]; ok {
 				continue
