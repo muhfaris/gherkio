@@ -1,11 +1,15 @@
 package runner
 
 import (
+	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/muhfaris/gherkio/internal/model"
 )
 
 func TestResolvePath(t *testing.T) {
@@ -753,6 +757,362 @@ properties:
 		}
 		if !strings.Contains(result.Reason, "schema name must be a string") {
 			t.Errorf("expected reason to mention 'schema name must be a string', got: %s", result.Reason)
+		}
+	})
+}
+
+func TestBuildMultipartBody(t *testing.T) {
+	// Create temp dir with test files
+	tmpDir := t.TempDir()
+
+	// Create test files
+	testFiles := map[string]string{
+		"test.txt":      "Hello, World!",
+		"data.csv":      "name,age\nAlice,30\nBob,25",
+		"profile.png":   "\x89PNG\r\n\x1a\n...", // Minimal PNG header
+	}
+
+	for filename, content := range testFiles {
+		fpath := filepath.Join(tmpDir, filename)
+		if err := os.WriteFile(fpath, []byte(content), 0644); err != nil {
+			t.Fatalf("failed to create test file %s: %v", filename, err)
+		}
+	}
+
+	t.Run("basic multipart with fields and files", func(t *testing.T) {
+		mp := &model.MultipartConfig{
+			Fields: map[string]string{
+				"username": "testuser",
+				"role":     "admin",
+			},
+			Files: map[string]model.MultipartItem{
+				"avatar": {Path: filepath.Join(tmpDir, "test.txt")},
+			},
+		}
+
+		reader, contentType, err := buildMultipartBody(mp, tmpDir)
+		if err != nil {
+			t.Fatalf("buildMultipartBody failed: %v", err)
+		}
+
+		if !strings.HasPrefix(contentType, "multipart/form-data; boundary=") {
+			t.Errorf("expected multipart content type, got: %s", contentType)
+		}
+
+		// Read and verify body contains the fields
+		body, err := io.ReadAll(reader)
+		if err != nil {
+			t.Fatalf("failed to read body: %v", err)
+		}
+
+		if !bytes.Contains(body, []byte("username")) {
+			t.Error("expected body to contain 'username' field")
+		}
+		if !bytes.Contains(body, []byte("testuser")) {
+			t.Error("expected body to contain 'testuser' value")
+		}
+		if !bytes.Contains(body, []byte("role")) {
+			t.Error("expected body to contain 'role' field")
+		}
+		if !bytes.Contains(body, []byte("admin")) {
+			t.Error("expected body to contain 'admin' value")
+		}
+		if !bytes.Contains(body, []byte("avatar")) {
+			t.Error("expected body to contain 'avatar' file field")
+		}
+		if !bytes.Contains(body, []byte("test.txt")) {
+			t.Error("expected body to contain filename 'test.txt'")
+		}
+	})
+
+	t.Run("multipart with custom content type", func(t *testing.T) {
+		mp := &model.MultipartConfig{
+			Files: map[string]model.MultipartItem{
+				"document": {
+					Path:        filepath.Join(tmpDir, "data.csv"),
+					ContentType: "application/pdf",
+					Filename:    "custom_report.csv",
+				},
+			},
+		}
+
+		reader, _, err := buildMultipartBody(mp, tmpDir)
+		if err != nil {
+			t.Fatalf("buildMultipartBody failed: %v", err)
+		}
+
+		body, err := io.ReadAll(reader)
+		if err != nil {
+			t.Fatalf("failed to read body: %v", err)
+		}
+
+		// Should contain custom filename
+		if !bytes.Contains(body, []byte("custom_report.csv")) {
+			t.Error("expected body to contain custom filename 'custom_report.csv'")
+		}
+	})
+
+	t.Run("multipart with only fields", func(t *testing.T) {
+		mp := &model.MultipartConfig{
+			Fields: map[string]string{
+				"email": "test@example.com",
+				"name":  "Test User",
+			},
+		}
+
+		reader, contentType, err := buildMultipartBody(mp, tmpDir)
+		if err != nil {
+			t.Fatalf("buildMultipartBody failed: %v", err)
+		}
+
+		if !strings.HasPrefix(contentType, "multipart/form-data; boundary=") {
+			t.Errorf("expected multipart content type, got: %s", contentType)
+		}
+
+		body, err := io.ReadAll(reader)
+		if err != nil {
+			t.Fatalf("failed to read body: %v", err)
+		}
+
+		if !bytes.Contains(body, []byte("email")) {
+			t.Error("expected body to contain 'email' field")
+		}
+		if !bytes.Contains(body, []byte("test@example.com")) {
+			t.Error("expected body to contain email value")
+		}
+	})
+
+	t.Run("multipart with only files", func(t *testing.T) {
+		mp := &model.MultipartConfig{
+			Files: map[string]model.MultipartItem{
+				"upload": {Path: filepath.Join(tmpDir, "profile.png")},
+			},
+		}
+
+		reader, _, err := buildMultipartBody(mp, tmpDir)
+		if err != nil {
+			t.Fatalf("buildMultipartBody failed: %v", err)
+		}
+
+		body, err := io.ReadAll(reader)
+		if err != nil {
+			t.Fatalf("failed to read body: %v", err)
+		}
+
+		if !bytes.Contains(body, []byte("profile.png")) {
+			t.Error("expected body to contain filename 'profile.png'")
+		}
+	})
+
+	t.Run("file not found", func(t *testing.T) {
+		mp := &model.MultipartConfig{
+			Files: map[string]model.MultipartItem{
+				"missing": {Path: filepath.Join(tmpDir, "nonexistent.txt")},
+			},
+		}
+
+		_, _, err := buildMultipartBody(mp, tmpDir)
+		if err == nil {
+			t.Error("expected error for missing file")
+		}
+	})
+}
+
+func TestResolveMultipartFilePath(t *testing.T) {
+	// Create temp project dir
+	tmpDir := t.TempDir()
+	fixturesDir := filepath.Join(tmpDir, "fixtures")
+	if err := os.MkdirAll(fixturesDir, 0755); err != nil {
+		t.Fatalf("failed to create fixtures dir: %v", err)
+	}
+
+	// Create test file in project root
+	testFilePath := filepath.Join(tmpDir, "test.txt")
+	if err := os.WriteFile(testFilePath, []byte("test"), 0644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+
+	// Create test file in fixtures
+	fixturesFilePath := filepath.Join(fixturesDir, "fixture.txt")
+	if err := os.WriteFile(fixturesFilePath, []byte("fixture"), 0644); err != nil {
+		t.Fatalf("failed to create fixtures file: %v", err)
+	}
+
+	t.Run("absolute path", func(t *testing.T) {
+		path, err := resolveMultipartFilePath(testFilePath, tmpDir)
+		if err != nil {
+			t.Errorf("expected success for absolute path, got: %v", err)
+		}
+		if path != testFilePath {
+			t.Errorf("expected %s, got %s", testFilePath, path)
+		}
+	})
+
+	t.Run("relative to project root", func(t *testing.T) {
+		path, err := resolveMultipartFilePath("test.txt", tmpDir)
+		if err != nil {
+			t.Errorf("expected success for relative path, got: %v", err)
+		}
+		if path != testFilePath {
+			t.Errorf("expected %s, got %s", testFilePath, path)
+		}
+	})
+
+	t.Run("fixtures directory fallback", func(t *testing.T) {
+		path, err := resolveMultipartFilePath("fixture.txt", tmpDir)
+		if err != nil {
+			t.Errorf("expected success for fixtures path, got: %v", err)
+		}
+		if path != fixturesFilePath {
+			t.Errorf("expected %s, got %s", fixturesFilePath, path)
+		}
+	})
+
+	t.Run("file not found", func(t *testing.T) {
+		_, err := resolveMultipartFilePath("nonexistent.txt", tmpDir)
+		if err == nil {
+			t.Error("expected error for nonexistent file")
+		}
+	})
+}
+
+func TestDetectContentType(t *testing.T) {
+	tests := []struct {
+		filename    string
+		expected    string
+	}{
+		{"test.png", "image/png"},
+		{"photo.JPG", "image/jpeg"},
+		{"photo.jpeg", "image/jpeg"},
+		{"document.pdf", "application/pdf"},
+		{"data.csv", "text/csv"},
+		{"readme.txt", "text/plain"},
+		{"index.html", "text/html"},
+		{"config.json", "application/json"},
+		{"archive.zip", "application/zip"},
+		{"document.doc", "application/msword"},
+		{"report.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"},
+		{"unknown.xyz", "application/octet-stream"},
+		{"noextension", "application/octet-stream"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.filename, func(t *testing.T) {
+			result := detectContentType(tt.filename)
+			if result != tt.expected {
+				t.Errorf("detectContentType(%q) = %q, want %q", tt.filename, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestInterpolateMultipart(t *testing.T) {
+	vars := map[string]interface{}{
+		"username":     "testuser",
+		"role":         "admin",
+		"filePath":      "fixtures/avatar.png",
+		"customName":    "my_custom_file.pdf",
+	}
+
+	t.Run("interpolate fields and file paths", func(t *testing.T) {
+		req := model.Request{
+			Method: "POST",
+			URL:    "/upload",
+			Multipart: &model.MultipartConfig{
+				Fields: map[string]string{
+					"user": "$username",
+					"role": "$role",
+				},
+				Files: map[string]model.MultipartItem{
+					"avatar": {Path: "$filePath"},
+				},
+			},
+		}
+
+		interpolated, err := InterpolateRequest(req, vars)
+		if err != nil {
+			t.Fatalf("InterpolateRequest failed: %v", err)
+		}
+
+		if interpolated.Multipart == nil {
+			t.Fatal("expected multipart to be set")
+		}
+
+		if interpolated.Multipart.Fields["user"] != "testuser" {
+			t.Errorf("expected user='testuser', got '%s'", interpolated.Multipart.Fields["user"])
+		}
+
+		if interpolated.Multipart.Fields["role"] != "admin" {
+			t.Errorf("expected role='admin', got '%s'", interpolated.Multipart.Fields["role"])
+		}
+
+		if interpolated.Multipart.Files["avatar"].Path != "fixtures/avatar.png" {
+			t.Errorf("expected path='fixtures/avatar.png', got '%s'", interpolated.Multipart.Files["avatar"].Path)
+		}
+	})
+
+	t.Run("interpolate filename override", func(t *testing.T) {
+		req := model.Request{
+			Method: "POST",
+			URL:    "/upload",
+			Multipart: &model.MultipartConfig{
+				Files: map[string]model.MultipartItem{
+					"document": {
+						Path:     "fixtures/doc.pdf",
+						Filename: "$customName",
+					},
+				},
+			},
+		}
+
+		interpolated, err := InterpolateRequest(req, vars)
+		if err != nil {
+			t.Fatalf("InterpolateRequest failed: %v", err)
+		}
+
+		if interpolated.Multipart.Files["document"].Filename != "my_custom_file.pdf" {
+			t.Errorf("expected filename='my_custom_file.pdf', got '%s'", interpolated.Multipart.Files["document"].Filename)
+		}
+	})
+
+	t.Run("preserve content type when set", func(t *testing.T) {
+		req := model.Request{
+			Method: "POST",
+			URL:    "/upload",
+			Multipart: &model.MultipartConfig{
+				Files: map[string]model.MultipartItem{
+					"document": {
+						Path:        "fixtures/doc.pdf",
+						ContentType: "application/pdf",
+					},
+				},
+			},
+		}
+
+		interpolated, err := InterpolateRequest(req, vars)
+		if err != nil {
+			t.Fatalf("InterpolateRequest failed: %v", err)
+		}
+
+		if interpolated.Multipart.Files["document"].ContentType != "application/pdf" {
+			t.Errorf("expected contentType='application/pdf', got '%s'", interpolated.Multipart.Files["document"].ContentType)
+		}
+	})
+
+	t.Run("nil multipart preserved", func(t *testing.T) {
+		req := model.Request{
+			Method: "POST",
+			URL:    "/api",
+			Body:   map[string]interface{}{"name": "test"},
+		}
+
+		interpolated, err := InterpolateRequest(req, vars)
+		if err != nil {
+			t.Fatalf("InterpolateRequest failed: %v", err)
+		}
+
+		if interpolated.Multipart != nil {
+			t.Error("expected multipart to be nil")
 		}
 	})
 }

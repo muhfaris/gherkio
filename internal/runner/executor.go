@@ -5,14 +5,18 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/muhfaris/gherkio/internal/model"
 	"io"
 	"math/rand"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/muhfaris/gherkio/internal/model"
 )
 
 // StepResult holds the result of a single step execution.
@@ -118,9 +122,20 @@ func formatViolation(v SchemaViolation) string {
 }
 
 // executeRequest performs an HTTP request and returns the result.
-func executeRequest(method, url string, headers map[string]string, body interface{}, timeoutStr string) (*ResponseInfo, error) {
+// It supports both regular body requests and multipart/form-data uploads.
+func executeRequest(method, url string, headers map[string]string, body interface{}, multipart *model.MultipartConfig, timeoutStr string, projectDir string) (*ResponseInfo, error) {
 	var bodyReader io.Reader
-	if body != nil {
+	var contentType string
+
+	// Handle multipart form-data if configured
+	if multipart != nil {
+		var err error
+		bodyReader, contentType, err = buildMultipartBody(multipart, projectDir)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build multipart body: %w", err)
+		}
+	} else if body != nil {
+		// Handle regular body
 		switch b := body.(type) {
 		case map[string]interface{}:
 			jsonBody, err := json.Marshal(b)
@@ -149,11 +164,16 @@ func executeRequest(method, url string, headers map[string]string, body interfac
 		req.Header.Set(k, v)
 	}
 
-	// Auto-detect Content-Type when body is a JSON type and not explicitly set
-	if body != nil && req.Header.Get("Content-Type") == "" {
-		switch body.(type) {
-		case map[string]interface{}, []interface{}:
-			req.Header.Set("Content-Type", "application/json")
+	// Set Content-Type for multipart requests
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	} else if body != nil {
+		// Auto-detect Content-Type when body is a JSON type and not explicitly set
+		if req.Header.Get("Content-Type") == "" {
+			switch body.(type) {
+			case map[string]interface{}, []interface{}:
+				req.Header.Set("Content-Type", "application/json")
+			}
 		}
 	}
 
@@ -196,6 +216,146 @@ func executeRequest(method, url string, headers map[string]string, body interfac
 	}
 
 	return info, nil
+}
+
+// buildMultipartBody constructs a multipart/form-data body from the given configuration.
+// It returns the body bytes, the content-type header value, and any error encountered.
+func buildMultipartBody(mp *model.MultipartConfig, projectDir string) (io.Reader, string, error) {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	// Write form fields
+	for key, value := range mp.Fields {
+		if err := writer.WriteField(key, value); err != nil {
+			return nil, "", fmt.Errorf("failed to write field '%s': %w", key, err)
+		}
+	}
+
+	// Write file fields
+	for key, item := range mp.Files {
+		if err := writeMultipartFile(writer, key, item, projectDir); err != nil {
+			return nil, "", err
+		}
+	}
+
+	// Close the writer to finalize the boundary
+	if err := writer.Close(); err != nil {
+		return nil, "", fmt.Errorf("failed to close multipart writer: %w", err)
+	}
+
+	return bytes.NewReader(body.Bytes()), writer.FormDataContentType(), nil
+}
+
+// writeMultipartFile writes a single file part to the multipart writer.
+func writeMultipartFile(writer *multipart.Writer, fieldName string, item model.MultipartItem, projectDir string) error {
+	filePath, err := resolveMultipartFilePath(item.Path, projectDir)
+	if err != nil {
+		return fmt.Errorf("failed to resolve file path for field '%s': %w", fieldName, err)
+	}
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file '%s' for field '%s': %w", filePath, fieldName, err)
+	}
+	defer file.Close()
+
+	// Determine filename from item or from the file system
+	filename := item.Filename
+	if filename == "" {
+		filename = filepath.Base(filePath)
+	}
+
+	// Get content type
+	contentType := item.ContentType
+	if contentType == "" {
+		contentType = detectContentType(filePath)
+	}
+
+	// Create the form file part
+	part, err := writer.CreateFormFile(fieldName, filename)
+	if err != nil {
+		return fmt.Errorf("failed to create form file for field '%s': %w", fieldName, err)
+	}
+
+	// Set content type header if specified
+	if item.ContentType != "" {
+		part.Header().Set("Content-Type", item.ContentType)
+	}
+
+	// Copy file content to the part
+	if _, err := io.Copy(part, file); err != nil {
+		return fmt.Errorf("failed to write file content for field '%s': %w", fieldName, err)
+	}
+
+	return nil
+}
+
+// resolveMultipartFilePath resolves a file path according to Gherkio's path resolution rules.
+// It checks in order: absolute paths, project root relative, then fixtures fallbacks.
+func resolveMultipartFilePath(filePath, projectDir string) (string, error) {
+	// If already absolute and exists, use it
+	if filepath.IsAbs(filePath) {
+		if _, err := os.Stat(filePath); err == nil {
+			return filePath, nil
+		}
+		return "", fmt.Errorf("absolute path does not exist: %s", filePath)
+	}
+
+	// Try project root relative path
+	if projectDir != "" {
+		absPath := filepath.Join(projectDir, filePath)
+		if _, err := os.Stat(absPath); err == nil {
+			return absPath, nil
+		}
+	}
+
+	// Try fixtures directory fallback
+	if projectDir != "" {
+		fixturesPath := filepath.Join(projectDir, "fixtures", filepath.Base(filePath))
+		if _, err := os.Stat(fixturesPath); err == nil {
+			return fixturesPath, nil
+		}
+	}
+
+	// Try as-is relative to current working directory
+	if _, err := os.Stat(filePath); err == nil {
+		absPath, _ := filepath.Abs(filePath)
+		return absPath, nil
+	}
+
+	return "", fmt.Errorf("file not found: %s (checked: absolute, project root, fixtures/)", filePath)
+}
+
+// detectContentType returns the MIME type for a file based on its extension.
+func detectContentType(filePath string) string {
+	switch strings.ToLower(filepath.Ext(filePath)) {
+	case ".png":
+		return "image/png"
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".gif":
+		return "image/gif"
+	case ".pdf":
+		return "application/pdf"
+	case ".csv":
+		return "text/csv"
+	case ".txt":
+		return "text/plain"
+	case ".html", ".htm":
+		return "text/html"
+	case ".json":
+		return "application/json"
+	case ".xml":
+		return "application/xml"
+	case ".zip":
+		return "application/zip"
+	case ".doc":
+		return "application/msword"
+	case ".docx":
+		return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+	default:
+		return "application/octet-stream"
+	}
 }
 
 // evaluateTiming checks that step duration is within the expected max.

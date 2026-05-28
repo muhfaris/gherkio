@@ -314,7 +314,7 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 			}
 
 			attemptStart := time.Now()
-			resp, err = executeRequest(interpolatedRequest.Method, url, interpolatedRequest.Headers, interpolatedRequest.Body, interpolatedRequest.Timeout)
+			resp, err = executeRequest(interpolatedRequest.Method, url, interpolatedRequest.Headers, interpolatedRequest.Body, interpolatedRequest.Multipart, interpolatedRequest.Timeout, projectDir)
 
 			entry := RetryEntry{
 				Attempt:  i,

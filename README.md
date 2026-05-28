@@ -10,6 +10,7 @@ Gherkio lets you describe HTTP-based integration tests as declarative YAML scena
 
 - **Declarative YAML DSL** — Describe test scenarios, not implementation
 - **HTTP Request Execution** — POST, GET, PUT, DELETE with full header/body support
+- **Multipart Form-Data & File Uploads** — Native support for file uploads with automatic boundary handling and content-type metadata
 - **Rich Assertion Engine** — Status codes, field matching, type validation, and more
 - **Advanced Matchers** — `uuid`, `email`, `datetime`, `uri`, `string`, `number`, `boolean`, `array`, `object`, `null`, `true`, `false`, `empty`, `ipv4`, `ipv6`, `base64`, `mac`, and string matchers (`contains`, `startsWith`, `endsWith`, `regex`) plus numeric comparisons (`gt`, `gte`, `lt`, `lte`)
 - **Collection Matchers** — `count(path)` for array length, `all(path)` for element-wise assertions
@@ -216,6 +217,49 @@ steps:
 ```
 
 To protect against leakage of local machine variables, Gherkio strictly ignores any host environment variables that do not start with the `GHERKIO_` prefix.
+
+### File Upload (Multipart Form-Data)
+
+Gherkio supports multipart/form-data requests for file uploads with automatic boundary handling and content-type detection.
+
+**Simple syntax (string path):**
+```yaml
+scenario: Upload user avatar
+
+steps:
+  - request:
+      method: POST
+      url: /users/profile/avatar
+      multipart:
+        fields:
+          username: "$randomString(8, 'alpha')"
+          role: "$accounts.alpha.role"
+        files:
+          avatar: "fixtures/avatar.png"
+```
+
+**Advanced syntax (with contentType and filename):**
+```yaml
+scenario: Upload document
+
+steps:
+  - request:
+      method: POST
+      url: /documents/upload
+      multipart:
+        fields:
+          description: "Annual report 2026"
+        files:
+          document:
+            path: "fixtures/report.pdf"
+            contentType: "application/pdf"
+            filename: "annual-report-2026.pdf"
+```
+
+**File path resolution:**
+1. **Project root** — Relative to `.gherkio/` directory (e.g., `fixtures/avatar.png`)
+2. **Fixtures fallback** — `./fixtures/avatar.png` if only filename provided
+3. **Sibling fixtures** — `tests/fixtures/avatar.png` relative to test file
 
 ### Using named services
 
@@ -743,6 +787,7 @@ Shows full request and response payloads, including headers and bodies (with sen
 |---------|--------|
 | Core runner (HTTP, assertions, saves) | ✅ |
 | Variable interpolation (`$var`, `${var}`, `${var:default}`) | ✅ |
+| Multipart form-data & file uploads | ✅ |
 | Type matchers (uuid, email, datetime, uri, string, number, boolean, array, object, null, true, false) | ✅ |
 | String matchers (contains, startsWith, endsWith, regex) | ✅ |
 | Numeric comparison matchers (gt, gte, lt, lte) | ✅ |
