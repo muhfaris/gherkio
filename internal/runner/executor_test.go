@@ -402,7 +402,7 @@ func TestEvaluateAssertion_CollectionCountComparators(t *testing.T) {
 				map[string]interface{}{"id": 2},
 				map[string]interface{}{"id": 3},
 			},
-			"empty": []interface{}{},
+			"empty":  []interface{}{},
 			"single": []interface{}{"only"},
 		},
 	}

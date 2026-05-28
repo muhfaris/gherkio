@@ -15,11 +15,11 @@ import (
 // into every test run. These are regenerated once per call so each run gets fresh values.
 func BuiltinVars() map[string]interface{} {
 	return map[string]interface{}{
-		"uuid":          generateUUID(),
-		"ulid":          generateULID(),
-		"randomInt":     generateRandomInt(),
-		"randomEmail":   generateRandomEmail(),
-		"randomPhone":   generateRandomPhone(),
+		"uuid":        generateUUID(),
+		"ulid":        generateULID(),
+		"randomInt":   generateRandomInt(),
+		"randomEmail": generateRandomEmail(),
+		"randomPhone": generateRandomPhone(),
 	}
 }
 

@@ -14,7 +14,9 @@ func TestTestStoreCRUDAndValidate(t *testing.T) {
 	// 1. Create a dummy .gherkio setup
 	gDir := filepath.Join(tmpDir, ".gherkio")
 	testsDir := filepath.Join(gDir, "tests")
+	schemasDir := filepath.Join(gDir, "schemas")
 	_ = os.MkdirAll(testsDir, 0755)
+	_ = os.MkdirAll(schemasDir, 0755)
 	_ = os.WriteFile(filepath.Join(gDir, "config.yaml"), []byte(""), 0644)
 
 	// 2. Validate scenarios
@@ -30,7 +32,7 @@ func TestTestStoreCRUDAndValidate(t *testing.T) {
 		},
 	}
 
-	res, err := Validate(validTest, tmpDir)
+	res, err := Validate(validTest, schemasDir)
 	if err != nil || !res.Valid {
 		t.Fatalf("validation failed unexpectedly: %v (res: %+v)", err, res)
 	}
@@ -47,7 +49,7 @@ func TestTestStoreCRUDAndValidate(t *testing.T) {
 		},
 	}
 
-	res, err = Validate(invalidTest, tmpDir)
+	res, err = Validate(invalidTest, schemasDir)
 	if err != nil {
 		t.Fatalf("Validate error: %v", err)
 	}
@@ -56,13 +58,13 @@ func TestTestStoreCRUDAndValidate(t *testing.T) {
 	}
 
 	// 3. Create Test
-	err = CreateTest(tmpDir, "auth/login.yaml", validTest)
+	err = CreateTest(testsDir, schemasDir, "auth/login.yaml", validTest)
 	if err != nil {
 		t.Fatalf("CreateTest failed: %v", err)
 	}
 
 	// Double check list
-	list, err := ListTests(tmpDir)
+	list, err := ListTests(testsDir)
 	if err != nil {
 		t.Fatalf("ListTests failed: %v", err)
 	}
@@ -75,7 +77,7 @@ func TestTestStoreCRUDAndValidate(t *testing.T) {
 
 	// 4. Update Test
 	validTest.Scenario = "Updated Valid Test"
-	err = UpdateTest(filepath.Join(testsDir, "auth/login.yaml"), validTest, tmpDir)
+	err = UpdateTest(filepath.Join(testsDir, "auth/login.yaml"), validTest, schemasDir)
 	if err != nil {
 		t.Fatalf("UpdateTest failed: %v", err)
 	}

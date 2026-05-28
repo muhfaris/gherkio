@@ -54,3 +54,111 @@ project:
 		t.Errorf("unexpected tests dir: %s", meta.TestsDir)
 	}
 }
+
+func TestValidateProject(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Setup a Gherkio project manually
+	gDir := filepath.Join(tmpDir, ".gherkio")
+	testsDir := filepath.Join(gDir, "tests")
+	schemasDir := filepath.Join(gDir, "schemas")
+	_ = os.MkdirAll(testsDir, 0755)
+	_ = os.MkdirAll(schemasDir, 0755)
+	_ = os.WriteFile(filepath.Join(gDir, "config.yaml"), []byte("environments:\n  default: local\n"), 0644)
+	_ = os.MkdirAll(filepath.Join(gDir, "credentials"), 0755)
+	_ = os.WriteFile(filepath.Join(gDir, "credentials", "local.yaml"), []byte("accounts:\n  user:\n    token: \"foo\"\n"), 0644)
+
+	// 1. Positive case: fully valid test file
+	validYaml := `scenario: Valid Login
+steps:
+  - request:
+      method: POST
+      url: https://api.example.com/login
+    save:
+      token: body.token
+  - request:
+      method: GET
+      url: https://api.example.com/profile
+      headers:
+        Authorization: Bearer $token
+`
+	_ = os.WriteFile(filepath.Join(testsDir, "valid.yaml"), []byte(validYaml), 0644)
+
+	// 2. Negative case: undefined variable
+	undefVarYaml := `scenario: Undefined Var
+steps:
+  - request:
+      method: GET
+      url: https://api.example.com/profile
+      headers:
+        Authorization: Bearer $nonexistent_token
+`
+	_ = os.WriteFile(filepath.Join(testsDir, "undefined_var.yaml"), []byte(undefVarYaml), 0644)
+
+	// 3. Negative case: undefined account
+	undefAccountYaml := `scenario: Undefined Account
+steps:
+  - request:
+      method: GET
+      url: https://api.example.com/profile
+      headers:
+        Authorization: Bearer $accounts.admin.token
+`
+	_ = os.WriteFile(filepath.Join(testsDir, "undefined_account.yaml"), []byte(undefAccountYaml), 0644)
+
+	// 4. Edge case: non-existent file validation directly
+	t.Run("non-existent file", func(t *testing.T) {
+		_, err := ValidateProject(tmpDir, tmpDir, "does-not-exist.yaml", "local")
+		if err == nil {
+			t.Error("expected error for non-existent file, got nil")
+		}
+	})
+
+	// 5. Verify whole workspace validation
+	t.Run("workspace scan", func(t *testing.T) {
+		results, err := ValidateProject(tmpDir, tmpDir, "", "local")
+		if err != nil {
+			t.Fatalf("ValidateProject failed: %v", err)
+		}
+
+		// We have 3 files: valid.yaml, undefined_var.yaml, undefined_account.yaml
+		if len(results) != 3 {
+			t.Errorf("expected 3 files validated, got %d", len(results))
+		}
+
+		// Find results for each file
+		var validRes, undefVarRes, undefAccRes *ValidationResult
+		for i := range results {
+			base := filepath.Base(results[i].File)
+			switch base {
+			case "valid.yaml":
+				validRes = &results[i]
+			case "undefined_var.yaml":
+				undefVarRes = &results[i]
+			case "undefined_account.yaml":
+				undefAccRes = &results[i]
+			}
+		}
+
+		if validRes == nil || len(validRes.Issues) > 0 {
+			t.Errorf("expected valid.yaml to have 0 issues, got: %+v", validRes)
+		}
+
+		if undefVarRes == nil || len(undefVarRes.Issues) != 1 {
+			t.Errorf("expected undefined_var.yaml to have exactly 1 issue, got: %+v", undefVarRes)
+		} else {
+			if undefVarRes.Issues[0].Code != "undefined_variable" {
+				t.Errorf("expected undefined_variable code, got: %s", undefVarRes.Issues[0].Code)
+			}
+		}
+
+		// Since we didn't setup credentials/accounts for "local" env, the unregistered account reference should raise undefined_account
+		if undefAccRes == nil || len(undefAccRes.Issues) != 1 {
+			t.Errorf("expected undefined_account.yaml to have exactly 1 issue, got: %+v", undefAccRes)
+		} else {
+			if undefAccRes.Issues[0].Code != "undefined_account" {
+				t.Errorf("expected undefined_account code, got: %s", undefAccRes.Issues[0].Code)
+			}
+		}
+	})
+}

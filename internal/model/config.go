@@ -3,12 +3,12 @@ package model
 // Config represents the .gherkio/config.yaml file.
 type Config struct {
 	GherkioVersion string         `yaml:"gherkio_version,omitempty" jsonschema:"description=Gherkio tool version that created this project"`
-	Project       ProjectConfig  `yaml:"project,omitempty" jsonschema:"description=Project metadata"`
-	Environments  EnvConfig      `yaml:"environments,omitempty" jsonschema:"description=Environment configuration"`
-	Tests         TestsConfig    `yaml:"tests,omitempty" jsonschema:"description=Test path configuration"`
-	Schemas       SchemasConfig  `yaml:"schemas,omitempty" jsonschema:"description=Schema directory path"`
-	Security      SecurityConfig `yaml:"security,omitempty" jsonschema:"description=Security and masking configuration"`
-	Reports       ReportsConfig  `yaml:"reports,omitempty" jsonschema:"description=Report generation configuration"`
+	Project        ProjectConfig  `yaml:"project,omitempty" jsonschema:"description=Project metadata"`
+	Environments   EnvConfig      `yaml:"environments,omitempty" jsonschema:"description=Environment configuration"`
+	Tests          TestsConfig    `yaml:"tests,omitempty" jsonschema:"description=Test path configuration"`
+	Schemas        SchemasConfig  `yaml:"schemas,omitempty" jsonschema:"description=Schema directory path"`
+	Security       SecurityConfig `yaml:"security,omitempty" jsonschema:"description=Security and masking configuration"`
+	Reports        ReportsConfig  `yaml:"reports,omitempty" jsonschema:"description=Report generation configuration"`
 }
 
 type ProjectConfig struct {

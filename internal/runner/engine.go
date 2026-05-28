@@ -36,7 +36,7 @@ func GetArgMatchers() []string {
 type MatcherInfo struct {
 	Name        string
 	Description string
-	HasArg      bool   // Whether the matcher requires an argument (e.g. "contains <value>")
+	HasArg      bool // Whether the matcher requires an argument (e.g. "contains <value>")
 }
 
 // GetMatchersInfo returns metadata for all assertion matchers.

@@ -13,18 +13,18 @@ import (
 type SchemaType string
 
 const (
-	SchemaTypeTest              SchemaType = "test"
-	SchemaTypeConfig            SchemaType = "config"
-	SchemaTypeEnvironment       SchemaType = "environment"
-	SchemaTypeCredentials        SchemaType = "credentials"
-	SchemaTypeSchemaDefinition  SchemaType = "schema-definition"
+	SchemaTypeTest             SchemaType = "test"
+	SchemaTypeConfig           SchemaType = "config"
+	SchemaTypeEnvironment      SchemaType = "environment"
+	SchemaTypeCredentials      SchemaType = "credentials"
+	SchemaTypeSchemaDefinition SchemaType = "schema-definition"
 )
 
 // SchemaTypeInfo contains metadata about a schema type.
 type SchemaTypeInfo struct {
-	Type        SchemaType
-	Name        string
-	Description string
+	Type         SchemaType
+	Name         string
+	Description  string
 	FilePatterns []string
 }
 
@@ -137,7 +137,7 @@ func patchExpectSchema(schema *jsonschema.Schema) {
 			matcherEnums[i] = m
 		}
 
-        matcherSchema := &jsonschema.Schema{
+		matcherSchema := &jsonschema.Schema{
 			AnyOf: []*jsonschema.Schema{
 				{
 					Type:        "string",
@@ -193,12 +193,12 @@ func patchExpectSchema(schema *jsonschema.Schema) {
 			pattern := "^" + fn + "\\(.+\\)$"
 			if fn == "count" {
 				expectSchema.PatternProperties[pattern] = &jsonschema.Schema{
-					Type: "integer",
+					Type:        "integer",
 					Description: "Assert exact length of an array",
 				}
 			} else {
 				expectSchema.PatternProperties[pattern] = &jsonschema.Schema{
-					Ref: "#/$defs/Matcher",
+					Ref:         "#/$defs/Matcher",
 					Description: "Assert every element in an array matches this condition",
 				}
 			}
