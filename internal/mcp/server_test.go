@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -138,10 +139,57 @@ func mockServerIO(inData []byte, projectDir string) ([]byte, error) {
 		errChan <- srv.Start()
 	}()
 
-	// Capture all output
+	// Wait for server to finish processing and exit
+	serverErr := <-errChan
+
+	// Close write end of the pipe to unblock io.Copy
 	outWrite.Close()
+
 	var buf bytes.Buffer
 	_, _ = io.Copy(&buf, outRead)
 
-	return buf.Bytes(), <-errChan
+	return buf.Bytes(), serverErr
+}
+
+func TestMCPInitProject(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// 1. Prepare JSON-RPC tools/call request for init_project
+	callReq := RawRequest{
+		JSONRPC: "2.0",
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name": "init_project"}`),
+		ID:      1,
+	}
+	reqData, _ := json.Marshal(callReq)
+
+	// Since we pass s.projectDir as tmpDir, calling init_project should initialize it inside tmpDir
+	outBytes, err := mockServerIO(reqData, tmpDir)
+	if err != nil && err != io.EOF {
+		t.Fatalf("server execution failed: %v", err)
+	}
+
+	var resp RawResponse
+	if err := json.Unmarshal(outBytes, &resp); err != nil {
+		t.Fatalf("failed to decode response: %v, raw output: %s", err, string(outBytes))
+	}
+
+	if resp.Error != nil {
+		t.Fatalf("init_project returned error: %+v", resp.Error)
+	}
+
+	var toolResult CallToolResult
+	if err := json.Unmarshal(resp.Result, &toolResult); err != nil {
+		t.Fatalf("failed to decode tool result: %v", err)
+	}
+
+	if toolResult.IsError {
+		t.Fatalf("tool execution returned error content: %+v", toolResult.Content)
+	}
+
+	// Verify that the .gherkio/config.yaml is successfully created
+	configPath := filepath.Join(tmpDir, ".gherkio", "config.yaml")
+	if _, err := os.Stat(configPath); err != nil {
+		t.Errorf("expected config.yaml to exist at %s, but got error: %v", configPath, err)
+	}
 }
