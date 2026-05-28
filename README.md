@@ -22,6 +22,8 @@ Gherkio lets you describe HTTP-based integration tests as declarative YAML scena
 - **Request Retries** — Handle eventual consistency with configurable attempts, intervals, backoff strategies (linear, exponential), and status code conditions.
 - **Environment Management** — Switch between `local`, `staging`, `production` with a flag
 - **Sensitive Field Masking** — Tokens, passwords, and secrets are masked in output
+- **Outbound Request Sandboxing (SSRF Prevention)** — Restrict API client connection scopes with wildcard domain matching, precedence blocklists, and automated DNS-level private subnet checks.
+- **Dynamic Parameterized Generators** — Dynamic UUIDs, ULIDs, timestamps, date offsets (e.g. `+14d`), and cryptographic digests (`hash`/`hmac`) generated dynamically per step.
 - **Contextual Diagnostics** — Failed assertions show available fields and full response body
 - **Setup & Teardown** — Pre-condition and post-condition steps (teardown always runs, even on failure)
 - **Test Organization with Tags** — Filter tests by tags with `--tag` flag (AND logic)
@@ -345,6 +347,71 @@ steps:
       status: 200
       body.status: confirmed
 ```
+
+### Parameterized Generators
+
+Gherkio supports a robust set of parameterized generators and string transformers directly inside variable interpolations. These generators are evaluated dynamically **for each individual step iteration**, guaranteeing fresh data (e.g. unique UUIDs, random emails, or timestamps) for every API request.
+
+Example:
+```yaml
+steps:
+  - request:
+      method: POST
+      url: /users
+      body:
+        id: "$uuid()"
+        email: "$randomEmail('test-')"
+        phone: "$randomPhone('+62')"
+        created: "$timestamp()"
+        formattedDate: "$dateOffset('+14d')" # Adds 14 days to the current date/time
+        description: "$toUpper('new user')"
+```
+
+#### Supported Generators:
+- **`$uuid()`** and **`$ulid()`**: Generates high-entropy unique identifiers.
+- **`$timestamp()`** and **`$timestampMs()`**: Returns the current UNIX timestamp (seconds/milliseconds).
+- **`$dateNow()`**: Returns the current UTC time in RFC3339 format.
+- **`$dateOffset(offset)`**: Offsets the current UTC time by a duration (e.g. `+14d`, `-2h`, `+30m`, `+1s`).
+- **`$randomString(length, [charset])`**: Generates a random string of a given length. Charset can be `'alpha'`, `'numeric'`, `'alphanumeric'`, or a custom string of characters (e.g. `'abc'`).
+- **`$randomEmail([prefix])`**: Generates a random email address.
+- **`$randomPhone([prefix])`**: Generates a random phone number.
+- **`$base64(value)`** / **`$base64Decode(value)`**: Base64 encoding/decoding.
+- **`$urlencode(value)`** / **`$urldecode(value)`**: URL escaping/unescaping.
+- **`$toLower(value)`** / **`$toUpper(value)`** / **`$trim(value)`**: Case folding and whitespace trimming.
+- **`$hash(algo, value)`**: Generates a hash (e.g. `sha256`, `sha1`, `md5`) of the value.
+- **`$hmac(algo, key, value)`**: Generates a key-hashed HMAC signature (e.g. `sha256`, `sha1`, `md5`).
+
+---
+
+### Outbound Request Sandboxing
+
+To enforce strict security constraints inside multi-tenant environments, CI/CD runners, or shared developer spaces, Gherkio includes outbound network sandboxing to guard against Server-Side Request Forgery (SSRF) and credential leakage.
+
+Configure sandboxing in your `.gherkio/config.yaml`:
+
+```yaml
+security:
+  sandboxing:
+    # Set to true to restrict request scopes to allowed domains.
+    enabled: true
+    # Allowed domains pattern matching (supports wildcards, empty allows all).
+    allowedDomains:
+      - "*.api.dummyjson.com"
+      - "localhost:*"
+      - "127.0.0.1:*"
+    # Domains that are explicitly blocked even if they would match allowed lists.
+    blockedDomains:
+      - "*.malicious.com"
+      - "untrusted.org"
+    # Block local loopback, link-local, and RFC1918 private subnets.
+    blockPrivateSubnets: true
+```
+
+#### Security Guardrails:
+1. **DNS Rebinding Protection:** The sandboxing engine resolves target hostnames via DNS (`net.LookupIP`) prior to request initialization, blocking domain resolution to prohibited IP targets even if the original request hostname appeared harmless.
+2. **Subnet Restrictions:** If `blockPrivateSubnets` is enabled, loopback ranges (e.g. `127.0.0.1`, `::1`), link-local metadata endpoints (e.g. AWS `169.254.169.254`), and RFC1918 private subnets are permanently blocked.
+3. **Precedence Rules:** The blocklist takes total precedence over allowlist matches.
+4. **Early Validation in Dry-Run:** Network validation rules are run even under `--dry-run` modes, reporting policy violations early without triggering physical HTTP requests.
 
 ---
 
@@ -800,6 +867,8 @@ Shows full request and response payloads, including headers and bodies (with sen
 | Request timeout | ✅ |
 | Request retries (backoff strategies, onStatus) | ✅ |
 | Scenario composition (`use:` steps) | ✅ |
+| Outbound Request Sandboxing & SSRF Prevention | ✅ |
+| Parameterized Generators ($uuid, $timestamp, crypto, fake data) | ✅ |
 | Setup & Teardown blocks | ✅ |
 | Contextual failure UX | ✅ |
 | Sensitive field masking | ✅ |

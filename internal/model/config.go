@@ -34,6 +34,15 @@ type SecurityConfig struct {
 		Enabled bool     `yaml:"enabled" jsonschema:"description=Enable sensitive field masking"`
 		Fields  []string `yaml:"fields,omitempty" jsonschema:"description=Custom field names to mask (case-insensitive)"`
 	} `yaml:"mask" jsonschema:"description=Mask configuration"`
+	Sandboxing SandboxConfig `yaml:"sandboxing,omitempty" jsonschema:"description=Sandboxing and outbound network configuration"`
+	Sandbox    SandboxConfig `yaml:"sandbox,omitempty" jsonschema:"description=Sandboxing and outbound network configuration"`
+}
+
+type SandboxConfig struct {
+	Enabled             bool     `yaml:"enabled" jsonschema:"description=Enable domain/IP sandboxing"`
+	AllowedDomains      []string `yaml:"allowedDomains,omitempty" jsonschema:"description=List of allowed domains"`
+	BlockedDomains      []string `yaml:"blockedDomains,omitempty" jsonschema:"description=List of explicitly blocked domains"`
+	BlockPrivateSubnets bool     `yaml:"blockPrivateSubnets,omitempty" jsonschema:"description=Block local/private IP ranges"`
 }
 
 type ReportsConfig struct {

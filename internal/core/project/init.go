@@ -244,13 +244,19 @@ security:
 
   # sandboxing:
   sandboxing:
-    # Set to true to restrict request scopes to allowed domains and CIDRs.
+    # Set to true to restrict request scopes to allowed domains.
     enabled: false
     # Allowed domains pattern matching (supports wildcards, empty allows all).
     allowedDomains:
       - "*.api.dummyjson.com"
       - "localhost:*"
       - "127.0.0.1:*"
+    # Domains that are explicitly blocked even if they would match allowed lists.
+    blockedDomains:
+      - "*.malicious.com"
+      - "untrusted.org"
+    # Block local loopback, link-local, and RFC1918 private subnets.
+    blockPrivateSubnets: true
 `, version)
 }
 
