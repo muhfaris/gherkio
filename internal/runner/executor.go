@@ -222,89 +222,39 @@ func executeRequest(method, url string, headers map[string]string, body interfac
 // buildMultipartBody constructs a multipart/form-data body from the given configuration.
 // It returns the body bytes, the content-type header value, and any error encountered.
 //
-// Uses a temporary file for buffering to safely handle large file uploads without
-// loading everything into memory. This is important for API testing with large payloads.
+// Uses io.Pipe for streaming to safely handle large file uploads without loading
+// everything into memory. This is important for API testing with large payloads.
 func buildMultipartBody(mp *model.MultipartConfig, projectDir string) (io.Reader, string, error) {
-	// Create temp file for streaming multipart body
-	tmpFile, err := os.CreateTemp("", "gherkio-multipart-*")
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to create temp file: %w", err)
-	}
-	tmpPath := tmpFile.Name()
-	tmpFile.Close()
+	pr, pw := io.Pipe()
+	writer := multipart.NewWriter(pw)
 
-	// Open the temp file for writing
-	file, err := os.OpenFile(tmpPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		os.Remove(tmpPath)
-		return nil, "", fmt.Errorf("failed to open temp file: %w", err)
-	}
+	// Stream multipart body in a goroutine to prevent deadlock
+	go func() {
+		defer pw.Close()
+		defer writer.Close()
 
-	writer := multipart.NewWriter(file)
-
-	// Write form fields
-	for key, value := range mp.Fields {
-		if err := writer.WriteField(key, value); err != nil {
-			file.Close()
-			os.Remove(tmpPath)
-			return nil, "", fmt.Errorf("failed to write field '%s': %w", key, err)
+		// Write form fields
+		for key, value := range mp.Fields {
+			if err := writer.WriteField(key, value); err != nil {
+				pw.CloseWithError(fmt.Errorf("failed to write field '%s': %w", key, err))
+				return
+			}
 		}
-	}
 
-	// Write file fields
-	for key, item := range mp.Files {
-		if err := writeMultipartFile(writer, key, item, projectDir); err != nil {
-			file.Close()
-			os.Remove(tmpPath)
-			return nil, "", err
+		// Write file fields
+		for key, item := range mp.Files {
+			if err := writeMultipartFileStreaming(writer, key, item, projectDir); err != nil {
+				pw.CloseWithError(err)
+				return
+			}
 		}
-	}
+	}()
 
-	// Close writer to finalize boundary
-	if err := writer.Close(); err != nil {
-		file.Close()
-		os.Remove(tmpPath)
-		return nil, "", fmt.Errorf("failed to close multipart writer: %w", err)
-	}
-
-	contentType := writer.FormDataContentType()
-
-	// Seek to beginning for reading
-	if _, err := file.Seek(0, 0); err != nil {
-		file.Close()
-		os.Remove(tmpPath)
-		return nil, "", fmt.Errorf("failed to seek temp file: %w", err)
-	}
-
-	// Return a reader that will clean up the temp file when closed
-	reader := &tempFileReader{
-		File:     file,
-		path:     tmpPath,
-		closed:   false,
-	}
-
-	return reader, contentType, nil
+	return pr, writer.FormDataContentType(), nil
 }
 
-// tempFileReader wraps an os.File and cleans up the temp file when closed.
-type tempFileReader struct {
-	*os.File
-	path   string
-	closed bool
-}
-
-func (r *tempFileReader) Close() error {
-	if r.closed {
-		return nil
-	}
-	r.closed = true
-	err := r.File.Close()
-	os.Remove(r.path)
-	return err
-}
-
-// writeMultipartFile writes a single file part to the multipart writer.
-func writeMultipartFile(writer *multipart.Writer, fieldName string, item model.MultipartItem, projectDir string) error {
+// writeMultipartFileStreaming writes a single file part to the multipart writer.
+func writeMultipartFileStreaming(writer *multipart.Writer, fieldName string, item model.MultipartItem, projectDir string) error {
 	filePath, err := resolveMultipartFilePath(item.Path, projectDir)
 	if err != nil {
 		return fmt.Errorf("failed to resolve file path for field '%s': %w", fieldName, err)
@@ -323,29 +273,22 @@ func writeMultipartFile(writer *multipart.Writer, fieldName string, item model.M
 	}
 
 	// Create the form file part with custom headers
+	var part io.Writer
 	if item.ContentType != "" {
-		// Use CreatePart to set custom Content-Type header
 		header := make(textproto.MIMEHeader)
 		header.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, fieldName, filename))
 		header.Set("Content-Type", item.ContentType)
-		part, err := writer.CreatePart(header)
-		if err != nil {
-			return fmt.Errorf("failed to create form file part for field '%s': %w", fieldName, err)
-		}
-		// Copy file content to the part
-		if _, err := io.Copy(part, file); err != nil {
-			return fmt.Errorf("failed to write file content for field '%s': %w", fieldName, err)
-		}
+		part, err = writer.CreatePart(header)
 	} else {
-		// Use CreateFormFile for auto content-type detection
-		part, err := writer.CreateFormFile(fieldName, filename)
-		if err != nil {
-			return fmt.Errorf("failed to create form file for field '%s': %w", fieldName, err)
-		}
-		// Copy file content to the part
-		if _, err := io.Copy(part, file); err != nil {
-			return fmt.Errorf("failed to write file content for field '%s': %w", fieldName, err)
-		}
+		part, err = writer.CreateFormFile(fieldName, filename)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to create form file for field '%s': %w", fieldName, err)
+	}
+
+	// Stream file content using io.Copy for memory efficiency
+	if _, err := io.Copy(part, file); err != nil {
+		return fmt.Errorf("failed to write file content for field '%s': %w", fieldName, err)
 	}
 
 	return nil
