@@ -221,6 +221,14 @@ func executeRequest(method, url string, headers map[string]string, body interfac
 
 // buildMultipartBody constructs a multipart/form-data body from the given configuration.
 // It returns the body bytes, the content-type header value, and any error encountered.
+//
+// NOTE: Current implementation buffers everything into RAM using bytes.Buffer.
+// This is safe for standard API testing (files <10MB) and highly performant.
+// For extremely large uploads (>100MB), consider switching to io.Pipe streaming:
+//   r, w := io.Pipe()
+//   writer := multipart.NewWriter(w)
+//   go func() { defer w.Close(); writeMultipartParts(writer, mp, projectDir) }()
+// This avoids loading the entire payload into memory.
 func buildMultipartBody(mp *model.MultipartConfig, projectDir string) (io.Reader, string, error) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
