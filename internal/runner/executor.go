@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"os"
 	"path/filepath"
 	"sort"
@@ -265,26 +266,30 @@ func writeMultipartFile(writer *multipart.Writer, fieldName string, item model.M
 		filename = filepath.Base(filePath)
 	}
 
-	// Get content type
-	contentType := item.ContentType
-	if contentType == "" {
-		contentType = detectContentType(filePath)
-	}
-
-	// Create the form file part
-	part, err := writer.CreateFormFile(fieldName, filename)
-	if err != nil {
-		return fmt.Errorf("failed to create form file for field '%s': %w", fieldName, err)
-	}
-
-	// Set content type header if specified
+	// Create the form file part with custom headers
 	if item.ContentType != "" {
-		part.Header().Set("Content-Type", item.ContentType)
-	}
-
-	// Copy file content to the part
-	if _, err := io.Copy(part, file); err != nil {
-		return fmt.Errorf("failed to write file content for field '%s': %w", fieldName, err)
+		// Use CreatePart to set custom Content-Type header
+		header := make(textproto.MIMEHeader)
+		header.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, fieldName, filename))
+		header.Set("Content-Type", item.ContentType)
+		part, err := writer.CreatePart(header)
+		if err != nil {
+			return fmt.Errorf("failed to create form file part for field '%s': %w", fieldName, err)
+		}
+		// Copy file content to the part
+		if _, err := io.Copy(part, file); err != nil {
+			return fmt.Errorf("failed to write file content for field '%s': %w", fieldName, err)
+		}
+	} else {
+		// Use CreateFormFile for auto content-type detection
+		part, err := writer.CreateFormFile(fieldName, filename)
+		if err != nil {
+			return fmt.Errorf("failed to create form file for field '%s': %w", fieldName, err)
+		}
+		// Copy file content to the part
+		if _, err := io.Copy(part, file); err != nil {
+			return fmt.Errorf("failed to write file content for field '%s': %w", fieldName, err)
+		}
 	}
 
 	return nil
