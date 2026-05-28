@@ -1,9 +1,16 @@
 package runner
 
 import (
+	"crypto/hmac"
+	"crypto/md5"
 	"crypto/rand"
+	"crypto/sha1"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"math/big"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -130,6 +137,42 @@ func generateRandomIntInRange(min, max int) int {
 	return min + int(n.Int64())
 }
 
+// parseCustomDuration parses offset strings like "+14d", "-2h", "30m", "-5s"
+func parseCustomDuration(s string) (time.Duration, error) {
+	if s == "" {
+		return 0, fmt.Errorf("empty duration offset")
+	}
+
+	multiplier := time.Duration(1)
+	cleanStr := s
+	if strings.HasPrefix(s, "+") {
+		cleanStr = s[1:]
+	} else if strings.HasPrefix(s, "-") {
+		multiplier = time.Duration(-1)
+		cleanStr = s[1:]
+	}
+
+	if cleanStr == "" {
+		return 0, fmt.Errorf("invalid duration format: %s", s)
+	}
+
+	if strings.HasSuffix(cleanStr, "d") {
+		daysStr := strings.TrimSuffix(cleanStr, "d")
+		days, err := strconv.Atoi(daysStr)
+		if err != nil {
+			return 0, fmt.Errorf("invalid days value in duration %q: %w", s, err)
+		}
+		return time.Duration(days) * 24 * time.Hour * multiplier, nil
+	}
+
+	dur, err := time.ParseDuration(cleanStr)
+	if err != nil {
+		return 0, fmt.Errorf("invalid time duration %q: %w", s, err)
+	}
+
+	return dur * multiplier, nil
+}
+
 // GeneratorFunc is a function that generates a value from a comma-separated arguments string.
 type GeneratorFunc func(args string) (interface{}, error)
 
@@ -151,6 +194,170 @@ func GetGeneratorFuncs() map[string]GeneratorFunc {
 				return nil, fmt.Errorf("randomInt max argument is not a valid integer: %s", parts[1])
 			}
 			return generateRandomIntInRange(min, max), nil
+		},
+		"timestamp": func(args string) (interface{}, error) {
+			return strconv.FormatInt(time.Now().Unix(), 10), nil
+		},
+		"timestampMs": func(args string) (interface{}, error) {
+			return strconv.FormatInt(time.Now().UnixMilli(), 10), nil
+		},
+		"dateNow": func(args string) (interface{}, error) {
+			format := "2006-01-02 15:04:05"
+			if args != "" {
+				format = strings.Trim(strings.TrimSpace(args), "\"'")
+			}
+			return time.Now().Format(format), nil
+		},
+		"dateOffset": func(args string) (interface{}, error) {
+			parts := strings.SplitN(args, ",", 2)
+			if len(parts) < 1 || strings.TrimSpace(parts[0]) == "" {
+				return nil, fmt.Errorf("dateOffset requires at least duration offset")
+			}
+			offsetStr := strings.Trim(strings.TrimSpace(parts[0]), "\"'")
+			format := "2006-01-02"
+			if len(parts) > 1 {
+				format = strings.Trim(strings.TrimSpace(parts[1]), "\"'")
+			}
+
+			duration, err := parseCustomDuration(offsetStr)
+			if err != nil {
+				return nil, err
+			}
+
+			return time.Now().Add(duration).Format(format), nil
+		},
+		"base64": func(args string) (interface{}, error) {
+			data := strings.Trim(strings.TrimSpace(args), "\"'")
+			return base64.StdEncoding.EncodeToString([]byte(data)), nil
+		},
+		"base64Decode": func(args string) (interface{}, error) {
+			data := strings.Trim(strings.TrimSpace(args), "\"'")
+			decoded, err := base64.StdEncoding.DecodeString(data)
+			if err != nil {
+				return nil, fmt.Errorf("failed to decode base64: %w", err)
+			}
+			return string(decoded), nil
+		},
+		"urlencode": func(args string) (interface{}, error) {
+			data := strings.Trim(strings.TrimSpace(args), "\"'")
+			return url.QueryEscape(data), nil
+		},
+		"urldecode": func(args string) (interface{}, error) {
+			data := strings.Trim(strings.TrimSpace(args), "\"'")
+			decoded, err := url.QueryUnescape(data)
+			if err != nil {
+				return nil, fmt.Errorf("failed to decode url: %w", err)
+			}
+			return decoded, nil
+		},
+		"hash": func(args string) (interface{}, error) {
+			parts := strings.SplitN(args, ",", 2)
+			if len(parts) != 2 {
+				return nil, fmt.Errorf("hash requires exactly 2 arguments (algo, data)")
+			}
+			algo := strings.ToLower(strings.TrimSpace(parts[0]))
+			data := strings.Trim(strings.TrimSpace(parts[1]), "\"'")
+
+			switch algo {
+			case "md5":
+				h := md5.Sum([]byte(data))
+				return hex.EncodeToString(h[:]), nil
+			case "sha1":
+				h := sha1.Sum([]byte(data))
+				return hex.EncodeToString(h[:]), nil
+			case "sha256":
+				h := sha256.Sum256([]byte(data))
+				return hex.EncodeToString(h[:]), nil
+			default:
+				return nil, fmt.Errorf("unsupported hashing algorithm: %s", algo)
+			}
+		},
+		"hmac": func(args string) (interface{}, error) {
+			parts := strings.SplitN(args, ",", 3)
+			if len(parts) != 3 {
+				return nil, fmt.Errorf("hmac requires exactly 3 arguments (algo, key, message)")
+			}
+			algo := strings.ToLower(strings.TrimSpace(parts[0]))
+			key := strings.Trim(strings.TrimSpace(parts[1]), "\"'")
+			message := strings.Trim(strings.TrimSpace(parts[2]), "\"'")
+
+			var mac []byte
+			switch algo {
+			case "md5":
+				h := hmac.New(md5.New, []byte(key))
+				h.Write([]byte(message))
+				mac = h.Sum(nil)
+			case "sha1":
+				h := hmac.New(sha1.New, []byte(key))
+				h.Write([]byte(message))
+				mac = h.Sum(nil)
+			case "sha256":
+				h := hmac.New(sha256.New, []byte(key))
+				h.Write([]byte(message))
+				mac = h.Sum(nil)
+			default:
+				return nil, fmt.Errorf("unsupported hmac hashing algorithm: %s", algo)
+			}
+			return hex.EncodeToString(mac), nil
+		},
+		"randomString": func(args string) (interface{}, error) {
+			parts := strings.SplitN(args, ",", 2)
+			if len(parts) != 2 {
+				return nil, fmt.Errorf("randomString requires exactly 2 arguments (length, charset)")
+			}
+			length, err := strconv.Atoi(strings.TrimSpace(parts[0]))
+			if err != nil || length <= 0 {
+				return nil, fmt.Errorf("randomString length must be a positive integer: %s", parts[0])
+			}
+			charset := strings.ToLower(strings.Trim(strings.TrimSpace(parts[1]), "\"'"))
+
+			var chars string
+			switch charset {
+			case "alpha":
+				chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+			case "numeric":
+				chars = "0123456789"
+			case "alphanumeric":
+				chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+			default:
+				return nil, fmt.Errorf("unsupported charset: %s", charset)
+			}
+
+			result := make([]byte, length)
+			for i := 0; i < length; i++ {
+				n, err := rand.Int(rand.Reader, big.NewInt(int64(len(chars))))
+				if err != nil {
+					return nil, fmt.Errorf("failed to generate random character: %w", err)
+				}
+				result[i] = chars[n.Int64()]
+			}
+			return string(result), nil
+		},
+		"randomEmail": func(args string) (interface{}, error) {
+			return generateRandomEmail(), nil
+		},
+		"randomPhone": func(args string) (interface{}, error) {
+			country := strings.ToUpper(strings.Trim(strings.TrimSpace(args), "\"'"))
+			if country == "" || country == "ID" {
+				return generateRandomPhone(), nil
+			}
+			if country == "US" {
+				n, _ := rand.Int(rand.Reader, big.NewInt(1000000000))
+				return fmt.Sprintf("+1%010d", n.Int64()), nil
+			}
+			return generateRandomPhone(), nil
+		},
+		"toUpper": func(args string) (interface{}, error) {
+			val := strings.Trim(strings.TrimSpace(args), "\"'")
+			return strings.ToUpper(val), nil
+		},
+		"toLower": func(args string) (interface{}, error) {
+			val := strings.Trim(strings.TrimSpace(args), "\"'")
+			return strings.ToLower(val), nil
+		},
+		"trim": func(args string) (interface{}, error) {
+			val := strings.Trim(strings.TrimSpace(args), "\"'")
+			return strings.TrimSpace(val), nil
 		},
 	}
 }
