@@ -88,6 +88,19 @@ func (s *Server) handleListTools(id interface{}, params json.RawMessage) {
 	result := ListToolsResult{
 		Tools: []Tool{
 			{
+				Name:        "init_project",
+				Description: "Initialize a new Gherkio project structure with default configuration, schemas, environments, and template examples.",
+				InputSchema: InputSchema{
+					Type: "object",
+					Properties: map[string]interface{}{
+						"path": map[string]interface{}{
+							"type":        "string",
+							"description": "Optional subdirectory or absolute path to initialize the Gherkio project. Defaults to the current working directory.",
+						},
+					},
+				},
+			},
+			{
 				Name:        "get_project_info",
 				Description: "Retrieve active Gherkio project metadata, workspace root, and resolved directory structures.",
 				InputSchema: InputSchema{Type: "object", Properties: map[string]interface{}{}},
@@ -357,13 +370,41 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 		return
 	}
 
-	if s.projectDir == "" && call.Name != "get_project_info" {
+	if s.projectDir == "" && call.Name != "get_project_info" && call.Name != "init_project" {
 		// MCP capability check: let LLM know we are outside of a Gherkio workspace
-		s.writeToolError(id, "Gherkio project not initialized in this directory. Call 'gherkio init' or configure workspace.")
+		s.writeToolError(id, "Gherkio project not initialized in this directory. Call 'init_project' or configure workspace.")
 		return
 	}
 
 	switch call.Name {
+	case "init_project":
+		targetDir := s.projectDir
+		if targetDir == "" {
+			var err error
+			targetDir, err = os.Getwd()
+			if err != nil {
+				s.writeToolError(id, fmt.Sprintf("Failed to get current working directory: %v", err))
+				return
+			}
+		}
+
+		if pathArg, ok := call.Arguments["path"].(string); ok && pathArg != "" {
+			if filepath.IsAbs(pathArg) {
+				targetDir = pathArg
+			} else {
+				targetDir = filepath.Join(targetDir, pathArg)
+			}
+		}
+
+		// Use v0.1.0-alpha as default version
+		err := project.Initialize(targetDir, "v0.1.0-alpha")
+		if err != nil {
+			s.writeToolError(id, fmt.Sprintf("Failed to initialize project: %v", err))
+			return
+		}
+		s.projectDir = targetDir
+		s.writeToolResponse(id, fmt.Sprintf("✓ Successfully initialized Gherkio project in %s", targetDir))
+
 	case "get_project_info":
 		meta, err := project.GetMeta(s.projectDir)
 		if err != nil {
