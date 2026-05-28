@@ -89,13 +89,24 @@ func Run(cfg RunConfig) (*RunResult, error) {
 	// Capture initial variable state for verbose output
 	result.ResolvedVars = snapshotVars(vars, cfg.MaskFields)
 
+	// Load project configuration for sandbox policy checks
+	appCfg, _ := LoadConfig(cfg.ProjectDir)
+	var sandbox *model.SandboxConfig
+	if appCfg != nil {
+		if appCfg.Security.Sandboxing.Enabled {
+			sandbox = &appCfg.Security.Sandboxing
+		} else if appCfg.Security.Sandbox.Enabled {
+			sandbox = &appCfg.Security.Sandbox
+		}
+	}
+
 	currentDir := filepath.Dir(cfg.TestPath)
 	var allSteps []StepResult
 	setupFailed := false
 
 	// Execute setup steps first
 	if len(testFile.Setup) > 0 {
-		setupSteps, setupPass, setupFail, setupPassed := executeSteps(testFile.Setup, env, vars, cfg.ProjectDir, currentDir, 0, "setup", cfg.DryRun)
+		setupSteps, setupPass, setupFail, setupPassed := executeSteps(testFile.Setup, env, vars, cfg.ProjectDir, currentDir, 0, "setup", cfg.DryRun, sandbox)
 		for i := range setupSteps {
 			setupSteps[i].ScenarioName = testFile.Scenario
 			setupSteps[i].TestFile = cfg.TestPath
@@ -110,7 +121,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 
 	// Execute main steps (skip if setup failed)
 	if !setupFailed {
-		mainSteps, mainPass, mainFail, mainPassed := executeSteps(testFile.Steps, env, vars, cfg.ProjectDir, currentDir, 0, "steps", cfg.DryRun)
+		mainSteps, mainPass, mainFail, mainPassed := executeSteps(testFile.Steps, env, vars, cfg.ProjectDir, currentDir, 0, "steps", cfg.DryRun, sandbox)
 		for i := range mainSteps {
 			mainSteps[i].ScenarioName = testFile.Scenario
 			mainSteps[i].TestFile = cfg.TestPath
@@ -126,7 +137,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 	// Execute teardown steps (always, even if setup or steps failed)
 	// Teardown failures are recorded but don't affect overall pass/fail
 	if len(testFile.Teardown) > 0 {
-		teardownSteps, _, _, _ := executeSteps(testFile.Teardown, env, vars, cfg.ProjectDir, currentDir, 0, "teardown", cfg.DryRun)
+		teardownSteps, _, _, _ := executeSteps(testFile.Teardown, env, vars, cfg.ProjectDir, currentDir, 0, "teardown", cfg.DryRun, sandbox)
 		for i := range teardownSteps {
 			teardownSteps[i].ScenarioName = testFile.Scenario
 			teardownSteps[i].TestFile = cfg.TestPath
@@ -148,7 +159,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 }
 
 // executeSteps executes a list of steps. If dryRun is true, skips HTTP calls and produces preview output.
-func executeSteps(steps []model.Step, env *model.Environment, vars map[string]interface{}, projectDir string, currentDir string, depth int, role string, dryRun bool) ([]StepResult, int, int, bool) {
+func executeSteps(steps []model.Step, env *model.Environment, vars map[string]interface{}, projectDir string, currentDir string, depth int, role string, dryRun bool, sandbox *model.SandboxConfig) ([]StepResult, int, int, bool) {
 	var stepResults []StepResult
 	totalPass := 0
 	totalFail := 0
@@ -207,7 +218,7 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 			}
 
 			usedCurrentDir := filepath.Dir(resolvedPath)
-			nestedSteps, nestedPass, nestedFail, _ := executeSteps(usedTest.Steps, env, vars, projectDir, usedCurrentDir, depth+1, role, dryRun)
+			nestedSteps, nestedPass, nestedFail, _ := executeSteps(usedTest.Steps, env, vars, projectDir, usedCurrentDir, depth+1, role, dryRun, sandbox)
 
 			// Flatten the results
 			stepResults = append(stepResults, nestedSteps...)
@@ -251,6 +262,16 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 			} else {
 				stepResult.Request.Body = fmt.Sprintf("%v", interpolatedRequest.Body)
 			}
+		}
+
+		// Run domain sandboxing validation
+		if err := ValidateURL(url, sandbox); err != nil {
+			stepResult.Error = fmt.Sprintf("security policy check failed: %v", err)
+			stepResult.Duration = time.Since(stepStart)
+			stepResults = append(stepResults, stepResult)
+			allPassed = false
+			totalFail++
+			continue
 		}
 
 		// Dry-run mode: skip HTTP execution and mark step as preview
@@ -617,8 +638,19 @@ func RunSingleStep(cfg RunConfig, env *model.Environment, testFile *model.TestFi
 	// Capture initial variable state for verbose output
 	initialVars := snapshotVars(vars, cfg.MaskFields)
 
+	// Load project configuration for sandbox policy checks
+	appCfg, _ := LoadConfig(cfg.ProjectDir)
+	var sandbox *model.SandboxConfig
+	if appCfg != nil {
+		if appCfg.Security.Sandboxing.Enabled {
+			sandbox = &appCfg.Security.Sandboxing
+		} else if appCfg.Security.Sandbox.Enabled {
+			sandbox = &appCfg.Security.Sandbox
+		}
+	}
+
 	currentDir := filepath.Dir(cfg.TestPath)
-	runSteps, pass, fail, passed := executeSteps(stepsToRun, env, vars, cfg.ProjectDir, currentDir, 0, section, cfg.DryRun)
+	runSteps, pass, fail, passed := executeSteps(stepsToRun, env, vars, cfg.ProjectDir, currentDir, 0, section, cfg.DryRun, sandbox)
 
 	for i := range runSteps {
 		runSteps[i].ScenarioName = testFile.Scenario
