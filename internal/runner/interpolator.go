@@ -44,7 +44,57 @@ func InterpolateRequest(req model.Request, vars map[string]interface{}) (model.R
 	}
 	interpolated.Body = interpolatedBody
 
+	// Interpolate Multipart config
+	if req.Multipart != nil {
+		multipart, err := interpolateMultipart(req.Multipart, vars)
+		if err != nil {
+			return model.Request{}, fmt.Errorf("failed to interpolate multipart: %w", err)
+		}
+		interpolated.Multipart = multipart
+	}
+
 	return interpolated, nil
+}
+
+// interpolateMultipart processes multipart configuration to replace variable references.
+func interpolateMultipart(mp *model.MultipartConfig, vars map[string]interface{}) (*model.MultipartConfig, error) {
+	result := &model.MultipartConfig{
+		Fields: make(map[string]string),
+		Files:  make(map[string]model.MultipartItem),
+	}
+
+	// Interpolate form fields
+	for k, v := range mp.Fields {
+		interpolatedValue, err := interpolateString(v, vars)
+		if err != nil {
+			return nil, fmt.Errorf("failed to interpolate multipart field '%s': %w", k, err)
+		}
+		result.Fields[k] = interpolatedValue
+	}
+
+	// Interpolate file items
+	for k, item := range mp.Files {
+		interpolatedPath, err := interpolateString(item.Path, vars)
+		if err != nil {
+			return nil, fmt.Errorf("failed to interpolate multipart file path '%s': %w", k, err)
+		}
+
+		interpolatedFilename := item.Filename
+		if item.Filename != "" {
+			interpolatedFilename, err = interpolateString(item.Filename, vars)
+			if err != nil {
+				return nil, fmt.Errorf("failed to interpolate multipart file filename '%s': %w", k, err)
+			}
+		}
+
+		result.Files[k] = model.MultipartItem{
+			Path:        interpolatedPath,
+			ContentType: item.ContentType,
+			Filename:    interpolatedFilename,
+		}
+	}
+
+	return result, nil
 }
 
 // interpolateString replaces variable references in a string with values from the vars map.

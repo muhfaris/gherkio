@@ -129,6 +129,7 @@ func ValidateFile(filePath, projectDir string, creds *model.Credentials, schemas
 	result.Issues = append(result.Issues, validateUseFiles(test, projectDir, filePath)...)
 	result.Issues = append(result.Issues, validateSchemaReferences(test, schemas)...)
 	result.Issues = append(result.Issues, validateBodyPaths(test)...)
+	result.Issues = append(result.Issues, validateMultipartFiles(test, projectDir, filePath)...)
 
 	return result
 }
@@ -390,6 +391,82 @@ func validateBodyPaths(test *model.TestFile) []ValidationIssue {
 	}
 
 	return issues
+}
+
+// validateMultipartFiles checks that all file references in multipart configurations exist.
+func validateMultipartFiles(test *model.TestFile, projectDir, testFilePath string) []ValidationIssue {
+	var issues []ValidationIssue
+
+	allSteps := append(append(test.Setup, test.Steps...), test.Teardown...)
+
+	for i, step := range allSteps {
+		if step.Request.Multipart == nil || step.Request.Multipart.Files == nil {
+			continue
+		}
+
+		for fieldName, item := range step.Request.Multipart.Files {
+			// Interpolate the path first to handle variables
+			// Since we're doing static validation, we check the raw path
+			// but note that variable-interpolated paths won't be validated statically
+			filePath := item.Path
+
+			// Try to resolve the file path according to Gherkio's resolution rules
+			resolvedPath := resolveMultipartValidationPath(filePath, projectDir, testFilePath)
+			if resolvedPath == "" {
+				issues = append(issues, ValidationIssue{
+					Field: fmt.Sprintf("steps[%d].request.multipart.files.%s", i, fieldName),
+					Code:  "file_not_found",
+					Msg:   fmt.Sprintf("multipart file %q does not exist", filePath),
+				})
+			}
+		}
+	}
+
+	return issues
+}
+
+// resolveMultipartValidationPath resolves a file path for validation purposes.
+// It checks: absolute paths, project root relative, fixtures/, and sibling test fixtures/.
+func resolveMultipartValidationPath(filePath, projectDir, testFilePath string) string {
+	// If already absolute and exists, use it
+	if filepath.IsAbs(filePath) {
+		if _, err := os.Stat(filePath); err == nil {
+			return filePath
+		}
+		return ""
+	}
+
+	// Try project root relative path
+	if projectDir != "" {
+		absPath := filepath.Join(projectDir, filePath)
+		if _, err := os.Stat(absPath); err == nil {
+			return absPath
+		}
+	}
+
+	// Try fixtures directory
+	if projectDir != "" {
+		fixturesPath := filepath.Join(projectDir, "fixtures", filepath.Base(filePath))
+		if _, err := os.Stat(fixturesPath); err == nil {
+			return fixturesPath
+		}
+	}
+
+	// Try test file's sibling fixtures directory (tests/fixtures/ relative to test file)
+	if testFilePath != "" {
+		testDir := filepath.Dir(testFilePath)
+		siblingFixtures := filepath.Join(testDir, "fixtures", filepath.Base(filePath))
+		if _, err := os.Stat(siblingFixtures); err == nil {
+			return siblingFixtures
+		}
+	}
+
+	// Try as-is relative to current working directory
+	if _, err := os.Stat(filePath); err == nil {
+		return filePath
+	}
+
+	return ""
 }
 
 func collectAllSteps(test *model.TestFile) (setup, steps, teardown []model.Step) {

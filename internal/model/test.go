@@ -35,12 +35,48 @@ type Step struct {
 
 // Request represents an HTTP request definition.
 type Request struct {
-	Service string            `yaml:"service,omitempty" json:"service,omitempty" jsonschema:"description=Name of the service defined in environment"`
-	Method  string            `yaml:"method" json:"method" jsonschema:"required,enum=GET,enum=POST,enum=PUT,enum=DELETE,enum=PATCH,description=HTTP method"`
-	URL     string            `yaml:"url" json:"url" jsonschema:"required,description=Request URL path or absolute URL. Supports variable interpolation ($var ${var:default} $accounts.(name).(field) $uuid $ulid $randomInt $randomEmail $randomPhone)"`
-	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty" jsonschema:"description=HTTP request headers. Supports variable interpolation in values ($var ${var:default} $accounts.(name).(field) $uuid $ulid $randomInt $randomEmail $randomPhone)"`
-	Body    interface{}       `yaml:"body,omitempty" json:"body,omitempty" jsonschema:"description=HTTP request body as JSON object or string. Supports variable interpolation in string values ($var ${var:default} $accounts.(name).(field) $uuid $ulid $randomInt $randomEmail $randomPhone)"`
-	Timeout string            `yaml:"timeout,omitempty" json:"timeout,omitempty" jsonschema:"description=HTTP client timeout for this request (e.g. 5s 30s 1m)"` // e.g. "5s", "30s", "1m"
+	Service   string            `yaml:"service,omitempty" json:"service,omitempty" jsonschema:"description=Name of the service defined in environment"`
+	Method    string            `yaml:"method" json:"method" jsonschema:"required,enum=GET,enum=POST,enum=PUT,enum=DELETE,enum=PATCH,description=HTTP method"`
+	URL       string            `yaml:"url" json:"url" jsonschema:"required,description=Request URL path or absolute URL. Supports variable interpolation ($var ${var:default} $accounts.(name).(field) $uuid $ulid $randomInt $randomEmail $randomPhone)"`
+	Headers   map[string]string `yaml:"headers,omitempty" json:"headers,omitempty" jsonschema:"description=HTTP request headers. Supports variable interpolation in values ($var ${var:default} $accounts.(name).(field) $uuid $ulid $randomInt $randomEmail $randomPhone)"`
+	Body      interface{}       `yaml:"body,omitempty" json:"body,omitempty" jsonschema:"description=HTTP request body as JSON object or string. Supports variable interpolation in string values ($var ${var:default} $accounts.(name).(field) $uuid $ulid $randomInt $randomEmail $randomPhone)"`
+	Multipart *MultipartConfig  `yaml:"multipart,omitempty" json:"multipart,omitempty" jsonschema:"description=Multipart form-data configuration for file uploads and form fields"`
+	Timeout   string            `yaml:"timeout,omitempty" json:"timeout,omitempty" jsonschema:"description=HTTP client timeout for this request (e.g. 5s 30s 1m)"` // e.g. "5s", "30s", "1m"
+}
+
+// MultipartConfig holds the configuration for a multipart/form-data request.
+type MultipartConfig struct {
+	Fields map[string]string        `yaml:"fields,omitempty" json:"fields,omitempty" jsonschema:"description=Form fields to include in the multipart request (e.g. username: $user, role: admin)"`
+	Files  map[string]MultipartItem `yaml:"files,omitempty" json:"files,omitempty" jsonschema:"description=File uploads to include in the multipart request. Supports simple syntax (avatar: path/to/file.png) or advanced syntax with path, contentType, and filename (document: {path: path, contentType: application/pdf, filename: custom.pdf})"`
+}
+
+// MultipartItem represents a single file in a multipart request.
+// Supports both a simple string path and a structured configuration.
+type MultipartItem struct {
+	Path        string `yaml:"path" json:"path" jsonschema:"required,description=Path to the file (relative to project root or absolute),example=fixtures/avatar.png"`
+	ContentType string `yaml:"contentType,omitempty" json:"contentType,omitempty" jsonschema:"description=MIME type of the file (auto-detected if not specified),example=image/png"`
+	Filename    string `yaml:"filename,omitempty" json:"filename,omitempty" jsonschema:"description=Override filename sent in the Content-Disposition header,example=avatar.png"`
+}
+
+// UnmarshalYAML implements custom parsing for MultipartItem to support both
+// a raw string representation (simple path) and a structured map configuration.
+func (i *MultipartItem) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// First try: plain string (simple syntax: path: "file.png")
+	var path string
+	if err := unmarshal(&path); err == nil {
+		i.Path = path
+		return nil
+	}
+
+	// Second try: structured map (advanced syntax with contentType, filename)
+	type rawMultipartItem MultipartItem
+	var raw rawMultipartItem
+	if err := unmarshal(&raw); err != nil {
+		return err
+	}
+
+	*i = MultipartItem(raw)
+	return nil
 }
 
 // Expect holds assertions for a step.
