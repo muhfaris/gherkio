@@ -158,35 +158,99 @@ func defaultConfigTemplate(version string) string {
 	if version == "dev" || version == "" {
 		version = "0.1.0"
 	}
-	return fmt.Sprintf(`# Gherkio Configuration
+	return fmt.Sprintf(`# ======================================================================
+# Gherkio Declarative API Testing Platform — Configuration Map
+# ======================================================================
+# Use this file to define project metadata, test paths, HTML reporting,
+# custom credential masking, and request sandboxing.
+
+# Gherkio tool version that initialized this project config.
 gherkio_version: %s
 
+# ----------------------------------------------------------------------
+# 1. Project Metadata
+# ----------------------------------------------------------------------
 project:
-  name: ""
+  name: "my-api-testing-suite"
   version: "1.0.0"
 
+# ----------------------------------------------------------------------
+# 2. Environments Directory Configuration
+# ----------------------------------------------------------------------
 environments:
+  # The default environment name to target if --env is omitted.
   default: local
+  # Path to target environments folder containing baseUrl mappings.
   path: .gherkio/environments
 
+# ----------------------------------------------------------------------
+# 3. Tests & Scenarios Configuration
+# ----------------------------------------------------------------------
 tests:
+  # Directory where declarative YAML scenario test files reside.
   path: .gherkio/tests
 
-reports:
-  path: .gherkio/reports
-  format: html
-  archive: true
-
+# ----------------------------------------------------------------------
+# 4. JSON Schemas Configuration
+# ----------------------------------------------------------------------
 schemas:
+  # Directory containing validation files for schema matchers.
   path: .gherkio/schemas
 
-security:
-  mask:
-    # Sensitive field names to mask in output.
-    # Override defaults by listing custom field names here.
-    # Set to empty to disable masking.
+# ----------------------------------------------------------------------
+# 5. Reports & Core Failure Snapshots
+# ----------------------------------------------------------------------
+reports:
+  # Output path where execution summaries are compiled.
+  path: .gherkio/reports
+  # Report output format (options: "html", "json", "html,json" for both).
+  format: html
+  # Archive previous report results in .gherkio/reports/archive/.
+  archive: true
+  # Number of past report archives to retain before cleaning up disk.
+  retention: 10
+  # Mask sensitive fields (e.g. Bearer tokens) inside public HTML reports.
+  maskSensitive: true
+
+  # failure-debug-snapshots:
+  failures:
+    # Set to true to automatically write JSON debugging snapshots on any step fail.
     enabled: true
-    fields: []
+    # Folder path where individual core JSON dumps will reside.
+    path: .gherkio/reports/failures
+    # Apply global credentials masking to variables/payloads inside failure dumps.
+    maskSensitive: true
+    # Maximum count of individual failure dumps to retain (prevents disk bloat).
+    retainCount: 50
+
+# ----------------------------------------------------------------------
+# 6. Security, Masking, and Domain Sandboxing Guardrails
+# ----------------------------------------------------------------------
+security:
+  # Sensitive field masking to secure stdout logs and run traces.
+  mask:
+    # Enable automatic sensitive credential variable masking.
+    enabled: true
+    # Custom sensitive dictionary words to mask in execution outputs (case-insensitive).
+    fields:
+      - secret
+      - password
+      - token
+      - auth
+      - authorization
+      - signature
+      - apikey
+      - api-key
+
+  # sandboxing:
+  sandboxing:
+    # Set to true to restrict request scopes to allowed domains and CIDRs.
+    enabled: false
+    # Allowed domains pattern matching (supports wildcards, empty allows all).
+    allowedDomains:
+      - "*.api.dummyjson.com"
+      - "localhost:*"
+      - "127.0.0.1:*"
 `, version)
 }
 
@@ -257,6 +321,7 @@ func Initialize(projectDir string, version string) error {
 		filepath.Join(baseDir, "reports"),
 		filepath.Join(baseDir, "reports", "latest"),
 		filepath.Join(baseDir, "reports", "archive"),
+		filepath.Join(baseDir, "reports", "failures"), // 🚨 NEW: Failures folder for RFC-18 snapshots
 		filepath.Join(baseDir, "schemas"),
 	}
 
