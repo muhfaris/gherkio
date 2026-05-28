@@ -119,10 +119,12 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 			Path:          "",
 			MaskSensitive: !reportRaw,
 			MaskFields:    maskFields,
+			Retention:     10, // Default fallback
 		}
 		if appCfg != nil {
 			reportCfg.Path = appCfg.Reports.Path
 			reportCfg.MaskSensitive = appCfg.Reports.MaskSensitive
+			reportCfg.Retention = appCfg.Reports.Retention
 		}
 	}
 
@@ -219,6 +221,11 @@ func handleReport(result *runner.RunResult, projectDir string, env string, repor
 			fmt.Printf("📄 JSON Report saved: %s\n", savedPath)
 		}
 	}
+
+	// Prune old runs based on retention limits
+	if err := report.EnforceRetention(projectDir, reportCfg.Path, reportCfg.Retention); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to enforce reports retention: %v\n", err)
+	}
 }
 
 func handleSuiteReport(results []*runner.RunResult, projectDir string, env string, reportCfg *report.ReportConfig) {
@@ -261,6 +268,11 @@ func handleSuiteReport(results []*runner.RunResult, projectDir string, env strin
 			}
 			fmt.Printf("📄 JSON Report saved: %s\n", savedPath)
 		}
+	}
+
+	// Prune old runs based on retention limits
+	if err := report.EnforceRetention(projectDir, reportCfg.Path, reportCfg.Retention); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to enforce reports retention: %v\n", err)
 	}
 }
 
