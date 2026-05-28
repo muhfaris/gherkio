@@ -25,6 +25,7 @@ type RunConfig struct {
 	StepIndex      int                    // Index of step to run (0-indexed). Negative means run all steps.
 	StepSection    string                 // Section of the step ("setup", "steps", "teardown")
 	DryRun         bool                   // Preview without executing HTTP requests
+	Snapshot      SnapshotConfig          // Configuration for failure snapshots
 }
 
 // RunResult holds the overall execution result.
@@ -106,7 +107,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 
 	// Execute setup steps first
 	if len(testFile.Setup) > 0 {
-		setupSteps, setupPass, setupFail, setupPassed := executeSteps(testFile.Setup, env, vars, cfg.ProjectDir, currentDir, 0, "setup", cfg.DryRun, sandbox)
+		setupSteps, setupPass, setupFail, setupPassed := executeSteps(testFile.Setup, env, vars, cfg.ProjectDir, currentDir, 0, "setup", cfg.DryRun, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
 		for i := range setupSteps {
 			setupSteps[i].ScenarioName = testFile.Scenario
 			setupSteps[i].TestFile = cfg.TestPath
@@ -121,7 +122,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 
 	// Execute main steps (skip if setup failed)
 	if !setupFailed {
-		mainSteps, mainPass, mainFail, mainPassed := executeSteps(testFile.Steps, env, vars, cfg.ProjectDir, currentDir, 0, "steps", cfg.DryRun, sandbox)
+		mainSteps, mainPass, mainFail, mainPassed := executeSteps(testFile.Steps, env, vars, cfg.ProjectDir, currentDir, 0, "steps", cfg.DryRun, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
 		for i := range mainSteps {
 			mainSteps[i].ScenarioName = testFile.Scenario
 			mainSteps[i].TestFile = cfg.TestPath
@@ -137,7 +138,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 	// Execute teardown steps (always, even if setup or steps failed)
 	// Teardown failures are recorded but don't affect overall pass/fail
 	if len(testFile.Teardown) > 0 {
-		teardownSteps, _, _, _ := executeSteps(testFile.Teardown, env, vars, cfg.ProjectDir, currentDir, 0, "teardown", cfg.DryRun, sandbox)
+		teardownSteps, _, _, _ := executeSteps(testFile.Teardown, env, vars, cfg.ProjectDir, currentDir, 0, "teardown", cfg.DryRun, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
 		for i := range teardownSteps {
 			teardownSteps[i].ScenarioName = testFile.Scenario
 			teardownSteps[i].TestFile = cfg.TestPath
@@ -159,11 +160,12 @@ func Run(cfg RunConfig) (*RunResult, error) {
 }
 
 // executeSteps executes a list of steps. If dryRun is true, skips HTTP calls and produces preview output.
-func executeSteps(steps []model.Step, env *model.Environment, vars map[string]interface{}, projectDir string, currentDir string, depth int, role string, dryRun bool, sandbox *model.SandboxConfig) ([]StepResult, int, int, bool) {
+func executeSteps(steps []model.Step, env *model.Environment, vars map[string]interface{}, projectDir string, currentDir string, depth int, role string, dryRun bool, sandbox *model.SandboxConfig, snapCfg SnapshotConfig, scenario string, testFile string) ([]StepResult, int, int, bool) {
 	var stepResults []StepResult
 	totalPass := 0
 	totalFail := 0
 	allPassed := true
+	stepIndex := 0
 
 	for _, step := range steps {
 		stepStart := time.Now()
@@ -218,7 +220,7 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 			}
 
 			usedCurrentDir := filepath.Dir(resolvedPath)
-			nestedSteps, nestedPass, nestedFail, _ := executeSteps(usedTest.Steps, env, vars, projectDir, usedCurrentDir, depth+1, role, dryRun, sandbox)
+			nestedSteps, nestedPass, nestedFail, _ := executeSteps(usedTest.Steps, env, vars, projectDir, usedCurrentDir, depth+1, role, dryRun, sandbox, snapCfg, scenario, testFile)
 
 			// Flatten the results
 			stepResults = append(stepResults, nestedSteps...)
@@ -460,7 +462,14 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 			if stepResult.Response == nil {
 				allPassed = false
 			}
+
+			// Write failure snapshot if enabled and this step has failed
+			if snapCfg.Enabled && !allPassed {
+				writeFailureSnapshot(snapCfg, &stepResult, stepIndex, scenario, testFile, role, vars)
+			}
+
 			stepResults = append(stepResults, stepResult)
+			stepIndex++
 			continue
 		}
 
@@ -489,11 +498,13 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 		}
 
 		// Count pass/fail
+		stepHasFailedAssertions := false
 		for _, a := range stepResult.Assertions {
 			if a.Passed {
 				totalPass++
 			} else {
 				totalFail++
+				stepHasFailedAssertions = true
 			}
 		}
 
@@ -505,10 +516,17 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 				totalPass++
 			} else {
 				totalFail++
+				stepHasFailedAssertions = true
 			}
 		}
 
+		// Write failure snapshot if step has failed assertions and snapshots are enabled
+		if snapCfg.Enabled && stepHasFailedAssertions {
+			writeFailureSnapshot(snapCfg, &stepResult, stepIndex, scenario, testFile, role, vars)
+		}
+
 		stepResults = append(stepResults, stepResult)
+		stepIndex++
 	}
 
 	allPassed = totalFail == 0
@@ -650,7 +668,7 @@ func RunSingleStep(cfg RunConfig, env *model.Environment, testFile *model.TestFi
 	}
 
 	currentDir := filepath.Dir(cfg.TestPath)
-	runSteps, pass, fail, passed := executeSteps(stepsToRun, env, vars, cfg.ProjectDir, currentDir, 0, section, cfg.DryRun, sandbox)
+	runSteps, pass, fail, passed := executeSteps(stepsToRun, env, vars, cfg.ProjectDir, currentDir, 0, section, cfg.DryRun, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
 
 	for i := range runSteps {
 		runSteps[i].ScenarioName = testFile.Scenario
@@ -742,19 +760,28 @@ func RunSingleStep(cfg RunConfig, env *model.Environment, testFile *model.TestFi
 }
 
 // snapshotVars creates a copy of the variables map with sensitive fields masked.
-// snapshotVars creates a copy of the variables map with sensitive fields masked.
 // This is used for verbose output to show what values were available at runtime.
-func snapshotVars(vars map[string]interface{}, maskFields []string) map[string]interface{} {
+// The maskSensitive parameter controls whether masking is applied; when true,
+// fields in maskFields are replaced with "***masked***".
+func snapshotVars(vars map[string]interface{}, maskFields []string, maskSensitive ...bool) map[string]interface{} {
 	if vars == nil {
 		return nil
 	}
 
-	result := make(map[string]interface{})
-
-	// If no mask fields provided, use defaults
+	// Determine whether to actually mask (default: true when maskFields provided)
+	shouldMask := true
 	if len(maskFields) == 0 {
 		maskFields = defaultSensitiveFields
 	}
+	if len(maskSensitive) > 0 {
+		shouldMask = maskSensitive[0]
+	}
+
+	if !shouldMask {
+		return vars
+	}
+
+	result := make(map[string]interface{})
 
 	for key, val := range vars {
 		// Check if this key should be masked

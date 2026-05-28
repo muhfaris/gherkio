@@ -51,4 +51,13 @@ type ReportsConfig struct {
 	Archive       bool   `yaml:"archive,omitempty" jsonschema:"description=Archive previous reports"`
 	Retention     int    `yaml:"retention,omitempty" jsonschema:"description=Number of archives to retain,default=10"`
 	MaskSensitive bool   `yaml:"maskSensitive,omitempty" jsonschema:"description=Mask sensitive data in reports"`
+	Failures      FailureConfig `yaml:"failures,omitempty" jsonschema:"description=Failure debug snapshot configuration"`
+}
+
+// FailureConfig defines the configuration for automated failure snapshot generation.
+type FailureConfig struct {
+	Enabled       bool   `yaml:"enabled,omitempty" jsonschema:"description=Enable automated failure snapshot generation"`
+	Path          string `yaml:"path,omitempty" jsonschema:"description=Output path for failure snapshots"`
+	MaskSensitive bool   `yaml:"maskSensitive,omitempty" jsonschema:"description=Mask sensitive data in failure snapshots"`
+	RetainCount   int    `yaml:"retainCount,omitempty" jsonschema:"description=Maximum number of failure snapshots to retain,default=50"`
 }
