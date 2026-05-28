@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/muhfaris/gherkio/internal/core/project"
 	"github.com/muhfaris/gherkio/internal/model"
 	"github.com/muhfaris/gherkio/internal/runner"
 	"gopkg.in/yaml.v3"
@@ -33,15 +32,10 @@ type ValidationResult struct {
 	Errors []ValidationError `json:"errors"`
 }
 
-// ListTests discovers and extracts metadata of all YAML test scenarios.
-func ListTests(projectDir string) ([]TestInfo, error) {
-	meta, err := project.GetMeta(projectDir)
-	if err != nil {
-		return nil, err
-	}
-
+// ListTests discovers and extracts metadata of all YAML test scenarios under the given testsDir.
+func ListTests(testsDir string) ([]TestInfo, error) {
 	var infos []TestInfo
-	err = filepath.Walk(meta.TestsDir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(testsDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil // skip inaccessible files
 		}
@@ -58,7 +52,7 @@ func ListTests(projectDir string) ([]TestInfo, error) {
 			return nil // skip corrupt files
 		}
 
-		relPath, err := filepath.Rel(meta.TestsDir, path)
+		relPath, err := filepath.Rel(testsDir, path)
 		if err != nil {
 			relPath = path
 		}
@@ -85,14 +79,9 @@ func ReadTest(absPath string) (*model.TestFile, error) {
 }
 
 // CreateTest creates a new test file, validating it first.
-func CreateTest(projectDir, relativePath string, test *model.TestFile) error {
-	meta, err := project.GetMeta(projectDir)
-	if err != nil {
-		return err
-	}
-
+func CreateTest(testsDir string, schemasDir string, relativePath string, test *model.TestFile) error {
 	// Validate test scenario
-	res, err := Validate(test, projectDir)
+	res, err := Validate(test, schemasDir)
 	if err != nil {
 		return err
 	}
@@ -104,7 +93,7 @@ func CreateTest(projectDir, relativePath string, test *model.TestFile) error {
 		return fmt.Errorf("validation failed: %s", strings.Join(errs, "; "))
 	}
 
-	fullPath := filepath.Join(meta.TestsDir, relativePath)
+	fullPath := filepath.Join(testsDir, relativePath)
 	if _, err := os.Stat(fullPath); err == nil {
 		return fmt.Errorf("test file already exists at %s", fullPath)
 	}
@@ -122,8 +111,8 @@ func CreateTest(projectDir, relativePath string, test *model.TestFile) error {
 }
 
 // UpdateTest overwrites an existing Gherkio test file, writing a backup first.
-func UpdateTest(absPath string, test *model.TestFile, projectDir string) error {
-	res, err := Validate(test, projectDir)
+func UpdateTest(absPath string, test *model.TestFile, schemasDir string) error {
+	res, err := Validate(test, schemasDir)
 	if err != nil {
 		return err
 	}
@@ -162,7 +151,7 @@ func DeleteTest(absPath string) error {
 }
 
 // Validate checks a test file's Gherkio structural and dependency references.
-func Validate(test *model.TestFile, projectDir string) (*ValidationResult, error) {
+func Validate(test *model.TestFile, schemasDir string) (*ValidationResult, error) {
 	result := &ValidationResult{Valid: true}
 
 	if strings.TrimSpace(test.Scenario) == "" {
@@ -236,22 +225,19 @@ func Validate(test *model.TestFile, projectDir string) (*ValidationResult, error
 		}
 
 		// Validate referenced schema file if it exists
-		if schemaNameVal, ok := step.Expect.Extra["schema"]; ok && projectDir != "" {
+		if schemaNameVal, ok := step.Expect.Extra["schema"]; ok && schemasDir != "" {
 			if schemaName, ok := schemaNameVal.(string); ok && schemaName != "" {
-				meta, err := project.GetMeta(projectDir)
-				if err == nil {
-					schemaFile := filepath.Join(meta.SchemasDir, schemaName+".yaml")
-					if _, err := os.Stat(schemaFile); os.IsNotExist(err) {
-						// Also check .yml
-						schemaFileYml := filepath.Join(meta.SchemasDir, schemaName+".yml")
-						if _, errYml := os.Stat(schemaFileYml); os.IsNotExist(errYml) {
-							result.Valid = false
-							result.Errors = append(result.Errors, ValidationError{
-								Field:   prefix + ".expect.schema",
-								Message: fmt.Sprintf("Referenced schema '%s' does not exist in .gherkio/schemas/", schemaName),
-								Code:    "schema_not_found",
-							})
-						}
+				schemaFile := filepath.Join(schemasDir, schemaName+".yaml")
+				if _, err := os.Stat(schemaFile); os.IsNotExist(err) {
+					// Also check .yml
+					schemaFileYml := filepath.Join(schemasDir, schemaName+".yml")
+					if _, errYml := os.Stat(schemaFileYml); os.IsNotExist(errYml) {
+						result.Valid = false
+						result.Errors = append(result.Errors, ValidationError{
+							Field:   prefix + ".expect.schema",
+							Message: fmt.Sprintf("Referenced schema '%s' does not exist in .gherkio/schemas/", schemaName),
+							Code:    "schema_not_found",
+						})
 					}
 				}
 			}

@@ -12,9 +12,9 @@ import (
 
 // CredInfo details discovered credential metadata.
 type CredInfo struct {
-	EnvName      string   `json:"envName"`
-	Accounts     []string `json:"accounts"`
-	FilePath     string   `json:"filePath"`
+	EnvName  string   `json:"envName"`
+	Accounts []string `json:"accounts"`
+	FilePath string   `json:"filePath"`
 }
 
 // List scans all credentials files under .gherkio/credentials/.
@@ -52,9 +52,9 @@ func List(projectDir string) ([]CredInfo, error) {
 		}
 
 		creds = append(creds, CredInfo{
-			EnvName:      envName,
-			Accounts:     cred.AccountNames(),
-			FilePath:     fullPath,
+			EnvName:  envName,
+			Accounts: cred.AccountNames(),
+			FilePath: fullPath,
 		})
 	}
 

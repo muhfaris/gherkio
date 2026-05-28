@@ -17,22 +17,22 @@ import (
 
 // StepResult holds the result of a single step execution.
 type StepResult struct {
-	Original     model.Step        `json:"original"`
-	Depth        int               `json:"depth"`
-	IsUseStart   bool              `json:"isUseStart"`
-	IsUseEnd     bool              `json:"isUseEnd"`
-	UseFile      string            `json:"useFile,omitempty"`
-	ScenarioName string            `json:"scenarioName,omitempty"`
-	TestFile     string            `json:"testFile,omitempty"`
+	Original     model.Step             `json:"original"`
+	Depth        int                    `json:"depth"`
+	IsUseStart   bool                   `json:"isUseStart"`
+	IsUseEnd     bool                   `json:"isUseEnd"`
+	UseFile      string                 `json:"useFile,omitempty"`
+	ScenarioName string                 `json:"scenarioName,omitempty"`
+	TestFile     string                 `json:"testFile,omitempty"`
 	Request      *RequestInfo           `json:"request"`
 	Response     *ResponseInfo          `json:"response"`
 	Assertions   []AssertionResult      `json:"assertions"`
 	SavedVars    map[string]interface{} `json:"savedVars,omitempty"`
 	Duration     time.Duration          `json:"duration"`
-	Error        string            `json:"error,omitempty"`
-	RetryCount   int               `json:"retryCount,omitempty"`
-	RetryHistory []RetryEntry      `json:"retryHistory,omitempty"`
-	Role         string            `json:"role,omitempty"` // "setup", "steps", "teardown"
+	Error        string                 `json:"error,omitempty"`
+	RetryCount   int                    `json:"retryCount,omitempty"`
+	RetryHistory []RetryEntry           `json:"retryHistory,omitempty"`
+	Role         string                 `json:"role,omitempty"` // "setup", "steps", "teardown"
 }
 
 // RetryEntry captures the outcome of a single retry attempt.

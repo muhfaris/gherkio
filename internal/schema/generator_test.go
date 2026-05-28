@@ -235,11 +235,11 @@ func TestSchemaTypes_HaveCorrectFilePatterns(t *testing.T) {
 	types := AvailableSchemaTypes()
 
 	patterns := map[string]string{
-		"test":               ".gherkio/tests/**/*.yaml",
-		"config":             ".gherkio/config.yaml",
-		"environment":        ".gherkio/environments/*.yaml",
-		"credentials":        ".gherkio/credentials/*.yaml",
-		"schema-definition":  ".gherkio/schemas/*.yaml",
+		"test":              ".gherkio/tests/**/*.yaml",
+		"config":            ".gherkio/config.yaml",
+		"environment":       ".gherkio/environments/*.yaml",
+		"credentials":       ".gherkio/credentials/*.yaml",
+		"schema-definition": ".gherkio/schemas/*.yaml",
 	}
 
 	for _, st := range types {

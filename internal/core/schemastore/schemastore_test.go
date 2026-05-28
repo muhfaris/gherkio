@@ -19,7 +19,7 @@ func TestSchemaStoreCRUD(t *testing.T) {
 
 	// 2. Create Schema
 	validSchema := &model.Schema{
-		Type: "object",
+		Type:     "object",
 		Required: []string{"id"},
 		Properties: map[string]*model.Schema{
 			"id": {Type: "string", Format: "uuid"},

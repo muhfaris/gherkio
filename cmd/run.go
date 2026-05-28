@@ -674,19 +674,19 @@ func runAllInDirMultiAccount(testDir, projectDir, env string, verbose bool, repo
 			scenarioIdx := i*accountCount + j
 			fmt.Printf("[%d/%d] Running %s with account: %s\n", scenarioIdx, totalScenarios, relPath, accountName)
 
-		cfg := runner.RunConfig{
-			TestPath:       file,
-			EnvName:        env,
-			ProjectDir:     projectDir,
-			Verbose:        verbose,
-			MaskFields:     accountMask,
-			AccountName:    accountName,
-			CredentialVars: runner.CredentialsToVars(account),
-			AllAccounts:    allAccountsMap,
-			StepIndex:      -1,
-			StepSection:    "",
-			DryRun:         dryRun,
-		}
+			cfg := runner.RunConfig{
+				TestPath:       file,
+				EnvName:        env,
+				ProjectDir:     projectDir,
+				Verbose:        verbose,
+				MaskFields:     accountMask,
+				AccountName:    accountName,
+				CredentialVars: runner.CredentialsToVars(account),
+				AllAccounts:    allAccountsMap,
+				StepIndex:      -1,
+				StepSection:    "",
+				DryRun:         dryRun,
+			}
 
 			result, err := runner.Run(cfg)
 			if err != nil {
@@ -890,19 +890,19 @@ func runAllInDirParallel(testDir, projectDir, env string, verbose bool, reportCf
 				maskFields = accountMask
 			}
 
-		cfg := runner.RunConfig{
-			TestPath:       file,
-			EnvName:        env,
-			ProjectDir:     projectDir,
-			Verbose:        verbose,
-			MaskFields:     maskFields,
-			AccountName:    accName,
-			CredentialVars: credentialVars,
-			AllAccounts:    allAccountsMap,
-			StepIndex:      -1,
-			StepSection:    "",
-			DryRun:         dryRun,
-		}
+			cfg := runner.RunConfig{
+				TestPath:       file,
+				EnvName:        env,
+				ProjectDir:     projectDir,
+				Verbose:        verbose,
+				MaskFields:     maskFields,
+				AccountName:    accName,
+				CredentialVars: credentialVars,
+				AllAccounts:    allAccountsMap,
+				StepIndex:      -1,
+				StepSection:    "",
+				DryRun:         dryRun,
+			}
 
 			result, err := runner.Run(cfg)
 			if err != nil {

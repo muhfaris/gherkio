@@ -24,20 +24,20 @@ type RunConfig struct {
 	AllAccounts    map[string]interface{} // All accounts for $accounts.<name>.<field> access (optional)
 	StepIndex      int                    // Index of step to run (0-indexed). Negative means run all steps.
 	StepSection    string                 // Section of the step ("setup", "steps", "teardown")
-	DryRun         bool                  // Preview without executing HTTP requests
+	DryRun         bool                   // Preview without executing HTTP requests
 }
 
 // RunResult holds the overall execution result.
 type RunResult struct {
-	Scenario    string        `json:"scenario"`
-	TestFile    string        `json:"testFile,omitempty"`
-	Account     string        `json:"account,omitempty"` // Account name used (if any)
-	Steps       []StepResult  `json:"steps"`
+	Scenario     string                 `json:"scenario"`
+	TestFile     string                 `json:"testFile,omitempty"`
+	Account      string                 `json:"account,omitempty"` // Account name used (if any)
+	Steps        []StepResult           `json:"steps"`
 	ResolvedVars map[string]interface{} `json:"resolvedVars,omitempty"` // Variables available at start of scenario
-	TotalPass   int           `json:"totalPass"`
-	TotalFail   int           `json:"totalFail"`
-	Duration    time.Duration `json:"duration"`
-	Passed      bool          `json:"passed"`
+	TotalPass    int                    `json:"totalPass"`
+	TotalFail    int                    `json:"totalFail"`
+	Duration     time.Duration          `json:"duration"`
+	Passed       bool                   `json:"passed"`
 }
 
 // Run executes a test file and returns the result.
@@ -355,31 +355,31 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 				}
 			}
 
-		// Interpolate variable references in expected assertion values
-		interpolatedExtra := make(map[string]interface{}, len(step.Expect.Extra))
-		for path, val := range step.Expect.Extra {
-			if strVal, ok := val.(string); ok {
-				interpolated, err := interpolateString(strVal, vars)
-				if err == nil {
-					interpolatedExtra[path] = interpolated
+			// Interpolate variable references in expected assertion values
+			interpolatedExtra := make(map[string]interface{}, len(step.Expect.Extra))
+			for path, val := range step.Expect.Extra {
+				if strVal, ok := val.(string); ok {
+					interpolated, err := interpolateString(strVal, vars)
+					if err == nil {
+						interpolatedExtra[path] = interpolated
+					} else {
+						// Variable not found — use original, assertion will fail clearly
+						interpolatedExtra[path] = strVal
+					}
 				} else {
-					// Variable not found — use original, assertion will fail clearly
-					interpolatedExtra[path] = strVal
+					interpolatedExtra[path] = val
 				}
-			} else {
-				interpolatedExtra[path] = val
 			}
-		}
 
-		assertions = runAssertions(resp.Status, resp, jwtClaims, step.Expect.Status, interpolatedExtra, projectDir, interpolatedRequest.Body)
+			assertions = runAssertions(resp.Status, resp, jwtClaims, step.Expect.Status, interpolatedExtra, projectDir, interpolatedRequest.Body)
 
-		allPass := true
-		for _, a := range assertions {
-			if !a.Passed {
-				allPass = false
-				break
+			allPass := true
+			for _, a := range assertions {
+				if !a.Passed {
+					allPass = false
+					break
+				}
 			}
-		}
 
 			lastResp = resp
 			lastJwtClaims = jwtClaims
@@ -448,18 +448,18 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 
 		// Extract variables
 		if lastResp != nil {
-		extractValues(vars, step.Save, lastResp, lastJwtClaims, interpolatedRequest.Body)
+			extractValues(vars, step.Save, lastResp, lastJwtClaims, interpolatedRequest.Body)
 		}
 
-	// Track saved variable values for display
-	if step.Save != nil {
-		stepResult.SavedVars = make(map[string]interface{})
-		for name := range step.Save {
-			if val, ok := vars[name]; ok {
-				stepResult.SavedVars[name] = val
+		// Track saved variable values for display
+		if step.Save != nil {
+			stepResult.SavedVars = make(map[string]interface{})
+			for name := range step.Save {
+				if val, ok := vars[name]; ok {
+					stepResult.SavedVars[name] = val
+				}
 			}
 		}
-	}
 
 		stepResult.Duration = time.Since(stepStart)
 		if hasRetry && len(retryHistory) > 1 {
@@ -695,15 +695,15 @@ func RunSingleStep(cfg RunConfig, env *model.Environment, testFile *model.TestFi
 	}
 
 	result := &RunResult{
-		Scenario:    testFile.Scenario,
-		TestFile:    cfg.TestPath,
-		Account:     cfg.AccountName,
-		Steps:       runSteps,
+		Scenario:     testFile.Scenario,
+		TestFile:     cfg.TestPath,
+		Account:      cfg.AccountName,
+		Steps:        runSteps,
 		ResolvedVars: initialVars,
-		TotalPass:   pass,
-		TotalFail:   fail,
-		Duration:    time.Since(start),
-		Passed:      passed,
+		TotalPass:    pass,
+		TotalFail:    fail,
+		Duration:     time.Since(start),
+		Passed:       passed,
 	}
 
 	return result, nil

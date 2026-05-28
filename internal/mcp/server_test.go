@@ -98,6 +98,7 @@ func TestMCPServerHandshakeAndList(t *testing.T) {
 		t.Errorf("server terminated with unexpected error: %v", serverErr)
 	}
 }
+
 type RawResponse struct {
 	JSONRPC string          `json:"jsonrpc"`
 	Result  json.RawMessage `json:"result,omitempty"`
@@ -110,6 +111,7 @@ type RawRequest struct {
 	Params  json.RawMessage `json:"params,omitempty"`
 	ID      interface{}     `json:"id,omitempty"`
 }
+
 func mockServerIO(inData []byte, projectDir string) ([]byte, error) {
 	// Create pipes
 	inRead, inWrite, _ := os.Pipe()
@@ -191,5 +193,153 @@ func TestMCPInitProject(t *testing.T) {
 	configPath := filepath.Join(tmpDir, ".gherkio", "config.yaml")
 	if _, err := os.Stat(configPath); err != nil {
 		t.Errorf("expected config.yaml to exist at %s, but got error: %v", configPath, err)
+	}
+}
+
+func TestMCPNewTools(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Setup a Gherkio project manually
+	gDir := filepath.Join(tmpDir, ".gherkio")
+	testsDir := filepath.Join(gDir, "tests")
+	schemasDir := filepath.Join(gDir, "schemas")
+	_ = os.MkdirAll(testsDir, 0755)
+	_ = os.MkdirAll(schemasDir, 0755)
+	_ = os.WriteFile(filepath.Join(gDir, "config.yaml"), []byte("environments:\n  default: local\n"), 0644)
+
+	// Write a simple test file to testsDir
+	testYaml := `scenario: User Login
+steps:
+  - request:
+      method: POST
+      url: https://api.example.com/login
+`
+	_ = os.WriteFile(filepath.Join(testsDir, "login.yaml"), []byte(testYaml), 0644)
+
+	// 1. Test convert_curl_to_yaml
+	curlReq := RawRequest{
+		JSONRPC: "2.0",
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name": "convert_curl_to_yaml", "arguments": {"curl": "curl -X POST https://api.example.com/login"}}`),
+		ID:      1,
+	}
+	reqData, _ := json.Marshal(curlReq)
+	outBytes, err := mockServerIO(reqData, tmpDir)
+	if err != nil && err != io.EOF {
+		t.Fatalf("server execution failed for convert_curl_to_yaml: %v", err)
+	}
+
+	var resp RawResponse
+	if err := json.Unmarshal(outBytes, &resp); err != nil {
+		t.Fatalf("failed to decode response: %v, raw output: %s", err, string(outBytes))
+	}
+	if resp.Error != nil {
+		t.Fatalf("convert_curl_to_yaml returned error: %+v", resp.Error)
+	}
+
+	// 2. Test convert_yaml_to_curl
+	yamlToCurlReq := RawRequest{
+		JSONRPC: "2.0",
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name": "convert_yaml_to_curl", "arguments": {"path": "login.yaml"}}`),
+		ID:      2,
+	}
+	reqData2, _ := json.Marshal(yamlToCurlReq)
+	outBytes2, err := mockServerIO(reqData2, tmpDir)
+	if err != nil && err != io.EOF {
+		t.Fatalf("server execution failed for convert_yaml_to_curl: %v", err)
+	}
+	var resp2 RawResponse
+	if err := json.Unmarshal(outBytes2, &resp2); err != nil {
+		t.Fatalf("failed to decode response: %v, raw output: %s", err, string(outBytes2))
+	}
+	if resp2.Error != nil {
+		t.Fatalf("convert_yaml_to_curl returned error: %+v", resp2.Error)
+	}
+
+	// 3. Test validate_workspace
+	validateReq := RawRequest{
+		JSONRPC: "2.0",
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name": "validate_workspace"}`),
+		ID:      3,
+	}
+	reqData3, _ := json.Marshal(validateReq)
+	outBytes3, err := mockServerIO(reqData3, tmpDir)
+	if err != nil && err != io.EOF {
+		t.Fatalf("server execution failed for validate_workspace: %v", err)
+	}
+	var resp3 RawResponse
+	if err := json.Unmarshal(outBytes3, &resp3); err != nil {
+		t.Fatalf("failed to decode response: %v, raw output: %s", err, string(outBytes3))
+	}
+	if resp3.Error != nil {
+		t.Fatalf("validate_workspace returned error: %+v", resp3.Error)
+	}
+
+	// 4. Test convert_curl_to_yaml (negative case: invalid curl)
+	invalidCurlReq := RawRequest{
+		JSONRPC: "2.0",
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name": "convert_curl_to_yaml", "arguments": {"curl": "curl -X"}}`),
+		ID:      4,
+	}
+	reqData4, _ := json.Marshal(invalidCurlReq)
+	outBytes4, err := mockServerIO(reqData4, tmpDir)
+	if err != nil && err != io.EOF {
+		t.Fatalf("server execution failed: %v", err)
+	}
+	var resp4 RawResponse
+	if err := json.Unmarshal(outBytes4, &resp4); err != nil {
+		t.Fatalf("failed to decode response: %v, raw output: %s", err, string(outBytes4))
+	}
+	var toolResult4 CallToolResult
+	_ = json.Unmarshal(resp4.Result, &toolResult4)
+	if !toolResult4.IsError {
+		t.Error("expected convert_curl_to_yaml to return IsError: true for invalid command")
+	}
+
+	// 5. Test convert_yaml_to_curl (negative case: missing file)
+	invalidYamlToCurlReq := RawRequest{
+		JSONRPC: "2.0",
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name": "convert_yaml_to_curl", "arguments": {"path": "missing.yaml"}}`),
+		ID:      5,
+	}
+	reqData5, _ := json.Marshal(invalidYamlToCurlReq)
+	outBytes5, err := mockServerIO(reqData5, tmpDir)
+	if err != nil && err != io.EOF {
+		t.Fatalf("server execution failed: %v", err)
+	}
+	var resp5 RawResponse
+	if err := json.Unmarshal(outBytes5, &resp5); err != nil {
+		t.Fatalf("failed to decode response: %v, raw output: %s", err, string(outBytes5))
+	}
+	var toolResult5 CallToolResult
+	_ = json.Unmarshal(resp5.Result, &toolResult5)
+	if !toolResult5.IsError {
+		t.Error("expected convert_yaml_to_curl to return IsError: true for non-existent file")
+	}
+
+	// 6. Test convert_yaml_to_curl (negative case: out of bounds step)
+	invalidStepYamlToCurlReq := RawRequest{
+		JSONRPC: "2.0",
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name": "convert_yaml_to_curl", "arguments": {"path": "login.yaml", "step": 99}}`),
+		ID:      6,
+	}
+	reqData6, _ := json.Marshal(invalidStepYamlToCurlReq)
+	outBytes6, err := mockServerIO(reqData6, tmpDir)
+	if err != nil && err != io.EOF {
+		t.Fatalf("server execution failed: %v", err)
+	}
+	var resp6 RawResponse
+	if err := json.Unmarshal(outBytes6, &resp6); err != nil {
+		t.Fatalf("failed to decode response: %v, raw output: %s", err, string(outBytes6))
+	}
+	var toolResult6 CallToolResult
+	_ = json.Unmarshal(resp6.Result, &toolResult6)
+	if !toolResult6.IsError {
+		t.Error("expected convert_yaml_to_curl to return IsError: true for out of bounds step index")
 	}
 }

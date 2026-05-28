@@ -11,14 +11,14 @@ import (
 
 // ProjectMeta holds absolute directories and info about the active Gherkio workspace.
 type ProjectMeta struct {
-	Name          string `json:"name"`
-	Version       string `json:"version"`
+	Name           string `json:"name"`
+	Version        string `json:"version"`
 	GherkioVersion string `json:"gherkioVersion"`
-	RootDir       string `json:"rootDir"`
-	TestsDir      string `json:"testsDir"`
-	EnvsDir       string `json:"envsDir"`
-	SchemasDir    string `json:"schemasDir"`
-	ReportsDir    string `json:"reportsDir"`
+	RootDir        string `json:"rootDir"`
+	TestsDir       string `json:"testsDir"`
+	EnvsDir        string `json:"envsDir"`
+	SchemasDir     string `json:"schemasDir"`
+	ReportsDir     string `json:"reportsDir"`
 }
 
 // FindRoot walks up from cwd to find the directory containing the .gherkio folder.

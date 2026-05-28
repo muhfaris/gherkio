@@ -6,9 +6,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
-	"github.com/muhfaris/gherkio/internal/core/envstore"
+	"github.com/muhfaris/gherkio/internal/converter"
 	"github.com/muhfaris/gherkio/internal/core/credentialstore"
+	"github.com/muhfaris/gherkio/internal/core/envstore"
 	"github.com/muhfaris/gherkio/internal/core/project"
 	"github.com/muhfaris/gherkio/internal/core/schemastore"
 	"github.com/muhfaris/gherkio/internal/core/teststore"
@@ -212,26 +214,26 @@ func (s *Server) handleListTools(id interface{}, params json.RawMessage) {
 							"type":        "string",
 							"description": "Environment to execute against (defaults to project config default or 'local').",
 						},
-					"account": map[string]interface{}{
-						"type":        "string",
-						"description": "Optional account name from environments credentials to use for dynamic variable injection. Not needed if the test uses $accounts.<name>.<field> syntax directly.",
-					},
-					"step": map[string]interface{}{
-						"type":        "integer",
-						"description": "Step index to execute in isolation (0-indexed). Defaults to -1 (run entire scenario or section if section is set).",
-					},
-					"section": map[string]interface{}{
-						"type":        "string",
-						"description": "Section to run (setup, steps, teardown). When set without step, runs ALL steps in that section only.",
-					},
-"dryRun": map[string]interface{}{
-						"type":        "boolean",
-						"description": "Preview test execution without making HTTP requests (dry-run mode).",
-					},
-					"verbose": map[string]interface{}{
-						"type":        "boolean",
-						"description": "Show full request/response payloads and resolved variables. Defaults to true.",
-					},
+						"account": map[string]interface{}{
+							"type":        "string",
+							"description": "Optional account name from environments credentials to use for dynamic variable injection. Not needed if the test uses $accounts.<name>.<field> syntax directly.",
+						},
+						"step": map[string]interface{}{
+							"type":        "integer",
+							"description": "Step index to execute in isolation (0-indexed). Defaults to -1 (run entire scenario or section if section is set).",
+						},
+						"section": map[string]interface{}{
+							"type":        "string",
+							"description": "Section to run (setup, steps, teardown). When set without step, runs ALL steps in that section only.",
+						},
+						"dryRun": map[string]interface{}{
+							"type":        "boolean",
+							"description": "Preview test execution without making HTTP requests (dry-run mode).",
+						},
+						"verbose": map[string]interface{}{
+							"type":        "boolean",
+							"description": "Show full request/response payloads and resolved variables. Defaults to true.",
+						},
 					},
 					Required: []string{"path"},
 				},
@@ -358,6 +360,75 @@ func (s *Server) handleListTools(id interface{}, params json.RawMessage) {
 					Required: []string{"name", "yaml"},
 				},
 			},
+			{
+				Name:        "convert_curl_to_yaml",
+				Description: "Convert a raw cURL command string into a formatted Gherkio DSL YAML test scenario or step.",
+				InputSchema: InputSchema{
+					Type: "object",
+					Properties: map[string]interface{}{
+						"curl": map[string]interface{}{
+							"type":        "string",
+							"description": "Raw cURL command string to parse and convert.",
+						},
+						"scenarioName": map[string]interface{}{
+							"type":        "string",
+							"description": "Optional custom scenario name wrapping the conversion. Defaults to 'Converted curl'.",
+						},
+						"stepOnly": map[string]interface{}{
+							"type":        "boolean",
+							"description": "If true, only returns the individual step's YAML content rather than the full scenario wrapper.",
+						},
+						"env": map[string]interface{}{
+							"type":        "string",
+							"description": "Optional environment to interpolate and format base URL references.",
+						},
+					},
+					Required: []string{"curl"},
+				},
+			},
+			{
+				Name:        "convert_yaml_to_curl",
+				Description: "Convert a Gherkio test scenario step (or all steps) into reproducible standard cURL commands.",
+				InputSchema: InputSchema{
+					Type: "object",
+					Properties: map[string]interface{}{
+						"path": map[string]interface{}{
+							"type":        "string",
+							"description": "Relative or absolute path to the Gherkio test YAML file.",
+						},
+						"step": map[string]interface{}{
+							"type":        "integer",
+							"description": "Optional step index (0-indexed) to convert. If omitted, converts all steps in the scenario.",
+						},
+						"env": map[string]interface{}{
+							"type":        "string",
+							"description": "Optional environment name (e.g., local, staging) to load credentials and variables for injection.",
+						},
+						"account": map[string]interface{}{
+							"type":        "string",
+							"description": "Optional account name from environments credentials to interpolate credentials variables.",
+						},
+					},
+					Required: []string{"path"},
+				},
+			},
+			{
+				Name:        "validate_workspace",
+				Description: "Perform full, multi-file static analysis on the workspace tests, validating syntax, variable scopes, credentials, schema, and use scenario references.",
+				InputSchema: InputSchema{
+					Type: "object",
+					Properties: map[string]interface{}{
+						"path": map[string]interface{}{
+							"type":        "string",
+							"description": "Optional relative or absolute path to a specific test file. If omitted, performs a complete scan of all test scenarios in the workspace.",
+						},
+						"env": map[string]interface{}{
+							"type":        "string",
+							"description": "Optional environment (e.g., local, staging) to load credentials for accounts variable validation. Defaults to 'local'.",
+						},
+					},
+				},
+			},
 		},
 	}
 	s.writeResponse(id, result, nil)
@@ -370,7 +441,7 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 		return
 	}
 
-	if s.projectDir == "" && call.Name != "get_project_info" && call.Name != "init_project" {
+	if s.projectDir == "" && call.Name != "get_project_info" && call.Name != "init_project" && call.Name != "convert_curl_to_yaml" {
 		// MCP capability check: let LLM know we are outside of a Gherkio workspace
 		s.writeToolError(id, "Gherkio project not initialized in this directory. Call 'init_project' or configure workspace.")
 		return
@@ -415,7 +486,12 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 		s.writeToolResponse(id, string(data))
 
 	case "list_tests":
-		tests, err := teststore.ListTests(s.projectDir)
+		meta, err := project.GetMeta(s.projectDir)
+		if err != nil {
+			s.writeToolError(id, fmt.Sprintf("Failed to get project info: %v", err))
+			return
+		}
+		tests, err := teststore.ListTests(meta.TestsDir)
 		if err != nil {
 			s.writeToolError(id, fmt.Sprintf("Failed to list tests: %v", err))
 			return
@@ -450,7 +526,13 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 			return
 		}
 
-		res, err := teststore.Validate(&tf, s.projectDir)
+		meta, err := project.GetMeta(s.projectDir)
+		if err != nil {
+			s.writeToolError(id, fmt.Sprintf("Failed to get project info: %v", err))
+			return
+		}
+
+		res, err := teststore.Validate(&tf, meta.SchemasDir)
 		if err != nil {
 			s.writeToolError(id, fmt.Sprintf("Validation processing error: %v", err))
 			return
@@ -473,7 +555,13 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 			return
 		}
 
-		err := teststore.CreateTest(s.projectDir, path, &tf)
+		meta, err := project.GetMeta(s.projectDir)
+		if err != nil {
+			s.writeToolError(id, fmt.Sprintf("Failed to get project info: %v", err))
+			return
+		}
+
+		err = teststore.CreateTest(meta.TestsDir, meta.SchemasDir, path, &tf)
 		if err != nil {
 			s.writeToolError(id, fmt.Sprintf("Failed to create test: %v", err))
 			return
@@ -494,8 +582,14 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 			return
 		}
 
+		meta, err := project.GetMeta(s.projectDir)
+		if err != nil {
+			s.writeToolError(id, fmt.Sprintf("Failed to get project info: %v", err))
+			return
+		}
+
 		fullPath := s.resolvePath(path)
-		err := teststore.UpdateTest(fullPath, &tf, s.projectDir)
+		err = teststore.UpdateTest(fullPath, &tf, meta.SchemasDir)
 		if err != nil {
 			s.writeToolError(id, fmt.Sprintf("Failed to update test: %v", err))
 			return
@@ -538,7 +632,7 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 		path, _ := call.Arguments["path"].(string)
 		envName, _ := call.Arguments["env"].(string)
 		accountName, _ := call.Arguments["account"].(string)
-stepVal, _ := call.Arguments["step"].(float64)
+		stepVal, _ := call.Arguments["step"].(float64)
 		dryRun, _ := call.Arguments["dryRun"].(bool)
 		verbose := true
 		if v, ok := call.Arguments["verbose"].(bool); ok {
@@ -597,7 +691,7 @@ stepVal, _ := call.Arguments["step"].(float64)
 			TestPath:       fullPath,
 			EnvName:        envName,
 			ProjectDir:     s.projectDir,
-Verbose:        verbose,
+			Verbose:        verbose,
 			MaskFields:     maskFields,
 			AccountName:    accountName,
 			CredentialVars: credentialVars,
@@ -741,6 +835,157 @@ Verbose:        verbose,
 			return
 		}
 		s.writeToolResponse(id, fmt.Sprintf("✓ Updated schema '%s'", name))
+
+	case "convert_curl_to_yaml":
+		{
+			curl, _ := call.Arguments["curl"].(string)
+			if curl == "" {
+				s.writeToolError(id, "Missing required argument 'curl'")
+				return
+			}
+			scenarioName, _ := call.Arguments["scenarioName"].(string)
+			if scenarioName == "" {
+				scenarioName = "Converted curl"
+			}
+			stepOnly, _ := call.Arguments["stepOnly"].(bool)
+			env, _ := call.Arguments["env"].(string)
+
+			req, _, err := converter.ParseCurl(curl)
+			if err != nil {
+				s.writeToolError(id, fmt.Sprintf("Failed to parse cURL command: %v", err))
+				return
+			}
+
+			yamlStr, err := converter.FormatYAML(req, scenarioName, stepOnly, s.projectDir, env)
+			if err != nil {
+				s.writeToolError(id, fmt.Sprintf("Failed to format YAML: %v", err))
+				return
+			}
+
+			s.writeToolResponse(id, yamlStr)
+		}
+
+	case "convert_yaml_to_curl":
+		{
+			path, _ := call.Arguments["path"].(string)
+			if path == "" {
+				s.writeToolError(id, "Missing required argument 'path'")
+				return
+			}
+			stepIdxVal, stepHas := call.Arguments["step"]
+			env, _ := call.Arguments["env"].(string)
+			account, _ := call.Arguments["account"].(string)
+
+			fullPath := s.resolvePath(path)
+			testFile, err := runner.LoadTestFile(fullPath)
+			if err != nil {
+				s.writeToolError(id, fmt.Sprintf("Failed to load test file: %v", err))
+				return
+			}
+
+			// Load environment and credentials if in a project
+			var creds *model.Credentials
+			if s.projectDir != "" && env != "" {
+				creds, _ = runner.LoadCredentials(s.projectDir, env)
+			}
+
+			// Determine credential vars and all accounts for $accounts.<name>.<field> access
+			var credentialVars map[string]interface{}
+			allAccountsMap := make(map[string]interface{})
+			if creds != nil {
+				allAccountsMap = creds.ToMap()
+				if account != "" {
+					if acc, exists := creds.GetAccount(account); exists {
+						credentialVars = runner.CredentialsToVars(acc)
+					}
+				} else {
+					// Fallback to first/auto account if only one exists
+					names := creds.AccountNames()
+					if len(names) == 1 {
+						if acc, exists := creds.GetAccount(names[0]); exists {
+							credentialVars = runner.CredentialsToVars(acc)
+						}
+					}
+				}
+			}
+
+			// Merge all accounts into credential vars for $accounts.<name>.<field> access
+			if len(allAccountsMap) > 0 {
+				if credentialVars == nil {
+					credentialVars = make(map[string]interface{})
+				}
+				credentialVars["accounts"] = allAccountsMap
+			}
+
+			// Determine which steps to convert
+			var targetSteps []model.Step
+			var singleStepIdx int = -1
+			if stepHas && stepIdxVal != nil {
+				switch v := stepIdxVal.(type) {
+				case float64:
+					singleStepIdx = int(v)
+				case int:
+					singleStepIdx = v
+				}
+			}
+
+			if singleStepIdx >= 0 {
+				if singleStepIdx >= len(testFile.Steps) {
+					s.writeToolError(id, fmt.Sprintf("step index %d out of bounds (contains %d steps)", singleStepIdx, len(testFile.Steps)))
+					return
+				}
+				targetSteps = []model.Step{testFile.Steps[singleStepIdx]}
+			} else {
+				targetSteps = testFile.Steps
+			}
+
+			var curls []string
+			for idx, step := range targetSteps {
+				// Inject fresh built-in generator variables per step
+				stepVars := make(map[string]interface{})
+				for key, val := range runner.LoadGherkioEnvVars() {
+					stepVars[key] = val
+				}
+				for k, v := range credentialVars {
+					stepVars[k] = v
+				}
+				for key, val := range runner.BuiltinVars() {
+					stepVars[key] = val
+				}
+
+				if step.Use != "" {
+					curls = append(curls, fmt.Sprintf("# use: %s (skipped composition)", step.Use))
+					continue
+				}
+
+				c, err := converter.ConvertStepToCurl(step.Request, s.projectDir, env, stepVars)
+				if err != nil {
+					curls = append(curls, fmt.Sprintf("# error converting step %d: %v", idx, err))
+					continue
+				}
+				curls = append(curls, c)
+			}
+
+			s.writeToolResponse(id, strings.Join(curls, "\n"))
+		}
+
+	case "validate_workspace":
+		{
+			path, _ := call.Arguments["path"].(string)
+			env, _ := call.Arguments["env"].(string)
+			if env == "" {
+				env = "local"
+			}
+
+			results, err := project.ValidateProject(s.projectDir, s.projectDir, path, env)
+			if err != nil {
+				s.writeToolError(id, fmt.Sprintf("Validation failed: %v", err))
+				return
+			}
+
+			data, _ := json.MarshalIndent(results, "", "  ")
+			s.writeToolResponse(id, string(data))
+		}
 
 	default:
 		s.writeError(id, MethodNotFound, fmt.Sprintf("Tool not found: '%s'", call.Name), nil)

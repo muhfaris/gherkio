@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/muhfaris/gherkio/internal/core/project"
 	"github.com/muhfaris/gherkio/internal/converter"
+	"github.com/muhfaris/gherkio/internal/core/project"
 	"github.com/muhfaris/gherkio/internal/model"
 	"github.com/muhfaris/gherkio/internal/runner"
 	"github.com/spf13/cobra"
