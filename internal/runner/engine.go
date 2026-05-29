@@ -105,8 +105,22 @@ func GetVariableInfo() []VariableInfo {
 		{Name: "$ulid", Description: "ULID (timestamp + random)", Example: "01ARZ3NDEKTSV4RRFFQ69G5FAV"},
 		{Name: "$randomInt", Description: "Random integer 0-999999; use ${randomInt(min,max)} for custom range", Example: "74291"},
 		{Name: "$randomEmail", Description: "Random email at @example.com", Example: "user_123456@example.com"},
-		{Name: "$randomPhone", Description: "Random Indonesian-format phone number", Example: "+6281234567890"},
+		{Name: "$randomPhone", Description: "Random Indonesian-format phone number; use ${randomPhone(ISO)} or ${randomPhone(prefix)} for global formats", Example: "+6281234567890"},
 		{Name: "$accounts.<name>.<field>", Description: "Access specific account fields from credentials", Example: "$accounts.alpha.username"},
+		{Name: "$timestamp", Description: "Current Unix epoch timestamp in seconds", Example: "1716942900"},
+		{Name: "$timestampMs", Description: "Current Unix epoch timestamp in milliseconds", Example: "1716942900123"},
+		{Name: "${dateNow(format)}", Description: "Get current date/time formatted using custom Go layout, e.g. '2006-01-02' (default format: '2006-01-02 15:04:05')", Example: "${dateNow(\"2006-01-02\")}"},
+		{Name: "${dateOffset(duration,format)}", Description: "Calculates current date/time with a duration offset and custom layout formatting", Example: "${dateOffset(\"+14d\",\"2006-01-02\")}"},
+		{Name: "${base64(string)}", Description: "Encodes string to Base64 standard format", Example: "${base64(\"hello\")}"},
+		{Name: "${base64Decode(encoded)}", Description: "Decodes Base64 string back to plaintext", Example: "${base64Decode(\"aGVsbG8=\")}"},
+		{Name: "${urlencode(string)}", Description: "Encodes string for safe URL query inclusion", Example: "${urlencode(\"hello world\")}"},
+		{Name: "${urldecode(encoded)}", Description: "Decodes URL-encoded string back to plaintext", Example: "${urldecode(\"hello+world\")}"},
+		{Name: "${hash(algo,data)}", Description: "Generates a hex-encoded hash of the data string using the specified algorithm (md5, sha1, sha256)", Example: "${hash(\"sha256\",\"secret\")}"},
+		{Name: "${hmac(algo,key,message)}", Description: "Generates a hex-encoded HMAC hash using algorithm (md5, sha1, sha256)", Example: "${hmac(\"sha256\",\"my-key\",\"message\")}"},
+		{Name: "${randomString(length,charset)}", Description: "Generates random string of length with character set (alpha, numeric, alphanumeric)", Example: "${randomString(10,\"alphanumeric\")}"},
+		{Name: "${toUpper(string)}", Description: "Converts a string value to uppercase", Example: "${toUpper(\"hello\")}"},
+		{Name: "${toLower(string)}", Description: "Converts a string value to lowercase", Example: "${toLower(\"HELLO\")}"},
+		{Name: "${trim(string)}", Description: "Trims whitespace from both ends of a string value", Example: "${trim(\"  hello  \")}"},
 	}
 }
 
