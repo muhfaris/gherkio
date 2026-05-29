@@ -1,0 +1,897 @@
+# Gherkio — AI Context Map
+
+======================================================================
+🚨 CRITICAL GUARDRAILS & MANDATORY PROCEDURES (READ FIRST)
+======================================================================
+Before writing, proposing, or modifying ANY code, you MUST complete these steps:
+
+1. Read `./graphify-out/GRAPH_REPORT.md` completely.
+2. Identify God Nodes (top 5 most connected files/functions).
+   - DO NOT modify God Nodes without first presenting a diff and obtaining explicit user confirmation.
+3. Check for Surprising Connections.
+   - If your change crosses a community boundary, STOP and output a Boundary Violation Report:
+     ### 🛑 BOUNDARY VIOLATION DETECTED
+     - Files: [pathA] -> [pathB]
+     - God Nodes impacted: [nodes]
+     - Risk: [risk]
+     - Mitigation: [mitigation]
+4. Verify your proposed change stays within a single code community. If it requires changes across >2 communities, STOP and notify the human.
+
+> **What this is**: A reference file for AI agents and LLMs to understand the Gherkio project structure, architecture, conventions, and design philosophy. Read this before making changes.
+
+---
+
+## Project Identity
+
+- **Name**: Gherkio
+- **Tagline**: Declarative Integration Testing Platform
+- **Language**: Go 1.25.0
+- **Module**: `github.com/muhfaris/gherkio`
+- **Author**: Faris (muhfaris)
+- **Current version**: v0.1.0
+
+### What Gherkio Is
+
+A CLI tool that executes declarative YAML-based integration test scenarios against HTTP APIs. Users describe requests, assertions, and variable extractions in YAML — no imperative code required.
+
+### What Gherkio Is NOT
+
+- A general-purpose programming language
+- A unit testing framework
+- A browser/E2E testing tool
+- A BDD/Gherkin natural language parser
+
+---
+
+## Key Dependencies
+
+| Dependency | Usage |
+|------------|-------|
+| `github.com/spf13/cobra` v1.10.2 | CLI framework (root + subcommands) |
+| `github.com/spf13/pflag` v1.0.9 | Flag parsing (via cobra) |
+| `gopkg.in/yaml.v3` v3.0.1 | YAML parsing for test and environment files |
+| `github.com/invopop/jsonschema` | JSON Schema generator from Go structs |
+| Standard library `net/http` | HTTP request execution |
+| Standard library `encoding/json` | JSON body parsing |
+| Standard library `regexp` | Variable interpolation (`$var` / `${var}`) |
+
+---
+
+## Project Structure
+
+```
+gherkio/
+├── README.md                       # Project README
+├── LICENSE                          # MIT License
+├── CONTRIBUTING.md                  # Contribution guide
+├── CODE_OF_CONDUCT.md               # Contributor Covenant
+├── main.go                          # Entry point — calls cmd.Execute()
+├── go.mod / go.sum                  # Module definitions
+├── .gitignore                        # Git ignore rules (build artifacts, IDE, credentials, reports)
+├── .goreleaser.yml                  # GoReleaser config (for releases)
+├── install.sh                       # Installation script
+├── llm-map.txt                      # ← This file
+├── .github/
+│   └── workflows/
+│       ├── ci.yml                   # CI: build, test, vet on push/PR
+│       ├── go-test.yml              # Go test suite execution pipeline
+│       ├── deploy-docs.yml          # Docs: build and deploy mdBook to GitHub Pages
+│       └── release.yml              # Release: GoReleaser on tag push (v*)
+├── cmd/                             # CLI command definitions
+│   ├── root.go                      # Base cobra command
+│   ├── init.go                      # `gherkio init` — scaffold project
+│   ├── run.go                       # `gherkio run <file>` — execute tests
+│   ├── convert.go                   # `gherkio convert` — bidirectionally convert cURL/YAML
+│   └── mcp.go                       # `gherkio mcp` — start Model Context Protocol stdio server
+├── internal/
+│   ├── core/                        # Reusable programmatic Gherkio domain core
+│   │   ├── project/                 # Workspace discovery & meta loader
+│   │   ├── teststore/               # Discovers scenarios, test CRUD & validations
+│   │   ├── envstore/                # Environment configuration CRUD
+│   │   └── schemastore/             # Custom schema validators CRUD
+│   ├── mcp/                         # Model Context Protocol stdio engine
+│   │   ├── protocol.go              # JSON-RPC 2.0 frames & MCP models
+│   │   └── server.go                # Handshaking, tool execution & resource provider
+│   ├── model/                       # Data model / YAML structs
+│   │   ├── test.go                  # TestFile, Step, Request, Expect, RetryConfig
+│   │   ├── config.go                # Project configuration struct
+│   │   ├── environment.go           # Environment, Service
+│   │   ├── schema.go               # Schema definition struct
+│   │   └── credentials.go          # Credentials, Account structs
+│   ├── converter/                   # Bidirectional cURL / Gherkio YAML Converter
+│   │   ├── parser.go                # Shell tokenizer & cURL arguments parser
+│   │   ├── parser_test.go           # cURL parsing unit tests
+│   │   ├── dsl.go                   # Gherkio YAML formatting & URL stripping
+│   │   ├── curl.go                  # Gherkio YAML steps to cURL reverse converter
+│   │   └── curl_test.go             # Reverse converter & lenient substitution tests
+│   ├── schema/                      # JSON Schema generator for autocomplete
+│   │   ├── generator.go
+│   │   └── generator_test.go
+│   ├── report/                      # HTML/JSON reporting engine
+│   │   ├── html.go                  # HTML rendering logic
+│   │   ├── json.go                  # JSON rendering logic
+│   │   ├── helpers.go               # cURL generation, RequestID extraction
+│   │   ├── template.html            # Embedded HTML template (go:embed)
+│   │   └── types.go                 # ReportData, ScenarioData, ReportStep structs
+│   └── runner/                      # Execution engine
+│       ├── runner.go                # Orchestrator: load → execute → assert
+│       ├── credentials.go           # Credentials loader & variable injection
+│       ├── executor.go              # HTTP client, JWT decoder, path resolver, assertions
+│       ├── executor_test.go         # Tests: resolvePath, evaluateAssertion, timing
+│       ├── engine.go               # Source of truth: canonical paths, matchers, collection functions
+│       ├── interpolator.go          # Variable interpolation ($var / ${var})
+│       ├── matchers.go              # Type/string/collection matchers (uuid, email, etc.)
+│       ├── matchers_test.go         # Tests: all matchers with pass/fail cases
+│       ├── printer.go               # Console output formatter
+│       ├── printer_test.go          # Tests: golden file snapshot tests
+│       ├── steplocator.go           # 1-indexed line-based step boundaries locator
+│       ├── steplocator_test.go      # Step locator test suite
+│       ├── config.go                # LoadConfig helper
+│       ├── schema.go                # Schema file loader
+│       ├── validator.go             # Schema validation engine
+│       ├── validator_test.go        # Tests: schema validation
+│       └── testdata/                # Golden files for snapshot testing
+│           ├── summary_output.golden
+│           ├── verbose_output.golden
+│           ├── advanced_matchers_output.golden
+│           ├── schema_output.golden
+│           └── timing_output.golden
+├── docs/
+│   ├── dsl-reference.md             # DSL Language Reference Guide (Human & AI)
+│   ├── recipes.md                   # Real-World Test Recipe Patterns (Human & AI)
+│   ├── contributing.md              # Contributor & Matcher Extension Guide (Human & AI)
+│   ├── prd.md                       # Product Requirements Document
+│   ├── mcp.md                       # MCP server setup guide
+│   ├── technical.md                 # File structure notes
+│   ├── note.md                      # Development progress notes
+│   ├── book/                        # mdBook documentation site (public)
+│   │   ├── book.toml               # mdBook configuration
+│   │   ├── src/
+│   │   │   ├── SUMMARY.md          # Navigation tree
+│   │   │   ├── README.md           # Landing page
+│   │   │   ├── getting-started/    # Installation, quickstart, project setup
+│   │   │   ├── cli/                # CLI reference (auto-generated from Cobra)
+│   │   │   ├── dsl/                # YAML DSL language guide (11 chapters)
+│   │   │   ├── recipes/            # Real-world test patterns (7 recipes)
+│   │   │   ├── mcp/                # MCP server docs (5 chapters)
+│   │   │   ├── reference/          # Config/environments/credentials schemas
+│   │   │   └── contributing/       # Architecture, matchers, RFC summaries
+│   │   └── book/                   # Built HTML output (gitignored)
+│   ├── rfcs/                        # RFC design documents (1-22, private)
+│   │   ├── ...
+│   │   └── 22-documentation-book.md
+│   └── http/                        # HTTP request examples
+│       └── dummy/
+│           └── login.http
+├── example/
+│   └── tests/
+│       ├── sample1.yaml             # Example: login with assertions + save
+│       └── sample2.yaml             # Example: variable interpolation across steps
+└── .gherkio/                        # Default project scaffold (created by `gherkio init`)
+    ├── config.yaml                  # Project configuration
+    ├── credentials/                 # Account credentials per environment
+    ├── environments/
+    │   └── local.yaml               # Environment: baseUrl, services, env vars
+    ├── tests/
+    │   └── dummyjson/
+    │       └── login.yaml           # Example test against dummyjson.com
+    ├── reports/
+    │   ├── latest/
+    │   └── archive/
+    └── schemas/
+```
+
+---
+
+## Architecture & Data Flow
+
+### Execution Flow (`runner.Run()`)
+
+```
+Load YAML test file  ──→  Load environment YAML  ──→  For each phase:
+    │
+    ├── Setup (if defined)
+    │   └── 1. Execute setup steps (failure skips main steps, teardown still runs)
+    │
+    ├── Steps (if setup succeeded)
+    │   ├── 1. Interpolate request variables ($var / ${var})
+    │   ├── 2. Resolve URL (via env.baseUrl or env.services[].baseUrl)
+    │   ├── 3. Execute HTTP request (Wrapped in Retry Loop if `retry` is configured)
+    │   ├── 4. Auto-decode JWT from response.token or response.access_token
+    │   ├── 5. Run assertions (status + body/JWT matchers)
+    │   ├── 6. Extract & save variables (on successful retry or after exhaust)
+    │   └── 7. Collect results
+    │
+    └── Teardown (if defined)
+        └── 1. Execute teardown steps (always, even if setup/steps failed)
+            - Failures are recorded but don't affect scenario pass/fail
+```
+
+### Key Types
+
+```go
+// internal/model/test.go
+type TestFile struct {
+    Scenario string
+    Setup    []Step  `yaml:"setup,omitempty"`    // Pre-condition steps (executed before main steps)
+    Steps    []Step
+    Teardown []Step `yaml:"teardown,omitempty"` // Post-condition steps (always executed, failures don't affect pass/fail)
+}
+type Step struct {
+    Use     string            // References another scenario file to execute
+    Request Request           // HTTP request definition
+    Retry   *RetryConfig      // Request retry configuration
+    Expect  Expect            // Assertions
+    Save    map[string]string // Variable extraction (e.g. {"token": "body.accessToken"})
+    Timing  TimingConfig      // Timing expectations (e.g. max: 500ms)
+}
+
+type RetryConfig struct {
+    Attempts    int
+    Interval    int
+    Backoff     string // "constant", "linear", "exponential"
+    MaxDuration string // e.g. "30s"
+    OnStatus    []int  // Only retry on these HTTP statuses
+}
+
+type TimingConfig struct {
+    Max string // e.g. "500ms", "1s"
+}
+type Request struct {
+    Service string            // Named service from environment
+    Method  string            // HTTP method
+    URL     string            // Path (appended to baseUrl)
+    Headers map[string]string
+    Body    interface{}       // Free-form map or string
+    Timeout string            // Per-request timeout (e.g. "5s", "30s", "1m"), default 30s
+}
+// internal/model/schema.go
+type Schema struct {
+    Type       string
+    Required   []string
+    Properties map[string]*Schema
+    Items      *Schema
+    Format     string
+    Enum       []interface{}
+    Pattern    string
+    MinLength  *int
+    MaxLength  *int
+    Minimum    *float64
+    Maximum    *float64
+    MinItems   *int
+    MaxItems   *int
+    Nullable   bool
+}
+
+type Expect struct {
+    Status int                    // Expected HTTP status code
+    Extra  map[string]interface{} // Everything else (path → matcher)
+}
+
+// internal/model/config.go
+type Config struct {
+    Project      ProjectConfig
+    Environments EnvConfig
+    Tests        TestsConfig
+    Schemas      SchemasConfig  // Schema path configuration
+    Security     SecurityConfig
+    Reports      ReportsConfig
+}
+
+type SchemasConfig struct {
+    Path string  // Configurable schema directory path
+}
+
+
+// internal/model/environment.go
+type Environment struct {
+    BaseURL  string
+    Services map[string]Service   // Named service overrides
+}
+type Service struct {
+    BaseURL string
+}
+
+// internal/runner/credentials.go
+// LoadCredentials loads a credentials file for an environment from .gherkio/credentials/<env>.yaml
+// CredentialsToVars converts an Account to a variables map for injection
+// GetSensitiveFieldsFromCredentials returns field names to mask based on credential values
+
+// internal/runner/schema.go
+// LoadSchema loads a schema by name from the project schemas directory.
+// internal/runner/validator.go
+// ValidateSchema validates parsed response data against a schema.
+
+// internal/runner/runner.go
+type RunConfig struct {
+    TestPath       string                 // Path to the test YAML file
+    EnvName        string                 // Environment name
+    ProjectDir     string                 // Root project directory
+    Verbose        bool                   // Show full request/response payloads
+    MaskFields     []string               // Sensitive field names to mask (nil = use defaults)
+    AccountName    string                 // Account name from credentials (optional)
+    CredentialVars map[string]interface{} // Pre-injected credential variables (optional)
+    AllAccounts    map[string]interface{} // All accounts for $accounts.<name>.<field> access (optional)
+    StepIndex      int                    // Index of step to run (0-indexed). Negative means run all.
+    StepSection    string                 // Section of the step ("setup", "steps", "teardown")
+    DryRun         bool                   // Preview without executing HTTP requests
+}
+type RunResult struct {
+    Scenario    string
+    TestFile    string          // File path of the scenario
+    Account     string          // Account name used (if any)
+    Steps       []StepResult
+    ResolvedVars map[string]interface{} // Variables available at start of scenario
+    TotalPass   int
+    TotalFail   int
+    Duration    time.Duration
+    Passed      bool
+}
+
+// internal/runner/executor.go
+type StepResult struct {
+    ScenarioName string          // Scenario this step belongs to
+    TestFile     string          // File path of the scenario
+    Request    *RequestInfo
+    Response   *ResponseInfo
+    Assertions []AssertionResult
+    Duration   time.Duration
+    Error      string
+    RetryCount   int             // Number of retries executed
+    RetryHistory []RetryEntry    // History of retry attempts
+    Role         string          // "setup", "steps", "teardown"
+}
+
+type RetryEntry struct {
+    Attempt  int
+    Status   int
+    Body     string
+    Duration time.Duration
+    Error    string
+}
+type AssertionResult struct {
+    Path        string
+    Expected    string
+    Actual      string
+    Passed      bool
+    Suggestions []string   // Available fields when path not found
+}
+```
+
+---
+
+## Key Design Patterns & Conventions
+
+### 1. Cobra CLI Pattern
+
+- Root command in `cmd/root.go`
+- Subcommands in `cmd/<name>.go` with `init()` registering via `rootCmd.AddCommand()`
+- Each subcommand's `RunE` calls a private function (e.g. `runInit()`, `runTest()`)
+
+### 2. Explicit Error Handling
+
+- All errors are wrapped with `fmt.Errorf("context: %w", err)` 
+- No panics in production paths
+- CLI commands return errors (not `os.Exit`) so cobra handles exit codes
+
+### 3. YAML Model Pattern
+
+- Models use `yaml` struct tags
+- `Expect` has a custom `UnmarshalYAML` to handle mixed-type inline fields:
+  - `status` → integer field
+  - Everything else → `map[string]interface{}` via `,inline`
+
+### 4. Path Syntax (Canonical)
+
+Assertion and save paths follow dot-notation:
+
+| Prefix | Context | Description |
+|--------|---------|-------------|
+| `body.<field>` | expect / save | Response JSON body field (canonical) |
+| `headers.<name>` | expect / save | Response header |
+| `status` | expect only | HTTP status code |
+| `jwt.<claim>` | expect / save | Decoded JWT claim (auto-decoded from `body.token` or `body.accessToken`) |
+| `timing.max` | auto (from `timing:` block) | Step duration must be ≤ max (e.g. `500ms`, `1s`) |
+| `timing.duration` | expect only | Total step round-trip latency (e.g. `lte 500ms`, `gt 1s`) |
+| `schema` | expect only | Validates full parsed response body against a YAML schema |
+
+**Backward-compatible aliases** (still work but not recommended for new tests):
+- `response.<field>` → same as `body.<field>`
+- `response.body.<field>` → same as `body.<field>`
+- `response.headers.<name>` → same as `headers.<name>`
+- Bare `<field>` → fallback, tries response body directly
+
+**Rule of thumb:** In expect, use `body.X`. In save, use `body.X`. Always explicit, never ambiguous.
+
+### 5. Matchers
+
+| Matcher | Behavior |
+|---------|----------|
+| `exists` | Field must exist (any value) |
+| `not exists` | Field must NOT be present (negative assertion) |
+| `uuid` | Valid UUID format (v4) |
+| `email` | Valid email format |
+| `datetime` | Valid RFC3339 / ISO8601 datetime |
+| `uri` | Valid URI format (e.g. https://...) |
+| `string` | Value is a string type |
+| `number` | Value is a numeric type (int, float, json.Number) |
+| `boolean` | Value is a boolean type |
+| `array` | Value is an array type |
+| `object` | Value is an object type (map) |
+| `null` | Value is null |
+| `true` | Value is boolean true |
+| `false` | Value is boolean false |
+| `contains <substring>` | String contains substring (case-sensitive) |
+| `startsWith <prefix>` | String starts with prefix |
+| `endsWith <suffix>` | String ends with suffix |
+| `regex <pattern>` | String matches regex pattern |
+| `count(path): <N>` | Array has exactly N items (collection matcher). Also: `count(path).gte`, `.gt`, `.lte`, `.lt` for range checks (e.g. `count(body.items).gte: 1` means "has data") |
+| `all(path): <matcher>` | Every element in array matches (collection matcher) |
+| Literal value (e.g. `admin`, `200`) | Equality comparison (string) |
+| `schema: <name>` | Validate full response body against a YAML schema |
+| `schema: not <name>` | Response must NOT match schema (negative assertion) |
+
+### 6. Variable Interpolation
+
+- Syntax: `$var` or `${var}` or `${var:default}` or `$accounts.eka.username` or `${randomInt(min,max)}`
+- Function-call syntax: `${func(arg1,arg2)}` for parametrized built-in generators (e.g. `${randomInt(1,100)}`). Falls back to normal variable lookup if function name is not recognized.
+- Dotted-path syntax: `$accounts.<name>.<field>` navigates nested maps (e.g. all injected credentials)
+### 7. Variable Interpolation
+
+- Syntax: `$var` or `${var}` or `${var:default}` or `$accounts.eka.username` or `${randomInt(min,max)}`
+- Function-call syntax: `${func(arg1,arg2)}` for parametrized built-in generators (e.g. `${randomInt(1,100)}`). Falls back to normal variable lookup if function name is not recognized.
+- Dotted-path syntax: `$accounts.<name>.<field>` navigates nested maps (e.g. all injected credentials)
+- Applied to: URL, headers, body (recursive string/map/array)**and save paths** — save paths also support interpolation, so you can use `body.data[$randomInt(0,9)].id` to dynamically pick an array element.
+- Resolution (strict): `resolveNestedVar()` in `internal/runner/interpolator.go` splits by `.` and walks the nested map, returns error on undefined
+- Resolution (lenient): `resolveNestedPath()` in `internal/converter/curl.go` same navigation but leaves unresolved vars intact — used by cURL converter
+- Variables are stored in `map[string]interface{}` and passed between steps
+- **Order of precedence** (later overrides earlier): 1. Host Environment variables (prefixed with GHERKIO_) → 2. Credential vars → 3. Step saves → 4. Built-in generators (fresh each step, always overrides for overlapping built-in names)
+
+#### Host Environment Variables
+Loaded at the start of a `Run()` or `RunSingleStep()` call from system environment variables starting with the case-sensitive prefix `GHERKIO_`. Any non-prefixed variables (e.g. `PATH`, `USER`) are strictly ignored to prevent credential or context leakage.
+
+#### Built-in Generator Variables
+Available in every test run with no setup. Generated once per `Run()` call via `BuiltinVars()` in `internal/runner/builtins.go`:
+
+| Variable | Description | Example |
+|----------|-------------|--------|
+| `$uuid` | UUID v4 string | `a1b2c3d4-e5f6-4789-abcd-ef1234567890` |
+| `$ulid` | ULID (timestamp + random) | `01ARZ3NDEKTSV4RRFFQ69G5FAV` |
+| `$randomInt` | Random integer 0–999999. Use `${randomInt(min,max)}` for custom range (e.g. `${randomInt(1,100)}`) | `74291` |
+| `$randomEmail` | Random email at @example.com | `user_123456@example.com` |
+| `$randomPhone` | Random phone number (defaults to Indonesian format `+6281234567890`). Use `${randomPhone(ISO)}` (e.g. `SG`, `JP`, `FR`) or `${randomPhone(prefix)}` (e.g. `+351`) for global formats. | `+6281234567890` or `+6589012345` |
+
+**Parametrized generators (function-call syntax):** The function syntax (e.g. `${randomInt(min,max)}` or `${randomPhone(countryOrPrefix)}`) is handled by `GetGeneratorFuncs()` in `internal/runner/builtins.go`, which returns a map of generator names to handler functions. The interpolator (`interpolator.go`) detects parenthesized arguments in variable references and dispatches to the appropriate generator. Currently supported:
+- `randomInt(min, max)` — Random integer in range [min, max] inclusive.
+- `randomPhone(countryOrPrefix)` — Random phone number. Parameter can be a 2-letter ISO country code (supporting 23 countries: ID, SG, MY, PH, TH, VN, JP, KR, IN, US, GB, AU, CA, DE, FR, IT, ES, NL, BR, MX, RU, ZA, SG) or a custom dialing/prefix string (e.g. `+351` or `351`). Falls back to Indonesian format if empty or unrecognized.
+
+**Per-step regeneration:** Built-in variables are regenerated fresh at the start of each step iteration (inside `executeSteps()` in `runner.go`). This means each request in a scenario gets unique values — critical for real QA testing where every API call needs distinct IDs, idempotency keys, or random data.
+
+Within a single step, all occurrences of `$uuid` (URL, headers, body) resolve to the same value. But step 2 will get a different `$uuid` than step1.
+
+**Variable precedence (per step):**
+1. Host Environment variables (prefixed with `GHERKIO_`, loaded at start)
+2. Credential vars (from account selection or `$accounts`, loaded at start)
+3. Step saves from previous steps (override above)
+4. Built-in generators (fresh each step, always overrides built-in keys like `$uuid`, `$ulid`, etc.)
+
+Built-in vars also resolve in cURL conversion (`gherkio convert -r`), also regenerated per step.
+
+Example usage:
+```yaml
+body:
+  idempotencyKey: $uuid
+  requestId: $ulid
+  otpCode: $randomInt
+```
+- **cURL converter** (`gherkio convert -r`) also resolves `$accounts.<name>.<field>` by loading credentials and injecting all accounts into `vars["accounts"]` in `cmd/convert.go::runReverseConvert()`
+
+### 7. JWT Auto-Decoding
+
+If `response.token` or `response.access_token` exists and is a string, it's automatically decoded (no signature verification) into a `map[string]interface{}` available via `jwt.<claim>` assertions.
+
+### 8. Sensitive Field Masking
+
+When displaying request/response bodies in the console, sensitive field values are automatically masked as `***masked***`.
+
+**Built-in default fields:** `token`, `accessToken`, `access_token`, `refreshToken`, `refresh_token`, `password`, `secret`, `clientSecret`, `client_secret`, `apiKey`, `api_key`, `authorization`.
+
+Matching is **case-insensitive**. The masking happens at the display layer (`printer.go`) — raw data remains intact for reporting.
+
+**Configurable** via `.gherkio/config.yaml`:
+```yaml
+security:
+  mask:
+    enabled: true
+    fields:
+      - customField
+      - anotherSecret
+```
+When `fields` is empty, the built-in defaults are used.
+
+### 9. Timing Assertions
+
+Steps can specify a maximum duration:
+
+```yaml
+- request:
+    method: POST
+    url: /auth/login
+    ...
+
+  timing:
+    max: 500ms
+```
+
+- Uses Go duration format: `500ms`, `1s`, `250ms`
+- Generates an assertion with path `timing.max`
+- Actual duration is always shown inline (both pass and fail)
+- Implemented in `executor.go` via `evaluateTiming()`
+- Duration is measured per-step from start to completion
+
+### 9a. Request Timeout
+
+Override the default 30-second HTTP client timeout on a per-request basis:
+
+```yaml
+- request:
+    method: GET
+    url: /slow-endpoint
+    timeout: 60s
+```
+
+- Uses Go duration format: `5s`, `30s`, `1m`, `1m30s`
+- Empty or invalid timeout falls back to 30s default
+- `0s` means no timeout (unlimited wait)
+- Distinct from `timing.max` (which is an assertion, not a client deadline)
+- Implemented in `executor.go` in `executeRequest()`
+
+### 10. Failure UX — Contextual Diagnostics
+
+When an assertion fails, the output is designed for debugging, not just pass/fail:
+
+**Path not found** — Instead of a generic "(not found)", shows:
+```
+✗ response.accessToken exists
+    └─ path not found
+
+Available fields:
+  - message
+  - statusCode
+```
+
+**Response body on error** — When any assertion in a step fails, the full response status + body is displayed automatically:
+```
+Response:
+Status: 400
+
+Body:
+{
+  "message": "Invalid credentials"
+}
+```
+
+This behavior is implemented in `internal/runner/printer.go`. The `Suggestions` field on `AssertionResult` (populated by `getAvailableFields()` in `executor.go`) drives the available-fields listing.
+
+---
+
+## Testing Philosophy (from PRD)
+
+- **Declarative-first**: Tests describe behavior, not implementation
+- **Readability matters**: Scenarios should be readable after 1-2 years
+- **Observability**: Every execution produces structured results (request, response, assertions)
+- **Constrained DSL**: No loops, no branching, no arbitrary code in the DSL
+- **Assertion-centric**: The assertion engine is "the heart" of Gherkio
+- **Capability system** (future): Controlled extensibility via plugins, not inline scripting
+
+---
+
+## CLI Interface
+
+```
+gherkio init                                  # Scaffold .gherkio/ directory
+gherkio run                                 # Run all tests in .gherkio/tests/
+gherkio run <test-file>                       # Execute a single test scenario
+gherkio run <directory>/                      # Run all tests in a subdirectory
+gherkio run <test-file> --env <environment>   # Run with specific environment
+gherkio run <test-file> --verbose             # Show full request/response payloads
+gherkio run <test-file> --report html         # Generate HTML report
+gherkio run <test-file> --report json         # Generate JSON report
+gherkio run <test-file> --report html,json    # Generate both reports
+gherkio run <test-file> --report json --report-raw # Unmasked JSON
+gherkio run <test-file> -v                    # Shorthand for --verbose
+gherkio run <test-file> --env staging --account alpha   # Run with specific account
+gherkio run <test-file> --env staging --all-accounts    # Run against all accounts
+gherkio run <test-file> --section <section>            # Run ALL steps in a section only (setup, steps, teardown)
+gherkio run <test-file> --step <N>                      # Run a single step (0-indexed)
+gherkio run <test-file> --step <N> --section <section>  # Run a single step in a specific section
+gherkio run <test-file> --line <N>                      # Run the step at a specific line number
+gherkio run <test-file> --dry-run                     # Preview execution without HTTP requests
+gherkio run <test-file> --tag <tag>                    # Filter tests by tag (AND logic)
+gherkio run --parallel <N>                             # Run tests concurrently
+gherkio validate                                       # Lint test files statically
+gherkio schema                              # Generate JSON Schema for YAML autocomplete
+```
+
+Test file resolution order:
+1. Absolute path as-is
+2. Relative to current working directory
+3. Relative to `.gherkio/tests/` in the project root
+
+Project root detection: walks up from cwd looking for `.gherkio/` directory.
+
+---
+
+## Current Development Status
+
+- ✅ Core runner working (HTTP, assertions, JWT, saves)
+- ✅ Variable interpolation working ($var, ${var}, ${var:default})
+- ✅ Contextual failure UX (available field suggestions + response body on error)
+- ✅ Summary/verbose output modes (default: summary, --verbose for full payloads)
+- ✅ Sensitive field masking (tokens, passwords, secrets masked in output)
+- ✅ Timing assertions (`timing: { max: 500ms }`)
+- ✅ Configurable request timeout (per-request `timeout: 60s` override)
+- ✅ Scenario Composition / use-steps (Phase 1 MVP: recursion, merging, depth check)
+- ✅ CLI commands (init, run)
+- ✅ HTML & JSON Reporting (Phase 1, 2, & 3)
+- ✅ Schema Assertions (Phase 1)
+- ✅ Request Retries — RFC-5 (Attempts, Interval, Backoff strategies, OnStatus, Reporting)
+- ✅ Setup & Teardown — RFC-9 (setup/teardown blocks, role markers, always-run teardown)
+- ✅ Negative Assertions — RFC-11 (implemented: `not exists`, `schema: not <name>`)
+- ✅ Multi-Account Credentials — RFC-12 (Credentials model, LoadCredentials, `--account`/`--all-accounts` flags, auto-use single account, per-account masking, report integration)
+- ✅ Schema Generator Completeness — RFC-15 (`--type`, `--list` flags, multi-schema output, jsonschema tags on all models, source of truth expansion)
+- ✅ MCP Server Support — RFC-6 (internal/core/ refactoring, zero-dependency JSON-RPC 2.0 stdio engine, project metadata resources, and full tools routing)
+- ✅ Dry-Run Mode (`--dry-run`) — Preview expanded requests without executing HTTP calls
+- ✅ Tags Filter (`--tag`) — Filter tests by tags with AND logic
+- ✅ Parallel Execution (`--parallel`) — Run tests concurrently with configurable parallelism
+- ✅ Test Validation (`gherkio validate`) — Lint test files statically
+- ✅ Verbose Variable Preview — See resolved variables in `--verbose` output
+- ✅ cURL ↔ DSL Conversion (`gherkio convert`) — Bidirectional cURL and YAML DSL converter
+- ✅ Parametrized randomInt (`${randomInt(min,max)}`) — Random integer with custom range via function-call syntax in interpolator
+- ✅ count().gte/gt/lte/lt — Range-based array length assertions (e.g. `count(body.items).gte: 1` for "has data")
+
+### MVP Complete
+
+All features from PRD §26.1 (MVP Scope) are implemented, plus post-MVP features including dry-run mode, tags, parallel execution, cURL conversion, and test validation.
+
+### Future / Out of MVP
+
+---
+
+## Conventions for AI Agents
+
+### 🔄 Self-Update Rule
+**Every change to this codebase MUST also update `llm-map.txt`** if the change affects:
+- Project structure (new files, directories, or packages)
+- Dependencies (new or removed)
+- Architecture or data flow (new execution paths, changed types)
+- CLI interface (new commands, flags, or behaviors)
+- Key types or their fields
+- Design patterns or conventions
+
+This file is the single source of truth for AI context. Keeping it current ensures that every agent working on Gherkio has an accurate mental model of the project without having to re-read the entire codebase.
+
+**Exception**: Cosmetic or trivial changes (typo fixes, minor refactors that don't alter structure/behavior) don't require an update.
+
+- When adding new features, maintain the **declarative DSL philosophy** — no arbitrary code execution in the DSL layer
+- Keep the `internal/model/` types clean — they represent the YAML schema
+- Keep `internal/runner/` focused on orchestration — break large files into focused ones
+- Use the `cmd/` pattern (cobra `RunE` → private function) for new subcommands
+- All user-facing output goes through `printer.go` or the cmd layer
+- Prefer explicit error wrapping over generic error messages
+- When in doubt, check `docs/prd.md` for product philosophy guidance
+
+---
+
+### Init Scaffolding (`gherkio init`)
+
+Creates:
+```
+.gherkio/
+├── config.yaml                 # Project configuration
+├── credentials/                # Account credentials per environment
+│   └── local.yaml              # Default credentials (DummyJSON test user)
+├── environments/
+│   └── local.yaml              # Default env (DummyJSON)
+├── tests/
+│   └── example/
+│       └── login.yaml          # Example test to get started
+├── reports/                    # ⚠️ Generated output — safe to .gitignore
+│   ├── latest/
+│   └── archive/
+└── schemas/
+```
+
+**Note:** `.gherkio/reports/` contains generated reports (HTML, JSON) created at runtime by `gherkio run --report`. It is **safe to add to `.gitignore`** — it has no effect on `go test ./...` (all tests live under `internal/`). Deleting it won't break anything; reports are regenerated on the next `gherkio run --report`.
+
+After init, you can immediately run:
+```bash
+gherkio run example/login.yaml
+gherkio run example/login.yaml --verbose
+```
+
+### Build & Run Commands
+
+```bash
+go build -o gherkio .                   # Build binary
+go run . run <test-file>                # Run without building (summary)
+go run . run <test-file> --verbose      # Run with full request/response payloads
+go run . run <test-file> -v             # Shorthand
+go run . init                           # Scaffold a project
+go run . schema                         # Generate all schemas (default)
+go run . schema --type test            # Generate only test file schema
+go run . schema --list                 # List available schema types
+go test ./...                           # Run Go unit tests (when they exist)
+```
+Collection matchers (`count()`, `all()`) are implemented in `evaluateAssertion()` in `executor.go`, which calls `evaluateMatcher()` for each element internally.
+
+### Schema Generator (gherkio schema)
+
+Generates JSON Schema for Gherkio YAML files. Supports multiple document types:
+
+```bash
+gherkio schema                          # All schemas (default output)
+gherkio schema --type test             # Test file schema only
+gherkio schema --type config           # Config schema only
+gherkio schema --type environment     # Environment schema only
+gherkio schema --type credentials      # Credentials schema only
+gherkio schema --type schema-definition  # Schema definition only
+gherkio schema --list                  # List available types
+```
+
+**Available types:**
+- `test` — `.gherkio/tests/**/*.yaml`
+- `config` — `.gherkio/config.yaml`
+- `environment` — `.gherkio/environments/*.yaml`
+- `credentials` — `.gherkio/credentials/*.yaml`
+- `schema-definition` — `.gherkio/schemas/*.yaml`
+
+**Implementation:**
+- `internal/schema/generator.go` — `GenerateAllSchemas()`, `GenerateSchemaType()`, `patchExpectSchema()`, `patchStepOneOf()`
+- `cmd/schema.go` — CLI flags (`--type`, `--list`)
+- `internal/model/*.go` — `jsonschema` tags for all YAML types
+
+
+### 11. Multi-Account Credentials System (RFC-12)
+
+#### Namespaced Account Access (`$accounts.<name>.<field>`)
+
+All accounts from the credentials file are automatically injected into a special `$accounts` variable as a nested map. This allows accessing any account's fields directly in test YAML without passing `--account`:
+
+```yaml
+steps:
+  - request:
+      method: POST
+      url: /auth/login
+      body:
+        username: $accounts.eka.username      # → "0000002"
+        password: $accounts.eka.password      # → "0000002"
+
+  - request:
+      method: GET
+      url: /users/me
+      headers:
+        Authorization: Bearer $token
+    expect:
+      body.role: $accounts.default.role       # → "user"
+```
+
+**How it works:**
+- `internal/model/credentials.go` — `Credentials.ToMap()` converts all accounts to `map[string]interface{}`
+- `cmd/run.go` calls `ToMap()` after loading credentials and passes the result as `AllAccounts` on `RunConfig`
+- `internal/runner/runner.go` injects `vars["accounts"]` in both `Run()` and `RunSingleStep()`
+- `internal/runner/interpolator.go` — `resolveNestedVar()` splits dotted paths by `.` and navigates the nested map, supporting syntax like `$accounts.eka.username` or `${accounts.eka.username}`
+
+**Backward compatibility:**
+- `$username`, `$password` still work for the selected account (via `CredentialVars`)
+- `--account` and `--all-accounts` flags unchanged
+- `$accounts.<name>.<field>` is additive — no breaking changes
+
+**Hint suppression:**
+When a test file references `$accounts.`, the "N accounts found..." hint is automatically suppressed (the user is already using accounts explicitly). Implemented via `testReferencesAccounts()` in `cmd/run.go` which scans the test YAML for `$accounts.` string.
+
+**MCP Server updates:**
+- `gherkio://dsl/spec` resource now documents variable interpolation including `$accounts.<name>.<field>`
+- `gherkio://dsl/examples` resource includes a multi-account example using `$accounts`
+- `run_test` handler passes `AllAccounts` from `Credentials.ToMap()` so LLM-generated tests using `$accounts` work via MCP
+- `run_test` MCP tool has a `section` parameter: when set without `step`, runs ALL steps in that section only (setup/steps/teardown)
+- New MCP resources: `gherkio://dsl/matchers` (all assertion matchers with descriptions), `gherkio://dsl/variables` (built-in generator variables), `gherkio://dsl/paths` (canonical assertion/save paths) — exposed as JSON, fully dynamic via `runner.GetMatchersInfo()`, `runner.GetVariableInfo()`, `runner.GetPathInfo()`
+- New MCP resource: `gherkio://project/structure` — explains the `.gherkio/` directory layout so LLMs know where to create files
+- New MCP tools for LLM self-service: `create_credential`, `update_credential`, `read_credential`, `create_environment`, `update_environment`, `create_schema`, `update_schema`
+
+Gherkio supports running the same test scenarios against multiple accounts via a credentials system.
+
+**Credentials file** — Lives at `.gherkio/credentials/<env>.yaml`:
+
+```yaml
+accounts:
+  alpha:
+    username: alpha@test.com
+    password: alpha-secret
+    role: admin
+  beta:
+    username: beta@test.com
+    password: beta-secret
+    role: viewer
+```
+
+**CLI flags:**
+- `--account <name>` — Run with a specific account
+- `--all-accounts` — Run against all accounts in the credentials file
+
+**Variable injection:** Account fields (`username`, `password`, `role`, plus any inline extras) are injected as variables (`$username`, `$password`, `$role`) before step execution. Saved step variables override credential variables.
+
+**Edge cases:**
+- No credentials file → test runs normally (no credentials)
+- 1 account, no flag → auto-used (zero-config)
+- 2+ accounts, no flag → hint printed, runs without credentials
+- `--account` with missing file → warning, flag ignored
+- `--account` with nonexistent name → error listing available accounts
+- Passwords and sensitive credential fields auto-added to mask
+
+**Implementations:**
+- `internal/model/credentials.go` — `Credentials` and `Account` structs
+- `internal/runner/credentials.go` — `LoadCredentials()`, `CredentialsToVars()`, `GetSensitiveFieldsFromCredentials()`
+- `cmd/run.go` — `resolveAccounts()` handles auto-use, multi-account iteration, and per-account masking
+- `cmd/init.go` — Creates `.gherkio/credentials/` with a default `local.yaml`
+
+### 12. HTML & JSON Reporting
+Gherkio supports generating standalone HTML reports for test runs.
+- **Trigger**: via CLI flag `--report html` or `--report json` or `.gherkio/config.yaml` `reports.format: html,json`.
+- **Output**: Saved to `.gherkio/reports/latest/report.html` and a timestamped directory.
+- **Features**: Includes masked payloads, copyable cURL commands, extracted Request IDs from headers, and inline timing assertion results.
+- **Multi-Scenario Grouping**: When running multiple test files (e.g. `gherkio run` with no args or a directory), each scenario is reported as a **separate group** in the report, with its own header, pass/fail stats, and grouped steps. The suite-level summary shows aggregate stats. Each `StepResult` carries `ScenarioName` and `TestFile` to enable this grouping.
+- **Report Types**:
+  - `internal/report/types.go` — `ReportData` (has both `Steps` for single-scenario and `Scenarios []ScenarioData` for multi-scenario), `ScenarioData`, `ReportStep`, `ReportAssertion`, `ReportConfig`
+  - `internal/report/html.go` — `RenderHTML()` for single, `RenderHTMLSuite()` for multi (calls `MapResultsToSuiteReportData()`), shared `renderHTMLTemplate()`
+  - `internal/report/json.go` — `RenderJSON()` for single, `RenderJSONSuite()` for multi
+  - `internal/report/template.html` — supports both modes via `{{if .Scenarios}}...{{else}}...{{end}}`
+- **Implementation**: Uses `html/template` with `//go:embed` to embed `assets/template/report.html` directly into the binary (no external dependencies). Housed in the `internal/report/` package.
+
+======================================================================
+🚨 LLM / AI AGENT DEVELOPMENT GUIDELINES
+======================================================================
+
+### 1. The Package Dependency & Circular Import Map
+To prevent compiler errors, all modifications must respect Gherkio's package architectural hierarchy:
+```text
+  [cmd] ──> [internal/mcp]
+    │             │
+    └─── [internal/core/project] ──> [internal/core/teststore]
+                   │                             │
+                   └─────────── [internal/runner] ──> [internal/model]
+```
+- **Crucial Rule**: Do not introduce upstream imports. For example, `teststore` must never import `project`. If you need cross-package functionality, delegate parameters upstream in the `cmd/` or `internal/mcp/` handlers.
+
+### 2. The "Stdout vs Stderr" Rule for MCP Actions
+- **Crucial Rule**: When writing tools or handlers under `internal/mcp/`, or core execution paths invoked by MCP, NEVER print logs or diagnostics to standard output (`os.Stdout`, `fmt.Println`, or `log.Printf`). 
+- **Reason**: Corrupting `stdout` breaks the JSON-RPC communication stream, crashing the MCP environment. 
+- **Standard**: Always redirect diagnostic output to standard error (`os.Stderr` or error return channels).
+
+### 3. Quick-Reference CLI ⟷ Core ⟷ MCP Mapping
+| Feature | CLI Command | Core Package Path | MCP Tool Name |
+| :--- | :--- | :--- | :--- |
+| Run Test | `gherkio run` | `internal/runner/engine.go` | `run_test` |
+| Validation | `gherkio validate` | `internal/core/project/validate.go` | `validate_workspace` |
+| Scaffold | `gherkio init` | `internal/core/project/init.go` | (CLI only) |
+| cURL Convert | `gherkio convert` | `internal/core/converter/` | `convert_curl_to_yaml` |
+
+### 4. Dynamic Schema Reference Rule
+- **Crucial Rule**: Do not guess or assume Gherkio YAML structures. 
+- **Method**: To retrieve the 100% correct JSON Schema for tests, configs, environments, or credentials, query Gherkio's compiler directly:
+  - Run the CLI command: `gherkio schema --type <type>` (options: `test`, `config`, `environment`, `credentials`).
+  - Or query Gherkio's MCP tools/resources to resolve the exact DSL definitions dynamically.
+
+### 5. Variable Interpolation Precedence
+Variable lookup in `internal/runner/interpolator.go` respects this exact sequence:
+```text
+Host OS Environment Variables (GHERKIO_*)
+  └── Credentials (loaded from .gherkio/credentials/ env blocks)
+        └── Step Extractions (extracted during steps via `save:`)
+              └── Built-in / Parameterized Generators ($uuid, $randomInt)
+```
+
+### 6. Sequential Step-Prefixed Variables for LLM-Generated Scenarios
+- **Crucial Rule**: When using MCP tools or writing code to generate or update YAML test scenarios (such as `create_test` or `update_test`), you MUST always format your extracted/saved variable names with a numeric prefix corresponding to the step order (e.g. `1-createdOrderId`, `2-authToken`, `3-userId`). 
+- **Reason**: This guarantees strict step-level variable isolation, eliminates naming collision risks across multi-step scenarios, and improves developer readability when tracking variable propagation throughout execution logs.
+

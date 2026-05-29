@@ -1,4 +1,4 @@
-.PHONY: build install run test clean dev lint bump-patch bump-minor
+.PHONY: build install run test clean dev lint bump-patch bump-minor docs-gen docs-build docs-serve docs-clean
 
 # ─── Metadata ────────────────────────────────────────────────
 APP      := gherkio
@@ -65,3 +65,24 @@ bump-major:
 	@sed -i "s/Version\s*= \"$(VERSION)\"/Version = \"$$(echo $(VERSION) | awk -F. '{print $$1+1".0.0"}')\"/" cmd/root.go
 	$(eval VERSION := $(shell grep 'Version\s*=' cmd/root.go | head -1 | sed "s/.*= \"//;s/\"//"))
 	@echo "✅ Now v$(VERSION)"
+
+# ─── Documentation ────────────────────────────────────────────
+docs-gen:
+	@echo "Generating Cobra CLI command manual pages…"
+	go run gendoc.go
+	@echo "✅ CLI docs generated under docs/book/src/cli/"
+
+docs-build: docs-gen
+	@echo "Compiling Gherkio mdBook…"
+	cd docs/book && mdbook build
+	@echo "✅ Gherkio mdBook compiled. Open docs/book/book/index.html to view local pages."
+
+docs-serve: docs-gen
+	@echo "Starting local mdBook livereload server…"
+	cd docs/book && mdbook serve
+
+docs-clean:
+	@echo "Cleaning compiled documentation artifacts…"
+	cd docs/book && mdbook clean
+	@echo "✅ Finished cleaning docs."
+

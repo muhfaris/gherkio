@@ -28,13 +28,13 @@ var convertCmd = &cobra.Command{
 	Short: "Convert cURL to Gherkio YAML or Gherkio YAML to cURL",
 	Long: `Bidirectionally converts between standard cURL commands and Gherkio DSL YAML.
 
-cURL to YAML (Default):
-  Provide the cURL command as an argument, pipe it via stdin, or read from a file using --file.
-  Automatically resolves environment base URLs and converts JSON bodies into native YAML.
+### cURL to YAML (Default)
+Provide the cURL command as an argument, pipe it via stdin, or read from a file using --file.
+Automatically resolves environment base URLs and converts JSON bodies into native YAML.
 
-YAML to cURL (Reverse):
-  Use the --reverse (-r) flag and provide the Gherkio test YAML file path.
-  Optionally extract a specific step with --step.
+### YAML to cURL (Reverse)
+Use the --reverse (-r) flag and provide the Gherkio test YAML file path.
+Optionally extract a specific step with --step.
 
 Examples:
   # Convert cURL from argument

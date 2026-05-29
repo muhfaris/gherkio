@@ -1,0 +1,16 @@
+[book]
+title = "Gherkio Documentation"
+authors = ["Faris"]
+language = "en"
+description = "Declarative Integration Testing Platform — Documentation"
+
+[output.html]
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
+no-section-label = true
+git-repository-url = "https://github.com/muhfaris/gherkio"
+edit-url-template = "https://github.com/muhfaris/gherkio/edit/main/docs/book/src/{path}"
+
+[output.html.search]
+limit-results = 30
+teaser-word-count = 20
+use-boolean-and = true

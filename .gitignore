@@ -23,5 +23,8 @@ Thumbs.db
 *.out
 coverage.out
 
+### mdBook build output
+docs/book/book/
+
 ### Graphify
 graphify-out/cache
