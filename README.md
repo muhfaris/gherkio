@@ -49,20 +49,21 @@ make docs-build
 
 ## 🎮 Interactive Browser Playground
 
-To lower Gherkio's learning curve to zero, Gherkio includes a self-contained, browser-based **Interactive Playground and Documentation Hub** located under `docs/playground/index.html`.
+To lower Gherkio's learning curve to zero, Gherkio includes a self-contained, browser-based **Interactive Playground and Documentation Hub** located under `docs/book/playground/index.html`.
 
 *   **Visual DSL Stepper**: Type or edit Gherkio YAML test steps and see a live graphical flowchart built on the fly!
 *   **cURL-to-YAML Step Translator**: Paste standard legacy cURL statements and get back perfectly compiled Gherkio steps instantly.
 
 #### Launch it instantly:
-Double-click [docs/playground/index.html](docs/playground/index.html) to run it in your browser, or open it via terminal:
-```bash
-# Linux
-xdg-open docs/playground/index.html
+*   **Online Sandbox**: Access the hosted web workspace directly on **[GitHub Pages Playground](https://muhfaris.github.io/gherkio/playground/index.html)**.
+*   **Local Launch**: Double-click [docs/book/playground/index.html](docs/book/playground/index.html) to run it in your browser offline, or open it via terminal:
+    ```bash
+    # Linux
+    xdg-open docs/book/playground/index.html
 
-# macOS
-open docs/playground/index.html
-```
+    # macOS
+    open docs/book/playground/index.html
+    ```
 
 ---
 
