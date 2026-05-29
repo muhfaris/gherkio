@@ -337,14 +337,29 @@ func GetGeneratorFuncs() map[string]GeneratorFunc {
 			return generateRandomEmail(), nil
 		},
 		"randomPhone": func(args string) (interface{}, error) {
-			country := strings.ToUpper(strings.Trim(strings.TrimSpace(args), "\"'"))
-			if country == "" || country == "ID" {
+			countryOrPrefix := strings.Trim(strings.TrimSpace(args), "\"'")
+			if countryOrPrefix == "" {
 				return generateRandomPhone(), nil
 			}
-			if country == "US" {
-				n, _ := rand.Int(rand.Reader, big.NewInt(1000000000))
-				return fmt.Sprintf("+1%010d", n.Int64()), nil
+
+			// If it's a known ISO country code, generate matching pattern
+			upper := strings.ToUpper(countryOrPrefix)
+			if config, exists := countryPhonePrefixes[upper]; exists {
+				return generateRandomDigitsWithPrefix(config.Prefix, config.DigitLength), nil
 			}
+
+			// If it's a raw plus/numeric prefix (e.g. "+351" or "351")
+			cleanPrefix := countryOrPrefix
+			if !strings.HasPrefix(cleanPrefix, "+") {
+				if _, err := strconv.Atoi(cleanPrefix); err == nil {
+					cleanPrefix = "+" + cleanPrefix
+				}
+			}
+			if strings.HasPrefix(cleanPrefix, "+") {
+				// Default to appending 9 random digits for custom prefixes
+				return generateRandomDigitsWithPrefix(cleanPrefix, 9), nil
+			}
+
 			return generateRandomPhone(), nil
 		},
 		"toUpper": func(args string) (interface{}, error) {
@@ -362,6 +377,47 @@ func GetGeneratorFuncs() map[string]GeneratorFunc {
 	}
 }
 
+// countryPhonePrefixes defines standard dialing/mobile prefix profiles for major countries.
+var countryPhonePrefixes = map[string]struct {
+	Prefix      string
+	DigitLength int
+}{
+	"ID": {"+628", 9},
+	"US": {"+1", 10},
+	"CA": {"+1", 10},
+	"GB": {"+447", 9},
+	"UK": {"+447", 9},
+	"SG": {"+658", 7},
+	"JP": {"+8190", 8},
+	"DE": {"+491", 10},
+	"FR": {"+336", 8},
+	"AU": {"+614", 8},
+	"IN": {"+919", 9},
+	"CN": {"+861", 10},
+	"BR": {"+55119", 8},
+	"RU": {"+79", 9},
+	"ZA": {"+277", 8},
+	"KR": {"+8210", 8},
+	"NL": {"+316", 8},
+	"ES": {"+346", 8},
+	"IT": {"+393", 9},
+	"MY": {"+601", 8},
+	"PH": {"+639", 9},
+	"TH": {"+668", 8},
+	"VN": {"+849", 8},
+}
+
+// generateRandomDigitsWithPrefix appends random numeric digits of a given length to a prefix string.
+func generateRandomDigitsWithPrefix(prefix string, length int) string {
+	var sb strings.Builder
+	sb.WriteString(prefix)
+	for i := 0; i < length; i++ {
+		n, _ := rand.Int(rand.Reader, big.NewInt(10))
+		sb.WriteString(fmt.Sprintf("%d", n.Int64()))
+	}
+	return sb.String()
+}
+
 // generateRandomEmail generates a random email address at example.com.
 func generateRandomEmail() string {
 	suffix, _ := rand.Int(rand.Reader, big.NewInt(1000000))
@@ -370,9 +426,7 @@ func generateRandomEmail() string {
 
 // generateRandomPhone generates a random Indonesian-format phone number (+62 prefix).
 func generateRandomPhone() string {
-	// Generate 10 random digits after +62 (e.g. +6281234567890)
-	n, _ := rand.Int(rand.Reader, big.NewInt(10000000000))
-	return fmt.Sprintf("+628%d", n.Int64())
+	return generateRandomDigitsWithPrefix("+628", 9)
 }
 
 // LoadGherkioEnvVars loads all OS environment variables starting with the GHERKIO_ prefix.
