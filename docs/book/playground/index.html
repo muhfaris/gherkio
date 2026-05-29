@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gherkio Interactive Playground & Doc Hub</title>
+    <!-- Google Fonts: Outfit & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-mode">
+    <div class="glow-bg"></div>
+
+    <!-- App Container -->
+    <div class="app-container">
+        
+        <!-- Header -->
+        <header class="main-header">
+            <div class="logo-area">
+                <div class="logo-icon">✨</div>
+                <h1>Gherkio <span class="badge">Playground</span></h1>
+            </div>
+            <div class="header-actions">
+                <span class="status-indicator">
+                    <span class="pulse-dot"></span> Active Local MCP Server
+                </span>
+                <button class="theme-toggle" id="themeToggle">
+                    <i data-lucide="sun"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Layout -->
+        <div class="main-layout">
+            
+            <!-- Sidebar -->
+            <aside class="sidebar-panel">
+                <div class="sidebar-header">
+                    <i data-lucide="book-open"></i>
+                    <h2>Documentation</h2>
+                </div>
+                <nav class="doc-nav" id="docNav">
+                    <!-- Dynamic navigation categories injected here -->
+                </nav>
+            </aside>
+
+            <!-- Main Interactive Area -->
+            <main class="content-panel">
+                <div class="tab-header">
+                    <button class="tab-btn active" id="tabDoc" onclick="switchMainTab('doc')">
+                        <i data-lucide="file-text"></i> Read Chapter
+                    </button>
+                    <button class="tab-btn" id="tabVisualizer" onclick="switchMainTab('visualizer')">
+                        <i data-lucide="play-circle"></i> Visual DSL Stepper
+                    </button>
+                    <button class="tab-btn" id="tabConverter" onclick="switchMainTab('converter')">
+                        <i data-lucide="repeat"></i> cURL ↔ YAML Converter
+                    </button>
+                </div>
+
+                <!-- Tab content: Doc Reader -->
+                <div class="tab-content active" id="contentDoc">
+                    <div class="doc-container">
+                        <div class="doc-header">
+                            <span class="category-eyebrow" id="docEyebrow">Getting Started</span>
+                            <h2 class="chapter-title" id="docTitle">Gherkio Introduction</h2>
+                        </div>
+                        <article class="markdown-body" id="docBody">
+                            <!-- Chapter contents go here -->
+                        </article>
+                    </div>
+                </div>
+
+                <!-- Tab content: Interactive Stepper Visualizer -->
+                <div class="tab-content" id="contentVisualizer">
+                    <div class="visualizer-grid">
+                        
+                        <!-- Left Panel: DSL Editor -->
+                        <div class="editor-card">
+                            <div class="card-header">
+                                <div class="title-with-icon">
+                                    <i data-lucide="code"></i>
+                                    <h3>YAML Test Editor</h3>
+                                </div>
+                                <div class="dropdown-container">
+                                    <select id="exampleSelector" onchange="loadPresetExample()">
+                                        <option value="auth">🔑 Login & JWT Claim assertions</option>
+                                        <option value="polling">🔁 Eventual Consistent Polling</option>
+                                        <option value="bulk">📦 Bulk Upload & List Matchers</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <p class="helper-text">Edit the Gherkio declarative YAML below. The visual flow will update dynamically.</p>
+                                <textarea id="yamlEditor" spellcheck="false" oninput="triggerVisualization()"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Right Panel: Flow Visualizer -->
+                        <div class="flow-card">
+                            <div class="card-header">
+                                <div class="title-with-icon">
+                                    <i data-lucide="activity"></i>
+                                    <h3>Interactive Visual Flow</h3>
+                                </div>
+                                <span class="badge success" id="lintStatus">Valid DSL</span>
+                            </div>
+                            <div class="card-body" id="flowOutput">
+                                <!-- Visual stepping tree is dynamically built here -->
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Tab content: cURL-to-YAML Converter -->
+                <div class="tab-content" id="contentConverter">
+                    <div class="converter-grid">
+                        
+                        <!-- Left Side: Paste raw cURL -->
+                        <div class="editor-card">
+                            <div class="card-header">
+                                <div class="title-with-icon">
+                                    <i data-lucide="terminal"></i>
+                                    <h3>cURL Input</h3>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <p class="helper-text">Paste a standard raw cURL statement here. Gherkio translates it instantly.</p>
+                                <textarea id="curlInput" spellcheck="false" placeholder="curl -X POST https://api.mysite.com/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{&quot;username&quot;: &quot;admin&quot;, &quot;password&quot;: &quot;secret&quot;}'"></textarea>
+                                <button class="btn btn-primary" onclick="convertCurl()">
+                                    <i data-lucide="zap"></i> Translate to DSL
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Right Side: YAML output -->
+                        <div class="editor-card result-card">
+                            <div class="card-header">
+                                <div class="title-with-icon">
+                                    <i data-lucide="file-code"></i>
+                                    <h3>Generated Gherkio Step</h3>
+                                </div>
+                                <button class="btn btn-secondary btn-small" onclick="copyConvertedYaml()">
+                                    <i data-lucide="copy"></i> Copy
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <p class="helper-text">Declarative Gherkio step matching the pasted cURL command.</p>
+                                <textarea id="yamlOutput" readonly></textarea>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- App Logic -->
+    <script src="app.js"></script>
+</body>
+</html>
