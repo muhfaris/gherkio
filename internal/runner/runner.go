@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,6 +27,7 @@ type RunConfig struct {
 	StepSection    string                 // Section of the step ("setup", "steps", "teardown")
 	DryRun         bool                   // Preview without executing HTTP requests
 	Snapshot      SnapshotConfig          // Configuration for failure snapshots
+	Until          string                 // Execute steps until a specific target, e.g. "steps:1" or "2"
 }
 
 // RunResult holds the overall execution result.
@@ -55,6 +57,27 @@ func Run(cfg RunConfig) (*RunResult, error) {
 	testFile, err := LoadTestFile(cfg.TestPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load test file: %w", err)
+	}
+
+	// Apply dynamic execution slicing (until parameter)
+	if cfg.Until != "" {
+		untilSection, untilIndex, err := parseUntil(cfg.Until, testFile)
+		if err != nil {
+			return nil, err
+		}
+		if untilSection != "" {
+			switch untilSection {
+			case "setup":
+				testFile.Setup = testFile.Setup[:untilIndex+1]
+				testFile.Steps = nil
+				testFile.Teardown = nil
+			case "steps":
+				testFile.Steps = testFile.Steps[:untilIndex+1]
+				testFile.Teardown = nil
+			case "teardown":
+				testFile.Teardown = testFile.Teardown[:untilIndex+1]
+			}
+		}
 	}
 
 	// Route to single-step or section-only execution
@@ -804,4 +827,50 @@ func snapshotVars(vars map[string]interface{}, maskFields []string, maskSensitiv
 	}
 
 	return result
+}
+
+// parseUntil parses a target execution target, e.g. "steps:1" or "2" (default section: "steps").
+func parseUntil(untilStr string, testFile *model.TestFile) (string, int, error) {
+	untilStr = strings.TrimSpace(untilStr)
+	if untilStr == "" {
+		return "", -1, nil
+	}
+
+	section := "steps"
+	indexStr := untilStr
+
+	if strings.Contains(untilStr, ":") {
+		parts := strings.SplitN(untilStr, ":", 2)
+		section = strings.ToLower(strings.TrimSpace(parts[0]))
+		indexStr = strings.TrimSpace(parts[1])
+	}
+
+	index, err := strconv.Atoi(indexStr)
+	if err != nil {
+		return "", -1, fmt.Errorf("invalid step index in until pattern %q: %w", untilStr, err)
+	}
+
+	if index < 0 {
+		return "", -1, fmt.Errorf("step index cannot be negative in until pattern %q", untilStr)
+	}
+
+	// Validate against actual step lists
+	switch section {
+	case "setup":
+		if index >= len(testFile.Setup) {
+			return "", -1, fmt.Errorf("until step index %d out of bounds for setup section (contains %d steps)", index, len(testFile.Setup))
+		}
+	case "steps":
+		if index >= len(testFile.Steps) {
+			return "", -1, fmt.Errorf("until step index %d out of bounds for steps section (contains %d steps)", index, len(testFile.Steps))
+		}
+	case "teardown":
+		if index >= len(testFile.Teardown) {
+			return "", -1, fmt.Errorf("until step index %d out of bounds for teardown section (contains %d steps)", index, len(testFile.Teardown))
+		}
+	default:
+		return "", -1, fmt.Errorf("invalid section name %q in until pattern %q (must be one of: setup, steps, teardown)", section, untilStr)
+	}
+
+	return section, index, nil
 }

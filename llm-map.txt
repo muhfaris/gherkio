@@ -460,10 +460,24 @@ Available in every test run with no setup. Generated once per `Run()` call via `
 | `$randomInt` | Random integer 0–999999. Use `${randomInt(min,max)}` for custom range (e.g. `${randomInt(1,100)}`) | `74291` |
 | `$randomEmail` | Random email at @example.com | `user_123456@example.com` |
 | `$randomPhone` | Random phone number (defaults to Indonesian format `+6281234567890`). Use `${randomPhone(ISO)}` (e.g. `SG`, `JP`, `FR`) or `${randomPhone(prefix)}` (e.g. `+351`) for global formats. | `+6281234567890` or `+6589012345` |
+| `$timestamp` | Current Unix timestamp (in seconds) | `1716942900` |
+| `$timestampMs` | Current Unix timestamp (in milliseconds) | `1716942900123` |
 
-**Parametrized generators (function-call syntax):** The function syntax (e.g. `${randomInt(min,max)}` or `${randomPhone(countryOrPrefix)}`) is handled by `GetGeneratorFuncs()` in `internal/runner/builtins.go`, which returns a map of generator names to handler functions. The interpolator (`interpolator.go`) detects parenthesized arguments in variable references and dispatches to the appropriate generator. Currently supported:
+**Parametrized generators (function-call syntax):** The function syntax (e.g. `${randomInt(min,max)}` or `${randomPhone(countryOrPrefix)}` or `${dateNow(format)}` or `${dateOffset(offset,format)}`) is handled by `GetGeneratorFuncs()` in `internal/runner/builtins.go`, which returns a map of generator names to handler functions. The interpolator (`interpolator.go`) detects parenthesized arguments in variable references and dispatches to the appropriate generator. Currently supported:
 - `randomInt(min, max)` — Random integer in range [min, max] inclusive.
 - `randomPhone(countryOrPrefix)` — Random phone number. Parameter can be a 2-letter ISO country code (supporting 23 countries: ID, SG, MY, PH, TH, VN, JP, KR, IN, US, GB, AU, CA, DE, FR, IT, ES, NL, BR, MX, RU, ZA, SG) or a custom dialing/prefix string (e.g. `+351` or `351`). Falls back to Indonesian format if empty or unrecognized.
+- `dateNow(format)` — Get current date/time formatted using custom layout, e.g. `2006-01-02` (defaults to `2006-01-02 15:04:05` if format is empty).
+- `dateOffset(offset, format)` — Offsets current date/time by a duration (e.g., `+14d`, `-2h`, `+30m`) and formats it (defaults to `2006-01-02`).
+- `base64(data)` — Encodes a string into standard Base64.
+- `base64Decode(encoded)` — Decodes a standard Base64 string back to plaintext.
+- `urlencode(data)` — Encodes a string for safe inclusion in a URL query parameter.
+- `urldecode(encoded)` — Decodes a URL-encoded string back to plaintext.
+- `hash(algo, data)` — Hashes a string using md5, sha1, or sha256. Returns hex-encoded result.
+- `hmac(algo, key, message)` — Generates hex-encoded HMAC hash using md5, sha1, or sha256.
+- `randomString(length, charset)` — Generates random string of given length using charset: alpha, numeric, or alphanumeric.
+- `toUpper(val)` — Converts string to UPPERCASE.
+- `toLower(val)` — Converts string to lowercase.
+- `trim(val)` — Trims leading and trailing whitespace from a string.
 
 **Per-step regeneration:** Built-in variables are regenerated fresh at the start of each step iteration (inside `executeSteps()` in `runner.go`). This means each request in a scenario gets unique values — critical for real QA testing where every API call needs distinct IDs, idempotency keys, or random data.
 
@@ -797,7 +811,9 @@ When a test file references `$accounts.`, the "N accounts found..." hint is auto
 - `run_test` MCP tool has a `section` parameter: when set without `step`, runs ALL steps in that section only (setup/steps/teardown)
 - New MCP resources: `gherkio://dsl/matchers` (all assertion matchers with descriptions), `gherkio://dsl/variables` (built-in generator variables), `gherkio://dsl/paths` (canonical assertion/save paths) — exposed as JSON, fully dynamic via `runner.GetMatchersInfo()`, `runner.GetVariableInfo()`, `runner.GetPathInfo()`
 - New MCP resource: `gherkio://project/structure` — explains the `.gherkio/` directory layout so LLMs know where to create files
-- New MCP tools for LLM self-service: `create_credential`, `update_credential`, `read_credential`, `create_environment`, `update_environment`, `create_schema`, `update_schema`
+- New MCP tools for LLM self-service: `create_credential`, `update_credential`, `read_credential`, `create_environment`, `read_environment`, `update_environment`, `create_schema`, `update_schema`
+- New MCP fallback tools for tool-only LLMs: `get_dsl_variables` (built-in variables & generators), `get_dsl_spec` (full syntax spec), `get_dsl_matchers` (assertion matchers) — provides complete DSL specifications directly via tool calls for environments/clients that do not support or query MCP resources natively.
+
 
 Gherkio supports running the same test scenarios against multiple accounts via a credentials system.
 
@@ -894,4 +910,18 @@ Host OS Environment Variables (GHERKIO_*)
 ### 6. Sequential Step-Prefixed Variables for LLM-Generated Scenarios
 - **Crucial Rule**: When using MCP tools or writing code to generate or update YAML test scenarios (such as `create_test` or `update_test`), you MUST always format your extracted/saved variable names with a numeric prefix corresponding to the step order (e.g. `1-createdOrderId`, `2-authToken`, `3-userId`). 
 - **Reason**: This guarantees strict step-level variable isolation, eliminates naming collision risks across multi-step scenarios, and improves developer readability when tracking variable propagation throughout execution logs.
+
+### 7. Lifecycle Blocks Rule (Setup vs Steps vs Teardown)
+- **Crucial Rule**: Never put everything into the `steps` block. When generating a test scenario, ALWAYS segregate steps across `setup`, `steps`, and `teardown` blocks strategically:
+  *   **`setup`**: Put preconditions here (e.g. authentication, session creation, seeding mock data).
+  *   **`steps`**: Put the main user flow or business logic under test here.
+  *   **`teardown`**: Put cleanups here (e.g. deleting created users, logging out, cleaning up database state).
+- **Reason**: Gherkio guarantees `teardown` execution even if `setup` or `steps` fail. By segregating cleanups to the `teardown` block, you prevent severe resource leaks in the target testing environments. If preconditions fail in `setup`, Gherkio skips `steps` entirely and jumps straight to `teardown`, preserving system stability.
+
+### 8. Generator & Schema Synchronization Rule
+- **Crucial Rule**: When adding or updating built-in generators, parameterized generator functions (in `internal/runner/builtins.go`), or DSL schema rules, you MUST always ensure that all of the following components are fully updated and synchronized:
+  *   **MCP Dynamic Resources**: Update registration mappings and descriptions in `internal/mcp/server.go` (specifically under `gherkio://dsl/spec` and `gherkio://dsl/variables`).
+  *   **CLI Compiler Schemas**: Ensure `GetVariableInfo()` in `internal/runner/engine.go` exposes the new signature/metadata so it is returned by the dynamic `gherkio schema` CLI command.
+  *   **Static Reference maps**: Document the changes/additions immediately inside this manifest (`llm-map.txt`) and official mdBook documentation.
+- **Reason**: This prevents information drift, guarantees the CLI schema validation remains completely correct, and ensures subsequent AI/LLM clients discovering Gherkio through the MCP bridge can utilize the newly added functions immediately.
 

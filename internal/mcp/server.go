@@ -15,6 +15,7 @@ import (
 	"github.com/muhfaris/gherkio/internal/core/schemastore"
 	"github.com/muhfaris/gherkio/internal/core/teststore"
 	"github.com/muhfaris/gherkio/internal/model"
+	"github.com/muhfaris/gherkio/internal/report"
 	"github.com/muhfaris/gherkio/internal/runner"
 	"github.com/muhfaris/gherkio/internal/schema"
 	"gopkg.in/yaml.v3"
@@ -234,6 +235,10 @@ func (s *Server) handleListTools(id interface{}, params json.RawMessage) {
 							"type":        "boolean",
 							"description": "Show full request/response payloads and resolved variables. Defaults to true.",
 						},
+						"until": map[string]interface{}{
+							"type":        "string",
+							"description": "Execute steps until a specific target, e.g. 'steps:1' or '2'.",
+						},
 					},
 					Required: []string{"path"},
 				},
@@ -322,6 +327,20 @@ func (s *Server) handleListTools(id interface{}, params json.RawMessage) {
 						},
 					},
 					Required: []string{"name", "yaml"},
+				},
+			},
+			{
+				Name:        "read_environment",
+				Description: "Read an existing environment config file's parsed structure (baseUrl and service overrides)",
+				InputSchema: InputSchema{
+					Type: "object",
+					Properties: map[string]interface{}{
+						"name": map[string]interface{}{
+							"type":        "string",
+							"description": "Environment name (e.g. local, staging)",
+						},
+					},
+					Required: []string{"name"},
 				},
 			},
 			{
@@ -429,6 +448,21 @@ func (s *Server) handleListTools(id interface{}, params json.RawMessage) {
 					},
 				},
 			},
+			{
+				Name:        "get_dsl_variables",
+				Description: "Get the dynamic reference list of all Gherkio DSL built-in variables and helper/generator functions.",
+				InputSchema: InputSchema{Type: "object", Properties: map[string]interface{}{}},
+			},
+			{
+				Name:        "get_dsl_spec",
+				Description: "Get the Gherkio DSL grammar specification, lifecycle blocks, and execution rules.",
+				InputSchema: InputSchema{Type: "object", Properties: map[string]interface{}{}},
+			},
+			{
+				Name:        "get_dsl_matchers",
+				Description: "Get the complete reference list of Gherkio's dynamic assertion matchers (e.g. equal, contains, greaterThan).",
+				InputSchema: InputSchema{Type: "object", Properties: map[string]interface{}{}},
+			},
 		},
 	}
 	s.writeResponse(id, result, nil)
@@ -441,7 +475,7 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 		return
 	}
 
-	if s.projectDir == "" && call.Name != "get_project_info" && call.Name != "init_project" && call.Name != "convert_curl_to_yaml" {
+	if s.projectDir == "" && call.Name != "get_project_info" && call.Name != "init_project" && call.Name != "convert_curl_to_yaml" && call.Name != "get_dsl_variables" && call.Name != "get_dsl_spec" && call.Name != "get_dsl_matchers" {
 		// MCP capability check: let LLM know we are outside of a Gherkio workspace
 		s.writeToolError(id, "Gherkio project not initialized in this directory. Call 'init_project' or configure workspace.")
 		return
@@ -638,6 +672,7 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 		if v, ok := call.Arguments["verbose"].(bool); ok {
 			verbose = v
 		}
+		untilArg, _ := call.Arguments["until"].(string)
 
 		if path == "" {
 			s.writeToolError(id, "Missing required argument 'path'")
@@ -656,18 +691,20 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 			sectionArg = "steps"
 		}
 
+		// Load config
+		appCfg, _ := project.LoadConfig(s.projectDir)
+
 		// Set default environment name
 		if envName == "" {
 			envName = "local"
-			cfg, err := project.LoadConfig(s.projectDir)
-			if err == nil && cfg.Environments.Default != "" {
-				envName = cfg.Environments.Default
+			if appCfg != nil && appCfg.Environments.Default != "" {
+				envName = appCfg.Environments.Default
 			}
 		}
 
 		// Expose run setup similar to cmd/run.go
 		var credentialVars map[string]interface{}
-		var maskFields []string
+		var credentialMaskFields []string
 		var allAccountsMap map[string]interface{}
 
 		creds, _ := runner.LoadCredentials(s.projectDir, envName)
@@ -683,7 +720,39 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 			}
 			if acc, exists := creds.GetAccount(accName); exists {
 				credentialVars = runner.CredentialsToVars(acc)
-				maskFields = append(maskFields, runner.GetSensitiveFieldsFromCredentials(acc)...)
+				credentialMaskFields = append(credentialMaskFields, runner.GetSensitiveFieldsFromCredentials(acc)...)
+			}
+		}
+
+		// Determine mask fields
+		maskFieldsToUse := runner.GetDefaultSensitiveFields()
+		if appCfg != nil && appCfg.Security.Mask.Enabled && len(appCfg.Security.Mask.Fields) > 0 {
+			maskFieldsToUse = appCfg.Security.Mask.Fields
+		}
+		// Append credential specific masks if any
+		maskFieldsToUse = append(maskFieldsToUse, credentialMaskFields...)
+
+		// Build snapshot configuration
+		var snapshotCfg runner.SnapshotConfig
+		if appCfg != nil {
+			snapshotCfg = runner.SnapshotConfig{
+				Enabled:       appCfg.Reports.Failures.Enabled,
+				MaskSensitive: appCfg.Reports.Failures.MaskSensitive,
+				MaskFields:    maskFieldsToUse,
+				RetainCount:   appCfg.Reports.Failures.RetainCount,
+			}
+			if appCfg.Reports.Failures.Path != "" {
+				snapshotCfg.Path = appCfg.Reports.Failures.Path
+			} else {
+				snapshotCfg.Path = filepath.Join(s.projectDir, ".gherkio", "reports", "failures")
+			}
+		} else {
+			snapshotCfg = runner.SnapshotConfig{
+				Enabled:       false,
+				MaskSensitive: true,
+				MaskFields:    maskFieldsToUse,
+				RetainCount:   10,
+				Path:          filepath.Join(s.projectDir, ".gherkio", "reports", "failures"),
 			}
 		}
 
@@ -692,19 +761,46 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 			EnvName:        envName,
 			ProjectDir:     s.projectDir,
 			Verbose:        verbose,
-			MaskFields:     maskFields,
+			MaskFields:     maskFieldsToUse,
 			AccountName:    accountName,
 			CredentialVars: credentialVars,
 			AllAccounts:    allAccountsMap,
 			StepIndex:      stepIndex,
 			StepSection:    sectionArg,
 			DryRun:         dryRun,
+			Snapshot:       snapshotCfg,
+			Until:          untilArg,
 		}
 
 		result, err := runner.Run(cfg)
 		if err != nil {
 			s.writeToolError(id, fmt.Sprintf("Execution execution failed: %v", err))
 			return
+		}
+
+		// Write HTML/JSON report if configured in the config file
+		if appCfg != nil && appCfg.Reports.Format != "" {
+			reportCfg := &report.ReportConfig{
+				Format:        appCfg.Reports.Format,
+				Path:          appCfg.Reports.Path,
+				MaskSensitive: appCfg.Reports.MaskSensitive,
+				Retention:     appCfg.Reports.Retention,
+			}
+			formats := strings.Split(reportCfg.Format, ",")
+			for _, format := range formats {
+				format = strings.TrimSpace(format)
+				switch format {
+				case "html":
+					if html, rerr := report.RenderHTML(result, *reportCfg, envName); rerr == nil {
+						_, _ = report.SaveHTML(html, s.projectDir, reportCfg.Path)
+					}
+				case "json":
+					if jsonStr, rerr := report.RenderJSON(result, *reportCfg, envName); rerr == nil {
+						_, _ = report.SaveJSON(jsonStr, s.projectDir, reportCfg.Path)
+					}
+				}
+			}
+			_ = report.EnforceRetention(s.projectDir, reportCfg.Path, reportCfg.Retention)
 		}
 
 		data, _ := json.MarshalIndent(result, "", "  ")
@@ -799,6 +895,20 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 			return
 		}
 		s.writeToolResponse(id, fmt.Sprintf("✓ Updated environment '%s'", name))
+
+	case "read_environment":
+		name, _ := call.Arguments["name"].(string)
+		if name == "" {
+			s.writeToolError(id, "Missing required argument 'name'")
+			return
+		}
+		env, err := envstore.Read(s.projectDir, name)
+		if err != nil {
+			s.writeToolError(id, fmt.Sprintf("Failed to read environment: %v", err))
+			return
+		}
+		data, _ := json.MarshalIndent(env, "", "  ")
+		s.writeToolResponse(id, string(data))
 
 	case "create_schema":
 		name, _ := call.Arguments["name"].(string)
@@ -987,6 +1097,15 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 			s.writeToolResponse(id, string(data))
 		}
 
+	case "get_dsl_variables":
+		s.writeToolResponse(id, s.buildVariablesResource())
+
+	case "get_dsl_matchers":
+		s.writeToolResponse(id, s.buildMatchersResource())
+
+	case "get_dsl_spec":
+		s.writeToolResponse(id, s.buildSpecResource())
+
 	default:
 		s.writeError(id, MethodNotFound, fmt.Sprintf("Tool not found: '%s'", call.Name), nil)
 	}
@@ -1057,92 +1176,8 @@ func (s *Server) handleReadResource(id interface{}, params json.RawMessage) {
 	switch read.URI {
 	case "gherkio://dsl/spec":
 		mime = "text/markdown"
-		content = `## Gherkio DSL Grammar Spec
+		content = s.buildSpecResource()
 
-### Structural Keys
-- **scenario**: (String, Required) Human readable name of the scenario.
-- **setup**: (List of Steps, Optional) Scenario pre-conditions.
-- **steps**: (List of Steps, Required) Execution block steps.
-- **teardown**: (List of Steps, Optional) Post-execution cleanup steps.
-
-### Step Block
-- **use**: (String, Conditional) Path to compose/execute another scenario. Mutually exclusive with request.
-- **request**: (Request object, Conditional) HTTP Request config. Mutually exclusive with use.
-- **expect**: (Expect object, Optional) Response assertions.
-- **save**: (Map of name:path, Optional) Extract dynamic values to context variables. Paths support variable interpolation (e.g. 'body.data[$randomInt(0,9)].id').
-- **timing**: (TimingConfig, Optional) Execution latency check.
-
-### Request Config
-- **service**: (String, Optional) Named service override matching environments.
-- **method**: (String, Required) HTTP Method (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS).
-- **url**: (String, Required) Target endpoint url (appends to baseUrl). Supports variable interpolation.
-- **headers**: (Map of string:string, Optional) Custom HTTP headers. Supports variable interpolation in values.
-- **body**: (Free-form object/string, Optional) Request body content. Supports variable interpolation in string values.
-
-### Variable Interpolation
-All string values in request fields support variable substitution:
-- **\$var** — Simple variable reference (e.g. \$username, \$token)
-- **\${var}** — Explicit braces syntax (e.g. \${accessToken})
-- **\${var:default}** — With default fallback (e.g. \${role:user})
-- **\$accounts.<name>.<field>** — Access any account's credentials directly from .gherkio/credentials/<env>.yaml without needing --account flag (e.g. \$accounts.eka.username)
-- **\${func(arg1,arg2)}** — Parametrized built-in generator with arguments (e.g. \${randomInt(1,100)})
-
-Variables are sourced from:
-1. **Built-in generators** — Pre-populated variables available in every test run:
-   - **\$uuid** — UUID v4 string (e.g. a1b2c3d4-e5f6-4789-abcd-ef1234567890)
-   - **\$ulid** — ULID string (e.g. 01ARZ3NDEKTSV4RRFFQ69G5FAV)
-   - **\$randomInt** — Random integer between 0 and 999999 (e.g. 74291). Use **\${randomInt(min,max)}** for custom range (e.g. \${randomInt(1,100)})
-   - **\$randomEmail** — Random email at @example.com (e.g. user_123456@example.com)
-   - **\$randomPhone** — Random Indonesian-format phone number (e.g. +6281234567890)
-2. **Credentials** — Account fields from .gherkio/credentials/<env>.yaml (injected automatically when --account is used, or via \$accounts.<name>.<field>)
-3. **Step saves** — Values extracted from previous step responses via save: blocks
-4. **Saved vars override credentials** — When a step saves a variable with the same name as a credential
-
-Built-in variables can be overridden by credentials or step saves with the same name.
-
-### Assertions (Expect)
-- **status**: (Integer) Expected HTTP status (e.g. 'status: 200').
-- **body.<path>**: Assert on JSON body fields using a matcher or literal value (e.g. 'body.id: exists', 'body.name: Emily').
-- **headers.<name>**: Assert on response header values (e.g. 'headers.content-type: contains application/json').
-- **jwt.<claim>**: Assert on decoded JWT claims (e.g. 'jwt.role: admin').
-- **schema**: Validate full body against a YAML schema file in .gherkio/schemas/ (e.g. 'schema: user-profile').
-  Negative form: 'schema: not <name>' asserts the response does NOT match the schema.
-
-**Available Matchers:**
-- 'exists' / 'not exists' — Field present / absent
-- 'uuid', 'email', 'datetime', 'uri' — Format validators
-- 'string', 'number', 'boolean', 'array', 'object', 'null', 'true', 'false' — Type checkers
-- 'empty' — String, array, or object is empty
-- 'contains <substring>', 'startsWith <prefix>', 'endsWith <suffix>' — String matchers
-- 'regex <pattern>' — Regex match
-- 'gt <N>', 'gte <N>', 'lt <N>', 'lte <N>' — Numeric comparisons
-- 'ipv4', 'ipv6', 'base64', 'mac' — Format validators
-
-**Collection Matchers (for arrays):**
-- 'count(<path>): <N>' — Array has exactly N items (e.g. 'count(body.items): 3')
-- 'count(<path>).gte: <N>' — Array has >= N items (e.g. 'count(body.items).gte: 1' means "has data")
-- 'count(<path>).gt: <N>' — Array has > N items
-- 'count(<path>).lte: <N>' — Array has <= N items
-- 'count(<path>).lt: <N>' — Array has < N items
-- 'all(<path>): <matcher>' — Every element matches (e.g. 'all(body.items.status): active')
-- 'all(<path>.<field>): <matcher>' — Every element's field matches (e.g. 'all(body.items.id): uuid')
-
-**Examples:**
-
-    expect:
-      status: 200
-      body.data: exists
-      body.token: uuid
-      body.items: array
-      body.email: email
-      body.role: admin          # literal equality
-      body.count: gt 10         # numeric > 10
-      body.name: contains John
-      count(body.items): 5      # exactly 5 items
-      count(body.items).gte: 1  # at least 1 item (has data)
-      schema: user-profile
-      schema: not error-payload
-`
 	case "gherkio://dsl/schema.json":
 		mime = "application/json"
 		schemaData, err := schema.GenerateAllSchemas()
@@ -1154,110 +1189,7 @@ Built-in variables can be overridden by credentials or step saves with the same 
 
 	case "gherkio://dsl/examples":
 		mime = "text/yaml"
-		content = `# Basic example: login with inline credentials
-scenario: login and fetch profile
-
-steps:
-  - request:
-      method: POST
-      url: /auth/login
-      body:
-        username: emilys
-        password: emilyspass
-    expect:
-      status: 200
-      body.accessToken: exists
-    save:
-      authToken: body.accessToken
-
-  - request:
-      method: GET
-      url: /auth/me
-      headers:
-        Authorization: Bearer $authToken
-    expect:
-      status: 200
-      body.username: emilys
-
----
-# Multi-account example: access any account without --account flag
-# Uses $accounts.<name>.<field> from .gherkio/credentials/local.yaml
-scenario: login as specific account via $accounts
-
-steps:
-  - request:
-      method: POST
-      url: /auth/login
-      body:
-        username: $accounts.eka.username
-        password: $accounts.eka.password
-        expiresInMins: 30
-    expect:
-      status: 200
-      body.accessToken: exists
-    save:
-      accessToken: body.accessToken
-
-  - request:
-      method: GET
-      url: /auth/me
-      headers:
-        Authorization: Bearer $accessToken
-    expect:
-      status: 200
-      body.role: $accounts.default.role
-
----
-# Built-in generators example: $uuid, $ulid, $randomInt
-# These variables are available in every test with no setup needed
-scenario: using built-in generators
-
-steps:
-  - request:
-      method: POST
-      url: /auth/login
-      body:
-        username: $accounts.default.username
-        password: $accounts.default.password
-        idempotencyKey: $uuid
-        requestId: $ulid
-        otpCode: $randomInt
-    expect:
-      status: 200
-      body.accessToken: exists
-    save:
-      accessToken: body.accessToken
-
-  - request:
-      method: GET
-      url: /auth/me
-      headers:
-        Authorization: Bearer $accessToken
-        X-Idempotency: $uuid
-    expect:
-      status: 200
-      body.username: $accounts.default.username
-
----
-# Parametrized randomInt example: custom range with ${randomInt(min,max)}
-# Also demonstrates count().gte for checking array has data
-scenario: parametrized randomInt and array length check
-
-steps:
-  - request:
-      method: POST
-      url: /products
-      body:
-        name: "Product ${randomInt(1000,9999)}"
-        price: ${randomInt(1000,500000)}
-        quantity: ${randomInt(1,100)}
-    expect:
-      status: 201
-      count(body.items).gte: 1
-    save:
-      productId: body.id
-      sku: body.sku
-`
+		content = s.buildExamplesResource()
 	case "gherkio://dsl/matchers":
 		mime = "application/json"
 		content = s.buildMatchersResource()

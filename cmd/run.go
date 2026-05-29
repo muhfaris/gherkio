@@ -29,6 +29,7 @@ var (
 	filterTags    []string
 	parallelCount int
 	dryRun        bool
+	untilSlice    string
 )
 
 // runCmd represents the gherkio run command.
@@ -80,6 +81,7 @@ func init() {
 	runCmd.Flags().StringSliceVarP(&filterTags, "tag", "t", nil, "Filter tests by tags (AND logic: test must have ALL specified tags)")
 	runCmd.Flags().IntVarP(&parallelCount, "parallel", "p", 0, "Number of tests to run in parallel (0 = auto-detect CPU count)")
 	runCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview test execution without making HTTP requests")
+	runCmd.Flags().StringVarP(&untilSlice, "until", "u", "", "Execute steps until a specific target, e.g. 'steps:1' or '2'")
 }
 
 func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw bool, accountName string, allAccounts bool) error {
@@ -116,7 +118,7 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 	if appCfg != nil {
 		snapshotCfg = runner.SnapshotConfig{
 			Enabled:       appCfg.Reports.Failures.Enabled,
-			MaskSensitive:  appCfg.Reports.Failures.MaskSensitive,
+			MaskSensitive: appCfg.Reports.Failures.MaskSensitive,
 			MaskFields:    maskFields,
 			RetainCount:   appCfg.Reports.Failures.RetainCount,
 		}
@@ -350,6 +352,7 @@ func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *re
 		StepSection:    targetSection,
 		DryRun:         dryRun,
 		Snapshot:       snapshotCfg,
+		Until:          untilSlice,
 	}
 
 	result, err := runner.Run(cfg)
@@ -462,6 +465,7 @@ func runSingleTestMultiAccount(testPath, projectDir, env string, verbose bool, r
 			StepSection:    "",
 			DryRun:         dryRun,
 			Snapshot:       snapshotCfg,
+			Until:          untilSlice,
 		}
 
 		result, err := runner.Run(cfg)
@@ -604,6 +608,7 @@ func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *repor
 			StepSection:    "",
 			DryRun:         dryRun,
 			Snapshot:       snapshotCfg,
+			Until:          untilSlice,
 		}
 
 		result, err := runner.Run(cfg)
@@ -718,6 +723,7 @@ func runAllInDirMultiAccount(testDir, projectDir, env string, verbose bool, repo
 				StepSection:    "",
 				DryRun:         dryRun,
 				Snapshot:       snapshotCfg,
+				Until:          untilSlice,
 			}
 
 			result, err := runner.Run(cfg)
@@ -935,6 +941,7 @@ func runAllInDirParallel(testDir, projectDir, env string, verbose bool, reportCf
 				StepSection:    "",
 				DryRun:         dryRun,
 				Snapshot:       snapshotCfg,
+				Until:          untilSlice,
 			}
 
 			result, err := runner.Run(cfg)
