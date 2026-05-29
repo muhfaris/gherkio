@@ -57,3 +57,5 @@
   - [Architecture](contributing/architecture.md)
   - [Adding Matchers](contributing/adding-matchers.md)
   - [Deploying to GitHub Pages](contributing/deploying-docs.md)
+
+- [Changelog](changelog.md)

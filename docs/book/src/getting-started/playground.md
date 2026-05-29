@@ -1,6 +1,6 @@
 # Interactive Browser Playground
 
-To lower Gherkio's learning curve to zero, the repository includes a self-contained, browser-based **Interactive Playground and Documentation Hub** located under `docs/playground/index.html`.
+To lower Gherkio's learning curve to zero, the repository includes a self-contained, browser-based **Interactive Playground and Documentation Hub** located under `docs/book/playground/index.html`.
 
 You can use the playground to experiment with test scenarios, visualize complex execution paths, and translate legacy commands in real-time.
 
@@ -10,14 +10,15 @@ You can use the playground to experiment with test scenarios, visualize complex 
 
 Since the playground is a static, modern vanilla web application, you can run it instantly:
 
-1.  **Open via File Manager**: Double-click [docs/playground/index.html](../../playground/index.html) to launch it in your default web browser (Chrome, Firefox, Safari).
-2.  **Open via Terminal**:
+*   **Online Sandbox**: Access the hosted web workspace directly on **[GitHub Pages Playground](https://muhfaris.github.io/gherkio/playground/index.html)**.
+*   **Open via File Manager**: Double-click [docs/book/playground/index.html](../../playground/index.html) to launch it in your default web browser offline.
+*   **Open via Terminal**:
     ```bash
     # Linux
-    xdg-open docs/playground/index.html
+    xdg-open docs/book/playground/index.html
 
     # macOS
-    open docs/playground/index.html
+    open docs/book/playground/index.html
     ```
 
 ---

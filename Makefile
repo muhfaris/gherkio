@@ -75,6 +75,8 @@ docs-gen:
 docs-build: docs-gen
 	@echo "Compiling Gherkio mdBook…"
 	cd docs/book && mdbook build
+	@echo "Copying Interactive Playground assets into build bundle…"
+	cp -R docs/book/playground docs/book/book/
 	@echo "✅ Gherkio mdBook compiled. Open docs/book/book/index.html to view local pages."
 
 docs-serve: docs-gen
