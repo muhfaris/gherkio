@@ -7,35 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.1.0-alpha.1] - 2026-05-29
+## [0.1.0-alpha.2] - 2026-05-29
 
 ### Added
-- **RFC-18 Automated Failure Debug Snapshots**: Auto-capturing raw request/response payload snapshots to local disk during test failures.
-- **RFC-19 Domain Sandboxing & SSRF Prevention**: Outbound network sandboxing policies with user-configurable allowlists and blocklists.
-- **RFC-21 Multipart Form-Data & File Upload**: High-performance streaming of file attachments and multipart fields via Go's `io.Pipe`.
-- **Bidirectional cURL ↔ Gherkio YAML Translator**: Added `gherkio convert` CLI target and integrated matching API inside Gherkio's MCP server.
-- **Dynamic Parameterized Variables Function Generators**: Added generator support for date offsets (`${dateOffset(...)}`), random integers (`${randomInt(min,max)}`), and localized random phones (`${randomPhone(prefixOrCountry)}`) with support for 23 global dialing codes.
-- **Sequential Variable Naming Enforcement**: Strict validation ensuring saved response values use sequential step prefixes (e.g., `1-authToken`, `2-userId`) to prevent leakage.
-- **Round-Trip SLA Assertions**: Assertions for latency budgets (`timing.duration <= 250ms`) directly inside steps.
-- **Parallel Scenario Execution**: Added `--parallel <N>` CLI flag for concurrent test execution.
-- **Dry-Run Mode**: Added `--dry-run` flag to preview scenario flow, variables, and assertions offline.
-- **Tag Filtering**: Added `--tag` CLI flags with multi-tag AND evaluations.
-- **Online Interactive Playground**: Added hosted interactive dashboard with live flow visualization and cURL translation on GitHub Pages.
-- **Expanded MCP Server Tools**: Exposed `gherkio init`, `gherkio validate`, and `gherkio convert` as natively discoverable tools to LLM Clients.
+- **Gherkio Developer Book**: Introduced a fully-fledged developer guide containing 23 chapters built with mdBook covering CLI tools, DSL syntax, and advanced recipes.
+- **Interactive Browser Playground**: Added a self-contained, offline-first visual interface supporting:
+  * *Visual DSL Stepper*: Dynamic execution flowchart rendering.
+  * *cURL ↔ YAML Step Translator*: Real-time legacy terminal logs conversion.
+- **Hosted GitHub Pages Support**: Configured static deploy workflows to serve both the developer book and the playground in a unified workspace.
+- **Stunning System Architecture Visual**: Embedded a premium, dark-mode glassmorphic diagram explaining Gherkio's MCP daemon and execution flow.
+- **Expanded Phone Number Support**: Added broader localized randomized phone number formats supporting international validations.
 
 ### Fixed
-- Fixed playground asset bundling path mismatch inside the mdBook build target.
-- Corrected various CLI documentation manual page auto-generation schemas.
+- Fixed playground asset bundling path mapping inside the `docs-build` compilation targets.
+- Corrected search index generation schemas for mdBook chapter queries.
+
+---
+
+## [0.1.0-alpha.1] - 2026-05-20
+
+### Added
+- **RFC-18 Automated Failure Debug Snapshots**: Auto-capturing raw request/response payload snapshots during test failures.
+- **RFC-19 Domain Sandboxing & SSRF Prevention**: Outbound network sandboxing policies with user-configurable allowlists and blocklists.
+- **RFC-21 Multipart Form-Data & File Upload**: Streaming of multipart files via Go `io.Pipe`.
+- **Dynamic Parameterized Generators**: Parameterized variable generators supporting offset dates and randomized values.
+- **Expanded MCP Server Tools**: Exposing `gherkio init`, `gherkio validate`, and `gherkio convert` directly as discoverable tools in the MCP layer.
+- **Cobra CLI Doc Generator**: Automatically building Cobra CLI manual pages to markdown.
 
 ---
 
 ## [0.1.0-alpha] - 2026-05-15
 
 ### Added
-- **Core Declarative Engine**: YAML runner for sequential HTTP requests, responses, headers, and parameter mapping.
+- **Core Declarative Engine**: Sequential HTTP requests, responses, headers, and parameter binding.
 - **Value Matchers & Negative Assertions**: Core validations (`exists`, `equals`, `contains`, `matches`, `not exists`, `schema: not <name>`).
-- **Setup & Teardown Blocks**: Support for scenario lifecycle isolation with global setup and robust error-tolerant teardown blocks.
-- **Retry & Polling Loops**: Configurable attempts, interval timers, and linear backoff algorithms for eventual consistency testing.
-- **Multi-Account Credentials Management**: Namespaced credentials mapping using `$accounts.<name>.<field>` variables with secure external YAML loaders.
-- **Static Schema Linter**: Added `gherkio validate` and `gherkio schema` for IDE integration and workspace lint checks.
-- **Model Context Protocol (MCP) Server**: Dynamic stdio server mapping workspace tests, environments, credentials, schemas, and live execution triggers directly to AI Clients.
+- **Setup & Teardown Blocks**: Scenario setup and error-tolerant teardown block executions.
+- **Retry & Polling Loops**: Configurable attempts, interval timers, and linear backoff algorithms.
+- **Multi-Account Credentials Management**: Namespaced credentials loader with safe YAML integrations.
