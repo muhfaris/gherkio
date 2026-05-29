@@ -251,6 +251,44 @@ func TestParameterizedGenerators(t *testing.T) {
 		if !strings.HasPrefix(phoneUS, "+1") {
 			t.Errorf("Expected US phone prefix +1, got %q", phoneUS)
 		}
+
+		phoneSG, err := interpolateString(`$randomPhone("SG")`, vars)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+		if !strings.HasPrefix(phoneSG, "+658") {
+			t.Errorf("Expected SG phone prefix +658, got %q", phoneSG)
+		}
+		if len(phoneSG) != 11 { // +658 + 7 digits = 11 characters
+			t.Errorf("Expected SG phone length 11, got %d (%q)", len(phoneSG), phoneSG)
+		}
+
+		phoneRawPlus, err := interpolateString(`$randomPhone("+351")`, vars)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+		if !strings.HasPrefix(phoneRawPlus, "+351") {
+			t.Errorf("Expected custom raw prefix +351, got %q", phoneRawPlus)
+		}
+		if len(phoneRawPlus) != 13 { // +351 + 9 digits = 13 characters
+			t.Errorf("Expected phone length 13 for prefix +351, got %d (%q)", len(phoneRawPlus), phoneRawPlus)
+		}
+
+		phoneRawNum, err := interpolateString(`$randomPhone("351")`, vars)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+		if !strings.HasPrefix(phoneRawNum, "+351") {
+			t.Errorf("Expected coerced raw prefix +351, got %q", phoneRawNum)
+		}
+
+		phoneEmpty, err := interpolateString(`$randomPhone()`, vars)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+		if !strings.HasPrefix(phoneEmpty, "+628") {
+			t.Errorf("Expected default Indonesian phone prefix +628, got %q", phoneEmpty)
+		}
 	})
 
 	t.Run("Transformers", func(t *testing.T) {

@@ -152,7 +152,7 @@ func (s *Server) handleListTools(id interface{}, params json.RawMessage) {
 						},
 						"scenarioYaml": map[string]interface{}{
 							"type":        "string",
-							"description": "Raw YAML string of the Gherkio test scenario.",
+							"description": "Raw YAML string of the Gherkio test scenario. IMPORTANT: Always prefix any saved dynamic variables (in the 'save' block or referenced across steps) with the sequential step number (e.g. '1-authToken' for step 1, '2-resourceId' for step 2, depending on the scenario step order) to guarantee strict traceability.",
 						},
 					},
 					Required: []string{"path", "scenarioYaml"},
@@ -170,7 +170,7 @@ func (s *Server) handleListTools(id interface{}, params json.RawMessage) {
 						},
 						"scenarioYaml": map[string]interface{}{
 							"type":        "string",
-							"description": "Updated Gherkio test scenario YAML content.",
+							"description": "Updated Gherkio test scenario YAML content. IMPORTANT: Always prefix any saved dynamic variables (in the 'save' block or referenced across steps) with the sequential step number (e.g. '1-authToken' for step 1, '2-resourceId' for step 2, depending on the scenario step order) to guarantee strict traceability.",
 						},
 					},
 					Required: []string{"path", "scenarioYaml"},

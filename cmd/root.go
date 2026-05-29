@@ -34,3 +34,9 @@ func init() {
 func version() string {
 	return fmt.Sprintf("%s (commit: %s, built: %s, %s)", Version, Commit, BuildDate, runtime.Version())
 }
+
+// GetRootCmd returns the unexported rootCmd instance.
+func GetRootCmd() *cobra.Command {
+	return rootCmd
+}
+
