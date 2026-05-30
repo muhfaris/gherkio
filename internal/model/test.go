@@ -41,6 +41,7 @@ type Request struct {
 	Headers   map[string]string `yaml:"headers,omitempty" json:"headers,omitempty" jsonschema:"description=HTTP request headers. Supports variable interpolation in values ($var ${var:default} $accounts.(name).(field) $uuid $ulid $randomInt $randomEmail $randomPhone)"`
 	Body      interface{}       `yaml:"body,omitempty" json:"body,omitempty" jsonschema:"description=HTTP request body as JSON object or string. Supports variable interpolation in string values ($var ${var:default} $accounts.(name).(field) $uuid $ulid $randomInt $randomEmail $randomPhone)"`
 	Multipart *MultipartConfig  `yaml:"multipart,omitempty" json:"multipart,omitempty" jsonschema:"description=Multipart form-data configuration for file uploads and form fields"`
+	Transform map[string]*ProjectionConfig `yaml:"transform,omitempty" json:"transform,omitempty" jsonschema:"description=Declarative projections reshaped into request payload paths"`
 	Timeout   string            `yaml:"timeout,omitempty" json:"timeout,omitempty" jsonschema:"description=HTTP client timeout for this request (e.g. 5s 30s 1m)"` // e.g. "5s", "30s", "1m"
 }
 
@@ -113,4 +114,13 @@ func (e *Expect) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	return nil
+}
+
+// ProjectionConfig defines the mapping, filtering, slicing, and target projection schema of collection transformations.
+type ProjectionConfig struct {
+	From   string                 `yaml:"from" json:"from" jsonschema:"required,description=The source collection array variable name (must start with $)"`
+	As     string                 `yaml:"as,omitempty" json:"as,omitempty" jsonschema:"description=Scoped alias variable name to represent each item during transformation"`
+	Where  map[string]interface{} `yaml:"where,omitempty" json:"where,omitempty" jsonschema:"description=Filter conditions map applied using Gherkio native matchers"`
+	Limit  int                    `yaml:"limit,omitempty" json:"limit,omitempty" jsonschema:"description=Maximum count of matching elements to project"`
+	Select map[string]interface{} `yaml:"select" json:"select" jsonschema:"required,description=Structural projection mapping for item fields"`
 }

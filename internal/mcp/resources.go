@@ -132,6 +132,8 @@ Use setup, steps, and teardown blocks strategically:
 - **url**: (String, Required) Target endpoint url (appends to baseUrl). Supports variable interpolation.
 - **headers**: (Map of string:string, Optional) Custom HTTP headers. Supports variable interpolation in values.
 - **body**: (Free-form object/string, Optional) Request body content. Supports variable interpolation in string values.
+- **transform**: (Map of path:ProjectionConfig, Optional) Declarative collections projected into the request payload.
+
 
 ### Variable Interpolation
 All string values in request fields support variable substitution:
@@ -167,6 +169,30 @@ Variables are sourced from:
 4. **Saved vars override credentials** — When a step saves a variable with the same name as a credential
 
 Built-in variables can be overridden by credentials or step saves with the same name.
+
+### Declarative Collection Projections (Transform)
+Reshapes source array collections from the variables pool directly into the request payload path using standard projection rules:
+- **from**: (String, Required) Source collection array variable name (must start with $).
+- **as**: (String, Optional) Scoped alias variable name to represent each item during transformation (defaults to 'item').
+- **where**: (Map of field:matcher, Optional) Filter conditions applied using Gherkio assertions/matchers.
+- **limit**: (Integer, Optional) Maximum count of projected items to return.
+- **select**: (Map, Required) Structural projection mapping. Can define nested mapping or further sub-projections.
+
+**Explicit Type Casting:**
+You can coerce field types during selection by wrapping variable paths in casting operators:
+- **$string(var)** — Converts the field value directly to a string.
+- **$int(var)** — Parses/coerces the field value directly to an integer.
+- **$float(var)** — Parses/coerces the field value directly to a float.
+- **$bool(var)** — Parses/coerces the field value directly to a boolean.
+
+**Example:**
+
+    transform:
+      survey.answers:
+        from: $raw_questions
+        select:
+          question_id: "$string(item.question_id)"
+          is_answered: true
 
 ### Assertions (Expect)
 - **status**: (Integer) Expected HTTP status (e.g. 'status: 200').

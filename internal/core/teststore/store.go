@@ -242,7 +242,104 @@ func Validate(test *model.TestFile, schemasDir string) (*ValidationResult, error
 				}
 			}
 		}
+
+		// Validate transform projections
+		if len(step.Request.Transform) > 0 {
+			for targetPath, projCfg := range step.Request.Transform {
+				validateProjectionConfig(projCfg, fmt.Sprintf("%s.request.transform.%s", prefix, targetPath), result)
+			}
+		}
 	}
 
 	return result, nil
 }
+
+// validateProjectionConfig checks for structural correctness of projection configs.
+func validateProjectionConfig(cfg *model.ProjectionConfig, prefix string, result *ValidationResult) {
+	if cfg == nil {
+		result.Valid = false
+		result.Errors = append(result.Errors, ValidationError{
+			Field:   prefix,
+			Message: "Projection configuration cannot be nil",
+			Code:    "invalid_transform",
+		})
+		return
+	}
+
+	if strings.TrimSpace(cfg.From) == "" {
+		result.Valid = false
+		result.Errors = append(result.Errors, ValidationError{
+			Field:   prefix + ".from",
+			Message: "from variable is required",
+			Code:    "missing_field",
+		})
+	} else if !strings.HasPrefix(cfg.From, "$") {
+		result.Valid = false
+		result.Errors = append(result.Errors, ValidationError{
+			Field:   prefix + ".from",
+			Message: "from source variable must start with '$'",
+			Code:    "invalid_variable_reference",
+		})
+	}
+
+	if cfg.Limit < 0 {
+		result.Valid = false
+		result.Errors = append(result.Errors, ValidationError{
+			Field:   prefix + ".limit",
+			Message: "limit must be a positive integer",
+			Code:    "invalid_limit",
+		})
+	}
+
+	if len(cfg.Select) == 0 {
+		result.Valid = false
+		result.Errors = append(result.Errors, ValidationError{
+			Field:   prefix + ".select",
+			Message: "select structure is required",
+			Code:    "missing_field",
+		})
+	} else {
+		for k, v := range cfg.Select {
+			if m, ok := v.(map[string]interface{}); ok {
+				if subCfg, ok := parseProjectionConfig(m); ok {
+					validateProjectionConfig(subCfg, prefix+".select."+k, result)
+				}
+			}
+		}
+	}
+}
+
+// parseProjectionConfig parses a map into ProjectionConfig for validation.
+func parseProjectionConfig(m map[string]interface{}) (*model.ProjectionConfig, bool) {
+	fromVal, hasFrom := m["from"]
+	selectVal, hasSelect := m["select"]
+	if !hasFrom || !hasSelect {
+		return nil, false
+	}
+
+	fromStr, ok1 := fromVal.(string)
+	selectMap, ok2 := selectVal.(map[string]interface{})
+	if !ok1 || !ok2 {
+		return nil, false
+	}
+
+	cfg := &model.ProjectionConfig{
+		From:   fromStr,
+		Select: selectMap,
+	}
+
+	if asVal, ok := m["as"].(string); ok {
+		cfg.As = asVal
+	}
+	if limitVal, ok := m["limit"].(int); ok {
+		cfg.Limit = limitVal
+	} else if limitFloat, ok := m["limit"].(float64); ok {
+		cfg.Limit = int(limitFloat)
+	}
+	if whereVal, ok := m["where"].(map[string]interface{}); ok {
+		cfg.Where = whereVal
+	}
+
+	return cfg, true
+}
+

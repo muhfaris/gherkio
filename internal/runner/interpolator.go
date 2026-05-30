@@ -44,6 +44,28 @@ func InterpolateRequest(req model.Request, vars map[string]interface{}) (model.R
 	}
 	interpolated.Body = interpolatedBody
 
+	// Apply Transform Projections
+	if len(req.Transform) > 0 {
+		var bodyMap map[string]interface{}
+		if interpolated.Body == nil {
+			bodyMap = make(map[string]interface{})
+		} else if m, ok := interpolated.Body.(map[string]interface{}); ok {
+			bodyMap = m
+		} else {
+			return model.Request{}, fmt.Errorf("cannot apply transform: request body is not an object")
+		}
+
+		for targetPath, projCfg := range req.Transform {
+			projected, err := ProjectCollection(projCfg, vars)
+			if err != nil {
+				return model.Request{}, fmt.Errorf("transform failed at path %q: %w", targetPath, err)
+			}
+			writePath(bodyMap, targetPath, projected)
+		}
+		interpolated.Body = bodyMap
+	}
+
+
 	// Interpolate Multipart config
 	if req.Multipart != nil {
 		multipart, err := interpolateMultipart(req.Multipart, vars)
