@@ -235,7 +235,7 @@ func resolveNestedVar(path string, vars map[string]interface{}) (interface{}, bo
 func interpolateBody(body interface{}, vars map[string]interface{}) (interface{}, error) {
 	switch b := body.(type) {
 	case string:
-		return interpolateString(b, vars)
+		return resolveTypePreserving(b, vars)
 	case map[string]interface{}:
 		interpolated := make(map[string]interface{})
 		for k, v := range b {
