@@ -116,20 +116,6 @@ When mapping data from target APIs to your request payloads, different endpoints
 *   **`$float(var)`**: Coerces/parses a field value into a float64.
 *   **`$bool(var)`**: Coerces/parses truthy string or integer values into a boolean.
 
----
-
-### 💡 Type Preservation & Explicit Casting in Standard Bodies
-
-Outside of the `transform` projection block, Gherkio automatically preserves the original type of standalone variables mapped inside the HTTP request `body`:
-*   If you map a saved integer variable: `employee_id: $employee_id`, Gherkio keeps the value as a JSON number (`1234`) in the outgoing request payload.
-*   If you explicitly want to coerce it to a string (or other types), wrap the variable in a casting operator inside the request body:
-    ```yaml
-    body:
-      emp_id: "$string(employee_id)"   # Outgoing payload: "emp_id": "1234"
-      status: "$bool(is_active)"       # Outgoing payload: "status": true
-    ```
-
-
 #### Complete Example:
 ```yaml
 steps:
@@ -167,3 +153,15 @@ steps:
 ```
 
 
+---
+
+### 💡 Type Preservation & Explicit Casting in Standard Bodies
+
+Outside of the `transform` projection block, Gherkio automatically preserves the original type of standalone variables mapped inside the HTTP request `body`:
+*   If you map a saved integer variable: `employee_id: $employee_id`, Gherkio keeps the value as a JSON number (`1234`) in the outgoing request payload.
+*   If you explicitly want to coerce it to a string (or other types), wrap the variable in a casting operator inside the request body:
+    ```yaml
+    body:
+      emp_id: "$string(employee_id)"   # Outgoing payload: "emp_id": "1234"
+      status: "$bool(is_active)"       # Outgoing payload: "status": true
+    ```
