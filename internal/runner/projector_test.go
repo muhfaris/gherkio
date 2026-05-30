@@ -586,3 +586,69 @@ func TestProjectCollection_TypeCasting(t *testing.T) {
 	}
 }
 
+func TestInterpolateRequest_BodyCasting(t *testing.T) {
+	req := model.Request{
+		Method: "POST",
+		URL:    "http://api.example.com/submit",
+		Body: map[string]interface{}{
+			"id_as_int":       "$employee_id",
+			"id_as_string":    "$string(employee_id)",
+			"id_as_string_2":  "$string($employee_id)",
+			"status_as_bool":  "$bool(status_flag)",
+			"price_as_float":  "$float(price_str)",
+			"missing_val":     "$string(missing_val)",
+		},
+	}
+
+	vars := map[string]interface{}{
+		"employee_id": 1234,
+		"status_flag": "true",
+		"price_str":   "99.99",
+		"missing_val": nil,
+	}
+
+	interpolated, err := InterpolateRequest(req, vars)
+	if err != nil {
+		t.Fatalf("InterpolateRequest failed: %v", err)
+	}
+
+	bodyMap, ok := interpolated.Body.(map[string]interface{})
+	if !ok {
+		t.Fatalf("Expected body to be map, got %T", interpolated.Body)
+	}
+
+	if bodyMap["id_as_int"] != 1234 {
+		t.Errorf("Expected integer 1234, got %v (%T)", bodyMap["id_as_int"], bodyMap["id_as_int"])
+	}
+	if bodyMap["id_as_string"] != "1234" {
+		t.Errorf("Expected string '1234', got %v (%T)", bodyMap["id_as_string"], bodyMap["id_as_string"])
+	}
+	if bodyMap["id_as_string_2"] != "1234" {
+		t.Errorf("Expected string '1234', got %v (%T)", bodyMap["id_as_string_2"], bodyMap["id_as_string_2"])
+	}
+	if bodyMap["status_as_bool"] != true {
+		t.Errorf("Expected boolean true, got %v (%T)", bodyMap["status_as_bool"], bodyMap["status_as_bool"])
+	}
+	if bodyMap["price_as_float"] != 99.99 {
+		t.Errorf("Expected float 99.99, got %v (%T)", bodyMap["price_as_float"], bodyMap["price_as_float"])
+	}
+	if bodyMap["missing_val"] != nil {
+		t.Errorf("Expected nil for missing_val, got %v (%T)", bodyMap["missing_val"], bodyMap["missing_val"])
+	}
+
+	// Test strict error behavior for completely undefined variables
+	errReq := model.Request{
+		Method: "POST",
+		URL:    "http://api.example.com/submit",
+		Body: map[string]interface{}{
+			"invalid_cast": "$string(non_existent_key)",
+		},
+	}
+	_, err = InterpolateRequest(errReq, vars)
+	if err == nil {
+		t.Error("Expected error for casting completely undefined variable, but got none")
+	}
+}
+
+
+

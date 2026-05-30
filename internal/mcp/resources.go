@@ -140,6 +140,7 @@ All string values in request fields support variable substitution:
 - **$var** — Simple variable reference (e.g. $username, $token)
 - **${var}** — Explicit braces syntax (e.g. ${accessToken})
 - **${var:default}** — With default fallback (e.g. ${role:user})
+- **$string(var)**, **$int(var)**, **$bool(var)**, **$float(var)** — Type-casting operators to cast variables in request bodies (e.g. $string(emp_id))
 - **$accounts.<name>.<field>** — Access any account's credentials directly from .gherkio/credentials/<env>.yaml without needing --account flag (e.g. $accounts.eka.username)
 - **${func(arg1,arg2)}** — Parametrized built-in generator with arguments (e.g. ${randomInt(1,100)})
 
