@@ -88,3 +88,57 @@ func TestTestStoreCRUDAndValidate(t *testing.T) {
 		t.Fatalf("DeleteTest failed: %v", err)
 	}
 }
+
+func TestValidate_TransformConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+	schemasDir := filepath.Join(tmpDir, ".gherkio", "schemas")
+
+	// Invalid projection config: from doesn't start with $, limit is negative, select is empty
+	invalidTest := &model.TestFile{
+		Scenario: "Invalid Transform Test",
+		Steps: []model.Step{
+			{
+				Request: model.Request{
+					Method: "POST",
+					URL:    "/auth/login",
+					Transform: map[string]*model.ProjectionConfig{
+						"survey.questions": {
+							From:   "raw_questions", // invalid: must start with $
+							Limit:  -1,              // invalid: must be positive
+							Select: nil,             // invalid: select is required
+						},
+					},
+				},
+			},
+		},
+	}
+
+	res, err := Validate(invalidTest, schemasDir)
+	if err != nil {
+		t.Fatalf("Validate failed: %v", err)
+	}
+
+	if res.Valid {
+		t.Fatal("Expected validation to fail, but it passed")
+	}
+
+	expectedErrors := map[string]string{
+		"steps[0].request.transform.survey.questions.from":   "invalid_variable_reference",
+		"steps[0].request.transform.survey.questions.limit":  "invalid_limit",
+		"steps[0].request.transform.survey.questions.select": "missing_field",
+	}
+
+	for _, e := range res.Errors {
+		if expectedCode, exists := expectedErrors[e.Field]; exists {
+			if e.Code != expectedCode {
+				t.Errorf("For field %q, expected code %q, got %q", e.Field, expectedCode, e.Code)
+			}
+			delete(expectedErrors, e.Field)
+		}
+	}
+
+	if len(expectedErrors) > 0 {
+		t.Errorf("Some expected errors were not found: %+v", expectedErrors)
+	}
+}
+

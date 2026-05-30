@@ -94,3 +94,62 @@ steps:
 - **File Resolution**: Gherkio resolves relative file paths relative to your Gherkio project directory (`.gherkio` parent directory).
 - **MIME Detection**: If using the simple string syntax, Gherkio automatically infers the `Content-Type` of the file from its file extension (e.g. `.png` ➔ `image/png`). Use the advanced map syntax to specify overrides explicitly.
 
+---
+
+### 🔄 Declarative Collection Projections (`transform`)
+
+Gherkio allows you to dynamically filter, slice, project, and reshape array collections from your saved variables directly into your request payload target path before the HTTP request is dispatched.
+
+#### Transform Block Key Reference:
+| Key | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `from` | `string` | Yes | The source collection variable name (must start with `$`). |
+| `as` | `string` | No | Variable alias to represent each element context during transformation (defaults to `"item"`). |
+| `where` | `object` | No | Map of filters applying standard Gherkio matchers. |
+| `limit` | `int` | No | Maximum count of matching projected elements to output. |
+| `select` | `object` | Yes | Custom structural schema mapping. Supports recursive/nested projection maps. |
+
+#### ⚡ Explicit Type Casting inside Projections
+When mapping data from target APIs to your request payloads, different endpoints might expect different types. Gherkio provides explicit type-casting functions inside the projection's `select` block:
+*   **`$string(var)`**: Converts a field to a string (e.g., `$string(item.id)` turns `1001` to `"1001"`).
+*   **`$int(var)`**: Coerces/parses a field value into an integer.
+*   **`$float(var)`**: Coerces/parses a field value into a float64.
+*   **`$bool(var)`**: Coerces/parses truthy string or integer values into a boolean.
+
+#### Complete Example:
+```yaml
+steps:
+  # Step 1: Fetch details
+  - request:
+      method: GET
+      url: /surveys/132
+    save:
+      raw_questions: body.questions
+
+  # Step 2: Reshape and submit survey answers
+  - request:
+      method: POST
+      url: /surveys/132/submit
+      body:
+        survey_id: 132
+      transform:
+        # Dynamically inject the projected array under body.answers
+        answers:
+          from: $raw_questions
+          as: q
+          where:
+            q.is_required: true
+          limit: 10
+          select:
+            # Explicitly cast integer id from details response to string for submission!
+            question_id: "$string(q.id)"
+            
+            # Coerce the sequence number to integer
+            seq: "$int(q.seq)"
+            
+            # Static values and clean variable mapping
+            is_answered: true
+            free_text_answer: q.user_response
+```
+
+
