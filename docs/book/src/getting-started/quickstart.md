@@ -15,7 +15,7 @@ gherkio init
 
 > 💡 **Zero-Install Alternative:** If you do not have the binary installed on your local system path, you can run all Gherkio commands using standard remote Go execution:
 > ```bash
-> go run github.com/muhfaris/gherkio@v0.1.0-alpha.1 init
+> go run github.com/muhfaris/gherkio@v0.1.0-alpha.3 init
 > ```
 
 This scaffolds the canonical Gherkio folder structure:
@@ -85,7 +85,7 @@ gherkio run example/auth/login.yaml --verbose
 
 > 💡 **Zero-Install Alternative:** You can run Gherkio dynamically without installing using `go run`:
 > ```bash
-> go run github.com/muhfaris/gherkio@v0.1.0-alpha.1 run example/auth/login.yaml --verbose
+> go run github.com/muhfaris/gherkio@v0.1.0-alpha.3 run example/auth/login.yaml --verbose
 > ```
 
 The `--verbose` flag shows full request and response payloads with automatically masked credentials.

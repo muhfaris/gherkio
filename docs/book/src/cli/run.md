@@ -47,6 +47,7 @@ gherkio run [test-file] [flags]
       --section string   Section to run (setup, steps, teardown). When used without --step or --line, runs ALL steps in that section only.
       --step int         Index of the step to run (0-indexed) (default -1)
   -t, --tag strings      Filter tests by tags (AND logic: test must have ALL specified tags)
+  -u, --until string     Execute steps until a specific target, e.g. 'steps:1' or '2'
   -v, --verbose          Show full request/response payloads
 ```
 
