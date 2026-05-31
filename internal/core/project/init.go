@@ -87,8 +87,8 @@ steps:
       url: /auth/login
 
       body:
-        username: $accounts.eka.username
-        password: $accounts.eka.password
+        username: $accounts.alice.username
+        password: $accounts.alice.password
         expiresInMins: 30
         idempotencyKey: $uuid
         requestId: $ulid
@@ -113,13 +113,13 @@ steps:
         X-Idempotency: $uuid
     expect:
       status: 200
-      body.username: $accounts.eka.username
+      body.username: $accounts.alice.username
       schema: example/user-response
 `
 
 // defaultExampleAccountsTemplate shows how to use $accounts.<name>.<field> to access
 // any account's credentials directly without needing the --account flag.
-const defaultExampleAccountsTemplate = `scenario: login as eka via $accounts variable
+const defaultExampleAccountsTemplate = `scenario: login as alice via $accounts variable
 
 steps:
   - request:
@@ -127,8 +127,8 @@ steps:
       url: /auth/login
 
       body:
-        username: $accounts.eka.username
-        password: $accounts.eka.password
+        username: $accounts.alice.username
+        password: $accounts.alice.password
         expiresInMins: 30
 
     expect:
@@ -149,7 +149,7 @@ steps:
         Authorization: Bearer $accessToken
     expect:
       status: 200
-      body.username: $accounts.eka.username
+      body.username: $accounts.alice.username
       schema: example/user-response
 `
 
@@ -399,7 +399,7 @@ func Initialize(projectDir string, version string) error {
 	}
 	fmt.Fprintf(os.Stderr, "  📁  %s\n", accountsExampleDir)
 
-	accountsPath := filepath.Join(accountsExampleDir, "login-as-eka.yaml")
+	accountsPath := filepath.Join(accountsExampleDir, "login-as-alice.yaml")
 	if err := os.WriteFile(accountsPath, []byte(defaultExampleAccountsTemplate), 0644); err != nil {
 		return fmt.Errorf("failed to write accounts example test file: %w", err)
 	}
@@ -435,9 +435,9 @@ accounts:
     password: emilyspass
     role: user
 
-  eka:
-    username: "0000002"
-    password: "0000002"
+  alice:
+    username: "alice"
+    password: "alicepass"
     role: user
 
   # admin:
@@ -459,7 +459,7 @@ accounts:
 	fmt.Fprintln(os.Stderr, "    gherkio run example/auth/me.yaml --verbose")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "  Multi-account (no --account flag needed):")
-	fmt.Fprintln(os.Stderr, "    gherkio run example/accounts/login-as-eka.yaml")
+	fmt.Fprintln(os.Stderr, "    gherkio run example/accounts/login-as-alice.yaml")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "  Built-in generators ($uuid, $ulid, $randomInt):")
 	fmt.Fprintln(os.Stderr, "    gherkio run example/builtins/login-with-generators.yaml")

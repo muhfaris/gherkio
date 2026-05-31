@@ -1,0 +1,19 @@
+scenario: Get Order by ID (GET with Path Parameter)
+steps:
+    - request:
+        method: GET
+        url: /store/order/$step1_orderId
+      expect:
+        status: 200
+        body.complete: boolean
+        body.id: $step1_orderId
+        body.petId: number
+        body.quantity: number
+        body.shipDate: string
+        body.status: string
+        schema: petstore/order
+      save:
+        step2_orderComplete: body.complete
+        step2_retrievedOrderId: body.id
+      timing:
+        max: 3s

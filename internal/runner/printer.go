@@ -742,6 +742,8 @@ func formatSavedVarValue(val interface{}) string {
 		return fmt.Sprintf("%q", v)
 	case nil:
 		return "null"
+	case json.Number:
+		return v.String()
 	case float64:
 		if v == float64(int(v)) {
 			return fmt.Sprintf("%d", int(v))

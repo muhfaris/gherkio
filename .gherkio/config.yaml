@@ -1,27 +1,99 @@
-# Gherkio Configuration
-project:
-  name: ""
-  version: "v0.1.0"
+# ======================================================================
+# Gherkio Declarative API Testing Platform — Configuration Map
+# ======================================================================
+# Use this file to define project metadata, test paths, HTML reporting,
+# custom credential masking, and request sandboxing.
 
+# Gherkio tool version that initialized this project config.
+gherkio_version: v0.1.0-alpha.2
+
+# ----------------------------------------------------------------------
+# 1. Project Metadata
+# ----------------------------------------------------------------------
+project:
+  name: "example-gherkio"
+  version: "1.0.0"
+
+# ----------------------------------------------------------------------
+# 2. Environments Directory Configuration
+# ----------------------------------------------------------------------
 environments:
+  # The default environment name to target if --env is omitted.
   default: local
+  # Path to target environments folder containing baseUrl mappings.
   path: .gherkio/environments
 
+# ----------------------------------------------------------------------
+# 3. Tests & Scenarios Configuration
+# ----------------------------------------------------------------------
 tests:
+  # Directory where declarative YAML scenario test files reside.
   path: .gherkio/tests
 
-reports:
-  path: .gherkio/reports
-  format: html
-  archive: true
-
+# ----------------------------------------------------------------------
+# 4. JSON Schemas Configuration
+# ----------------------------------------------------------------------
 schemas:
+  # Directory containing validation files for schema matchers.
   path: .gherkio/schemas
 
-security:
-  mask:
-    # Sensitive field names to mask in output.
-    # Override defaults by listing custom field names here.
-    # Set to empty to disable masking.
+# ----------------------------------------------------------------------
+# 5. Reports & Core Failure Snapshots
+# ----------------------------------------------------------------------
+reports:
+  # Output path where execution summaries are compiled.
+  path: .gherkio/reports
+  # Report output format (options: "html", "json", "html,json" for both).
+  format: html
+  # Archive previous report results in .gherkio/reports/archive/.
+  archive: true
+  # Number of past report archives to retain before cleaning up disk.
+  retention: 10
+  # Mask sensitive fields (e.g. Bearer tokens) inside public HTML reports.
+  maskSensitive: true
+
+  # failure-debug-snapshots:
+  failures:
+    # Set to true to automatically write JSON debugging snapshots on any step fail.
     enabled: true
-    fields: []
+    # Folder path where individual core JSON dumps will reside.
+    path: .gherkio/reports/failures
+    # Apply global credentials masking to variables/payloads inside failure dumps.
+    maskSensitive: true
+    # Maximum count of individual failure dumps to retain (prevents disk bloat).
+    retainCount: 50
+
+# ----------------------------------------------------------------------
+# 6. Security, Masking, and Domain Sandboxing Guardrails
+# ----------------------------------------------------------------------
+security:
+  # Sensitive field masking to secure stdout logs and run traces.
+  mask:
+    # Enable automatic sensitive credential variable masking.
+    enabled: true
+    # Custom sensitive dictionary words to mask in execution outputs (case-insensitive).
+    fields:
+      - secret
+      - password
+      - token
+      - auth
+      - authorization
+      - signature
+      - apikey
+      - api-key
+
+  # sandboxing:
+  sandboxing:
+    # Set to true to restrict request scopes to allowed domains.
+    enabled: false
+    # Allowed domains pattern matching (supports wildcards, empty allows all).
+    allowedDomains:
+      - "*.api.dummyjson.com"
+      - "localhost:*"
+      - "127.0.0.1:*"
+    # Domains that are explicitly blocked even if they would match allowed lists.
+    blockedDomains:
+      - "*.malicious.com"
+      - "untrusted.org"
+    # Block local loopback, link-local, and RFC1918 private subnets.
+    blockPrivateSubnets: true

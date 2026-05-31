@@ -13,8 +13,8 @@ import (
 )
 
 // LenientInterpolateString replaces variable references in a string with values from vars.
-// Supports simple vars ($var, ${var}), dotted paths ($accounts.eka.username, ${accounts.eka.username}),
-// and defaults (${var:default}, ${accounts.eka.username:default}).
+// Supports simple vars ($var, ${var}), dotted paths ($accounts.alice.username, ${accounts.alice.username}),
+// and defaults (${var:default}, ${accounts.alice.username:default}).
 // If a variable is not defined, it leaves it intact instead of failing (lenient).
 func LenientInterpolateString(s string, vars map[string]interface{}) string {
 	// Matches $var, ${var}, $accounts.eka.username, ${accounts.eka.username}, ${var:default}
@@ -46,7 +46,7 @@ func LenientInterpolateString(s string, vars map[string]interface{}) string {
 
 // resolveNestedPath navigates a dotted path in a nested map structure.
 // For simple names like "username", it's equivalent to vars["username"].
-// For dotted paths like "accounts.eka.username", it navigates the nested map.
+// For dotted paths like "accounts.alice.username", it navigates the nested map.
 func resolveNestedPath(path string, vars map[string]interface{}) (interface{}, bool) {
 	parts := strings.Split(path, ".")
 	current := interface{}(vars)

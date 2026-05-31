@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -234,6 +235,14 @@ func resolveTypePreserving(val interface{}, localVars map[string]interface{}) (i
 				return int(v), nil
 			case float32:
 				return int(v), nil
+			case json.Number:
+				if i, err := v.Int64(); err == nil {
+					return int(i), nil
+				}
+				if f, err := v.Float64(); err == nil {
+					return int(f), nil
+				}
+				return nil, fmt.Errorf("failed to cast json.Number %q to int", v)
 			case string:
 				parsed, err := strconv.Atoi(strings.TrimSpace(v))
 				if err != nil {
@@ -275,6 +284,11 @@ func resolveTypePreserving(val interface{}, localVars map[string]interface{}) (i
 				return float64(v), nil
 			case int64:
 				return float64(v), nil
+			case json.Number:
+				if f, err := v.Float64(); err == nil {
+					return f, nil
+				}
+				return nil, fmt.Errorf("failed to cast json.Number %q to float", v)
 			case string:
 				parsed, err := strconv.ParseFloat(strings.TrimSpace(v), 64)
 				if err != nil {
@@ -311,6 +325,14 @@ func resolveTypePreserving(val interface{}, localVars map[string]interface{}) (i
 				return v != 0, nil
 			case float64:
 				return v != 0.0, nil
+			case json.Number:
+				if i, err := v.Int64(); err == nil {
+					return i != 0, nil
+				}
+				if f, err := v.Float64(); err == nil {
+					return f != 0.0, nil
+				}
+				return false, fmt.Errorf("failed to cast json.Number %q to bool", v)
 			case string:
 				parsed, err := strconv.ParseBool(strings.TrimSpace(strings.ToLower(v)))
 				if err != nil {

@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -268,6 +269,11 @@ func toFloat64(val interface{}) (float64, bool) {
 		return float64(v), true
 	case float64:
 		return v, true
+	case json.Number:
+		if f, err := v.Float64(); err == nil {
+			return f, true
+		}
+		return 0, false
 	default:
 		return 0, false
 	}
@@ -280,7 +286,7 @@ func getTypeName(data interface{}) string {
 	switch data.(type) {
 	case string:
 		return "string"
-	case int, int8, int16, int32, int64, float32, float64:
+	case int, int8, int16, int32, int64, float32, float64, json.Number:
 		return "number" // YAML parser usually unmarshals into float64 or int
 	case bool:
 		return "boolean"
