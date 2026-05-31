@@ -692,6 +692,14 @@
               </span>
             </div>
 
+            {{if $step.Error}}
+            <!-- Step Error -->
+            <div style="background: var(--fail-bg); border: 0.5px solid var(--fail-border); border-radius: var(--radius); padding: 12px; margin-bottom: 12px;">
+              <div style="font-weight: 600; font-size: 13px; color: var(--fail-text); margin-bottom: 4px;">⛔ Error</div>
+              <div style="font-family: var(--mono); font-size: 13px; color: var(--fail-text);">{{$step.Error}}</div>
+            </div>
+            {{end}}
+
             <!-- Retry History -->
             {{if $step.RetryHistory}}
             <div class="section" id="retry-s{{$sIdx}}-{{$i}}">
@@ -862,6 +870,14 @@
                 {{$step.StatusText}}
               </span>
             </div>
+
+            {{if $step.Error}}
+            <!-- Step Error -->
+            <div style="background: var(--fail-bg); border: 0.5px solid var(--fail-border); border-radius: var(--radius); padding: 12px; margin-bottom: 12px;">
+              <div style="font-weight: 600; font-size: 13px; color: var(--fail-text); margin-bottom: 4px;">⛔ Error</div>
+              <div style="font-family: var(--mono); font-size: 13px; color: var(--fail-text);">{{$step.Error}}</div>
+            </div>
+            {{end}}
 
             <!-- Retry History -->
             {{if $step.RetryHistory}}
