@@ -210,9 +210,11 @@ func executeRequest(method, url string, headers map[string]string, body interfac
 		Body:    string(respBody),
 	}
 
-	// Try to parse as JSON
+	// Try to parse as JSON using a decoder with UseNumber to preserve exact large integers
+	dec := json.NewDecoder(bytes.NewReader(respBody))
+	dec.UseNumber()
 	var parsed interface{}
-	if err := json.Unmarshal(respBody, &parsed); err == nil {
+	if err := dec.Decode(&parsed); err == nil {
 		info.Parsed = parsed
 	}
 

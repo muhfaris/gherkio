@@ -1,0 +1,31 @@
+scenario: Update a Pet (PUT)
+steps:
+    - request:
+        method: PUT
+        url: /pet
+        headers:
+            Content-Type: application/json
+        body:
+            category:
+                id: 1
+                name: Dogs
+            id: $step1_petId
+            name: Buddy Updated
+            photoUrls:
+                - https://example.com/buddy-updated.jpg
+            status: sold
+            tags:
+                - id: 1
+                  name: friendly
+      expect:
+        status: 200
+        body.category.name: Dogs
+        body.id: $step1_petId
+        body.name: Buddy Updated
+        body.status: sold
+        schema: petstore/pet
+      save:
+        step3_updatedPetName: body.name
+        step3_updatedStatus: body.status
+      timing:
+        max: 4s

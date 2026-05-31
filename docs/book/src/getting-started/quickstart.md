@@ -33,7 +33,7 @@ This scaffolds the canonical Gherkio folder structure:
 └── tests/
     └── example/
         ├── accounts/
-        │   └── login-as-eka.yaml
+        │   └── login-as-alice.yaml
         ├── auth/
         │   ├── login.yaml
         │   ├── me.yaml

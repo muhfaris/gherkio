@@ -22,7 +22,7 @@ All Gherkio configuration, variables, tests, schemas, and reports reside inside 
 ├── tests/                          # Your declarative YAML test scenario suites
 │   └── example/
 │       ├── accounts/
-│       │   └── login-as-eka.yaml
+│       │   └── login-as-alice.yaml
 │       ├── auth/
 │       │   ├── login.yaml
 │       │   ├── me.yaml

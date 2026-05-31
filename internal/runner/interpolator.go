@@ -122,11 +122,11 @@ func interpolateMultipart(mp *model.MultipartConfig, vars map[string]interface{}
 // interpolateString replaces variable references in a string with values from the vars map.
 // Supports:
 //   - Simple vars: $var, ${var}
-//   - Nested/dotted paths: $accounts.eka.username, ${accounts.eka.username}
-//   - Default values: ${var:default}, ${accounts.eka.username:default}
+//   - Nested/dotted paths: $accounts.alice.username, ${accounts.alice.username}
+//   - Default values: ${var:default}, ${accounts.alice.username:default}
 //   - Parametrized generators: ${randomInt(1,100)}, ${randomInt()}
 func interpolateString(s string, vars map[string]interface{}) (string, error) {
-	// This regex matches $var, ${var}, dotted paths like $accounts.eka.username,
+	// This regex matches $var, ${var}, dotted paths like $accounts.alice.username,
 	// defaults like ${var:default}, and parametrized generators like ${randomInt(1,100)}
 	// Capture groups:
 	//   1: variable/function name (e.g. randomInt, accounts.eka.username)
@@ -211,7 +211,7 @@ func interpolateString(s string, vars map[string]interface{}) (string, error) {
 
 // resolveNestedVar looks up a potentially dotted variable path in the vars map.
 // For simple names like "username", it's equivalent to vars["username"].
-// For dotted paths like "accounts.eka.username", it navigates the nested map structure.
+// For dotted paths like "accounts.alice.username", it navigates the nested map structure.
 func resolveNestedVar(path string, vars map[string]interface{}) (interface{}, bool) {
 	parts := strings.Split(path, ".")
 	current := interface{}(vars)

@@ -1,0 +1,25 @@
+scenario: Create a User (POST with Random Data)
+steps:
+    - request:
+        method: POST
+        url: /user
+        headers:
+            Content-Type: application/json
+        body:
+            email: $randomEmail
+            firstName: John
+            lastName: Doe
+            password: secureP@ss123
+            phone: +1-555-${randomInt}
+            username: john_${randomInt}
+      expect:
+        status: 200
+        body.code: 200
+        body.message: string
+        body.type: unknown
+        schema: petstore/api-response
+      save:
+        1-createdEmail: body.email
+        1-createdUsername: body.username
+      timing:
+        max: 4s

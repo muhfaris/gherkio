@@ -1,0 +1,21 @@
+type: object
+required:
+    - petId
+    - quantity
+properties:
+    complete:
+        type: boolean
+    id:
+        type: integer
+    petId:
+        type: integer
+    quantity:
+        type: integer
+    shipDate:
+        type: string
+    status:
+        type: string
+        enum:
+            - placed
+            - approved
+            - delivered
