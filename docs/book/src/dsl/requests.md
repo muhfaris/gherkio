@@ -116,6 +116,38 @@ When mapping data from target APIs to your request payloads, different endpoints
 *   **`$float(var)`**: Coerces/parses a field value into a float64.
 *   **`$bool(var)`**: Coerces/parses truthy string or integer values into a boolean.
 
+#### 🌀 Conditional Value Selection (`$if`)
+Values can vary conditionally using the **`$if(condition, thenValue, elseValue)`** function. This works inside transform `select` blocks and also directly in request `body` strings.
+
+*   **`condition`**: A scoped variable path to evaluate for truthiness (e.g. `item.is_answered` or `is_active`).
+*   **`thenValue`**: Value expression used when the condition is truthy.
+*   **`elseValue`**: Value expression used when the condition is falsy (optional — if omitted, evaluates to `null`).
+
+Truthiness rules: `nil`, `false`, `0`, and `""` are falsy; all other values are truthy.
+
+**Inside transform `select` (scoped to item alias):**
+```yaml
+select:
+  # Map different fields based on question type
+  answer_value: "$if(q.is_answered, q.free_text_answer, q.default_answer)"
+  
+  # Use type casting inside conditionals
+  quantity: "$if(item.in_stock, $int(item.qty), 0)"
+  
+  # No else clause — returns null when condition is falsy
+  optional_field: "$if(item.has_value, item.value)"
+```
+
+**Inside request `body` (use `$` prefix for variable references):**
+```yaml
+body:
+  # Conditionally map based on a saved variable
+  status: "$if(is_admin, $admin_endpoint, $user_endpoint)"
+  
+  # Use type casting with conditionals
+  count: "$if(has_items, $int(item_count), 0)"
+```
+
 #### Complete Example:
 ```yaml
 steps:

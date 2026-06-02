@@ -60,6 +60,9 @@ func GenerateAllSchemas() ([]byte, error) {
 	// Add step oneOf constraint to test schema
 	patchStepOneOf(testSchema)
 
+	// Add ProjectionConfig enhancements
+	patchProjectionSchema(testSchema)
+
 	// Combine all definitions ($defs) into a single flat map
 	allDefs := make(map[string]interface{})
 
@@ -103,6 +106,7 @@ func GenerateSchemaType(schemaType SchemaType) ([]byte, error) {
 		schema := r.Reflect(&model.TestFile{})
 		patchExpectSchema(schema)
 		patchStepOneOf(schema)
+		patchProjectionSchema(schema)
 		return json.MarshalIndent(schema, "", "  ")
 	case SchemaTypeConfig:
 		schema := r.Reflect(&model.Config{})
@@ -206,6 +210,18 @@ func patchExpectSchema(schema *jsonschema.Schema) {
 
 		// Remove the generic AdditionalProperties since we are using PatternProperties and specific keys
 		expectSchema.AdditionalProperties = nil
+	}
+}
+
+// patchProjectionSchema adds enhanced descriptions to the ProjectionConfig schema.
+func patchProjectionSchema(schema *jsonschema.Schema) {
+	if projSchema, ok := schema.Definitions["ProjectionConfig"]; ok {
+		if selectProp, ok := projSchema.Properties.Get("select"); ok {
+			selectProp.Description = "Structural projection mapping for item fields. " +
+				"Supports variable references ($item.field), type casting ($string $int $float $bool), " +
+				"conditional selection ($if(condition, then, else)), string interpolation, " +
+				"static values, and nested sub-projections."
+		}
 	}
 }
 

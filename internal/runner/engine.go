@@ -121,6 +121,7 @@ func GetVariableInfo() []VariableInfo {
 		{Name: "${toUpper(string)}", Description: "Converts a string value to uppercase", Example: "${toUpper(\"hello\")}"},
 		{Name: "${toLower(string)}", Description: "Converts a string value to lowercase", Example: "${toLower(\"HELLO\")}"},
 		{Name: "${trim(string)}", Description: "Trims whitespace from both ends of a string value", Example: "${trim(\"  hello  \")}"},
+		{Name: "$if(condition, thenValue, elseValue)", Description: "Conditional value selection inside transform select blocks. Returns thenValue if condition is truthy, elseValue otherwise. Supports type casting and variable references in arguments.", Example: "$if(item.is_answered, item.free_text_answer, item.default_answer)"},
 	}
 }
 

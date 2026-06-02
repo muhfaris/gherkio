@@ -353,6 +353,44 @@ func resolveTypePreserving(val interface{}, localVars map[string]interface{}) (i
 		return "", fmt.Errorf("undefined variable for casting: %s", inner)
 	}
 
+	// $if(condition, thenValue, elseValue) - conditional value selection
+	// condition: variable path to check for truthiness (e.g. "q.is_answered")
+	// thenValue: value expression to use if condition is truthy
+	// elseValue: value expression to use if condition is falsy (optional, defaults to null)
+	if strings.HasPrefix(trimmed, "$if(") && strings.HasSuffix(trimmed, ")") {
+		inner := trimmed[len("$if(") : len(trimmed)-1]
+
+		args := strings.SplitN(inner, ",", 3)
+		if len(args) < 2 {
+			return "", fmt.Errorf("$if requires at least 2 arguments: condition, thenValue[, elseValue]")
+		}
+
+		conditionPath := strings.TrimSpace(args[0])
+		thenExpr := strings.TrimSpace(args[1])
+		elseExpr := ""
+		if len(args) >= 3 {
+			elseExpr = strings.TrimSpace(args[2])
+		}
+
+		// Strip optional $ prefix from condition path
+		conditionPath = strings.TrimPrefix(conditionPath, "$")
+
+		conditionVal, found := resolveNestedVar(conditionPath, localVars)
+
+		var conditionTrue bool
+		if found {
+			conditionTrue = isTruthy(conditionVal)
+		}
+
+		if conditionTrue {
+			return resolveTypePreserving(thenExpr, localVars)
+		} else if elseExpr != "" {
+			return resolveTypePreserving(elseExpr, localVars)
+		}
+		// No else clause -> return nil (JSON null)
+		return nil, nil
+	}
+
 	var varName string
 	if strings.HasPrefix(trimmed, "${") && strings.HasSuffix(trimmed, "}") {
 		varName = trimmed[2 : len(trimmed)-1]
@@ -407,6 +445,28 @@ func normalizeMatcherString(s string) string {
 		}
 	}
 	return s
+}
+
+// isTruthy checks if a value is truthy for $if condition evaluation.
+// Returns false for nil, false, zero, and empty string; true for everything else.
+func isTruthy(val interface{}) bool {
+	if val == nil {
+		return false
+	}
+	switch v := val.(type) {
+	case bool:
+		return v
+	case int:
+		return v != 0
+	case int64:
+		return v != 0
+	case float64:
+		return v != 0.0
+	case string:
+		return v != ""
+	default:
+		return true
+	}
 }
 
 // writePath writes a value to a nested path in a map.

@@ -650,5 +650,246 @@ func TestInterpolateRequest_BodyCasting(t *testing.T) {
 	}
 }
 
+func TestProjectCollection_ConditionalIf(t *testing.T) {
+	items := []interface{}{
+		map[string]interface{}{
+			"id":               1.0,
+			"type":             "radiobutton",
+			"is_answered":      false,
+			"selected_option":  "opt_a",
+			"free_text_answer": "",
+		},
+		map[string]interface{}{
+			"id":               2.0,
+			"type":             "text",
+			"is_answered":      true,
+			"selected_option":  "",
+			"free_text_answer": "My feedback",
+		},
+	}
 
+	vars := map[string]interface{}{
+		"items": items,
+	}
+
+	t.Run("truthy condition uses then value", func(t *testing.T) {
+		cfg := &model.ProjectionConfig{
+			From: "$items",
+			As:   "item",
+			Select: map[string]interface{}{
+				"id": "$item.id",
+				"answer": "$if(item.is_answered, $item.free_text_answer, $item.selected_option)",
+			},
+		}
+
+		got, err := ProjectCollection(cfg, vars)
+		if err != nil {
+			t.Fatalf("ProjectCollection failed: %v", err)
+		}
+
+		if len(got) != 2 {
+			t.Fatalf("Expected 2 items, got %d", len(got))
+		}
+
+		// Item 0: is_answered=false -> should use else value (selected_option)
+		item0 := got[0].(map[string]interface{})
+		if item0["id"] != 1.0 {
+			t.Errorf("Expected id 1.0, got %v", item0["id"])
+		}
+		if item0["answer"] != "opt_a" {
+			t.Errorf("Expected answer 'opt_a' (default/else), got %v", item0["answer"])
+		}
+
+		// Item 1: is_answered=true -> should use then value (free_text_answer)
+		item1 := got[1].(map[string]interface{})
+		if item1["id"] != 2.0 {
+			t.Errorf("Expected id 2.0, got %v", item1["id"])
+		}
+		if item1["answer"] != "My feedback" {
+			t.Errorf("Expected answer 'My feedback' (then), got %v", item1["answer"])
+		}
+	})
+
+	t.Run("missing condition falls to else clause", func(t *testing.T) {
+		itemsWithMissing := []interface{}{
+			map[string]interface{}{
+				"id":      3.0,
+				"default": "fallback_val",
+			},
+		}
+
+		varsMissing := map[string]interface{}{
+			"items": itemsWithMissing,
+		}
+
+		cfg := &model.ProjectionConfig{
+			From: "$items",
+			As:   "item",
+			Select: map[string]interface{}{
+				"id":     "$item.id",
+				"result": "$if(item.missing_field, $item.custom_val, $item.default)",
+			},
+		}
+
+		got, err := ProjectCollection(cfg, varsMissing)
+		if err != nil {
+			t.Fatalf("ProjectCollection failed: %v", err)
+		}
+
+		if len(got) != 1 {
+			t.Fatalf("Expected 1 item, got %d", len(got))
+		}
+
+		item := got[0].(map[string]interface{})
+		if item["result"] != "fallback_val" {
+			t.Errorf("Expected 'fallback_val' from else clause, got %v", item["result"])
+		}
+	})
+
+	t.Run("no else clause returns null for falsy condition", func(t *testing.T) {
+		cfg := &model.ProjectionConfig{
+			From: "$items",
+			As:   "item",
+			Select: map[string]interface{}{
+				"id":   "$item.id",
+				"only": "$if(item.is_answered, $item.free_text_answer)",
+			},
+		}
+
+		got, err := ProjectCollection(cfg, vars)
+		if err != nil {
+			t.Fatalf("ProjectCollection failed: %v", err)
+		}
+
+		// Item 0: is_answered=false, no else -> null
+		item0 := got[0].(map[string]interface{})
+		if item0["only"] != nil {
+			t.Errorf("Expected nil for falsy condition with no else, got %v", item0["only"])
+		}
+
+		// Item 1: is_answered=true -> uses then value
+		item1 := got[1].(map[string]interface{})
+		if item1["only"] != "My feedback" {
+			t.Errorf("Expected 'My feedback' for truthy condition, got %v", item1["only"])
+		}
+	})
+
+	t.Run("then value can use type casting", func(t *testing.T) {
+		cfg := &model.ProjectionConfig{
+			From: "$items",
+			As:   "item",
+			Select: map[string]interface{}{
+				"id_as_str": "$if(item.is_answered, $string(item.free_text_answer), $string(item.selected_option))",
+			},
+		}
+
+		got, err := ProjectCollection(cfg, vars)
+		if err != nil {
+			t.Fatalf("ProjectCollection failed: %v", err)
+		}
+
+		// Item 1: is_answered=true -> $string(item.free_text_answer) -> "My feedback"
+		item1 := got[1].(map[string]interface{})
+		if item1["id_as_str"] != "My feedback" {
+			t.Errorf("Expected 'My feedback' (string), got %v (%T)", item1["id_as_str"], item1["id_as_str"])
+		}
+	})
+
+	t.Run("nil condition value is falsy", func(t *testing.T) {
+		nilItems := []interface{}{
+			map[string]interface{}{
+				"id":        4.0,
+				"nil_field": nil,
+				"backup":    "backup_val",
+			},
+		}
+
+		varsNil := map[string]interface{}{
+			"items": nilItems,
+		}
+
+		cfg := &model.ProjectionConfig{
+			From: "$items",
+			As:   "item",
+			Select: map[string]interface{}{
+				"id":  "$item.id",
+				"val": "$if(item.nil_field, $item.should_not_appear, $item.backup)",
+			},
+		}
+
+		got, err := ProjectCollection(cfg, varsNil)
+		if err != nil {
+			t.Fatalf("ProjectCollection failed: %v", err)
+		}
+
+		item := got[0].(map[string]interface{})
+		if item["val"] != "backup_val" {
+			t.Errorf("Expected 'backup_val' since nil condition is falsy, got %v", item["val"])
+		}
+	})
+
+	t.Run("invalid $if syntax returns error", func(t *testing.T) {
+		_, err := resolveTypePreserving("$if(only_one_arg)", vars)
+		if err == nil {
+			t.Error("Expected error for $if with single argument, got nil")
+		}
+	})
+}
+
+func TestInterpolateRequest_BodyConditionalIf(t *testing.T) {
+	vars := map[string]interface{}{
+		"is_active":  true,
+		"active_id":  42,
+		"fallback":   "fb_val",
+		"is_empty":   false,
+		"empty_val":  "should_not_appear",
+		"empty_fb":   "fallback_for_empty",
+	}
+
+	t.Run("truthy condition uses then value in body", func(t *testing.T) {
+		req := model.Request{
+			Method: "POST",
+			URL:    "http://api.example.com/test",
+			Body: map[string]interface{}{
+				"value": "$if(is_active, $active_id, $fallback)",
+			},
+		}
+
+		got, err := InterpolateRequest(req, vars)
+		if err != nil {
+			t.Fatalf("InterpolateRequest failed: %v", err)
+		}
+
+		bodyMap, ok := got.Body.(map[string]interface{})
+		if !ok {
+			t.Fatalf("Expected map body, got %T", got.Body)
+		}
+		if bodyMap["value"] != 42 {
+			t.Errorf("Expected 42 (then), got %v", bodyMap["value"])
+		}
+	})
+
+	t.Run("falsy condition uses else value in body", func(t *testing.T) {
+		req := model.Request{
+			Method: "POST",
+			URL:    "http://api.example.com/test",
+			Body: map[string]interface{}{
+				"value": "$if(is_empty, $empty_val, $empty_fb)",
+			},
+		}
+
+		got, err := InterpolateRequest(req, vars)
+		if err != nil {
+			t.Fatalf("InterpolateRequest failed: %v", err)
+		}
+
+		bodyMap, ok := got.Body.(map[string]interface{})
+		if !ok {
+			t.Fatalf("Expected map body, got %T", got.Body)
+		}
+		if bodyMap["value"] != "fallback_for_empty" {
+			t.Errorf("Expected 'fallback_for_empty' (else), got %v", bodyMap["value"])
+		}
+	})
+}
 
