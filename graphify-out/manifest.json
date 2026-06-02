@@ -1,6 +1,6 @@
 {
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/gendoc.go": {
-    "mtime": 1780051957.805818,
+    "mtime": 1780060484.4707415,
     "hash": "ac9c826570032b653a62b64910396a90"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/main.go": {
@@ -40,16 +40,16 @@
     "hash": "c99720ad28ef2ea71a85b8e593ecc5a8"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/core/teststore/store.go": {
-    "mtime": 1779976145.2404072,
-    "hash": "af1044ffef1e5f9646443ad17dceb0e1"
+    "mtime": 1780134290.1783261,
+    "hash": "b9250bb6137b4113ebbfb56f73248ca4"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/core/teststore/teststore_test.go": {
-    "mtime": 1779976145.2414072,
-    "hash": "56e29039aeac1864a70c796035ebb191"
+    "mtime": 1780134290.1783261,
+    "hash": "6225570eaa2269fdb620e07e7479625e"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/core/project/init.go": {
-    "mtime": 1779981214.3074703,
-    "hash": "20050cefc09c7768e472aa53f39b8e13"
+    "mtime": 1780207864.4229996,
+    "hash": "e9d94b2a125bf5239ca03b60435a6944"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/core/project/validate.go": {
     "mtime": 1779978172.7848284,
@@ -80,16 +80,28 @@
     "hash": "857ec042303da67d4fb4efa5e80b9411"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/runner/builtins_test.go": {
-    "mtime": 1780050086.2698808,
+    "mtime": 1780060484.5031867,
     "hash": "610a92962d85f034254aa75f2e263a33"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/runner/engine.go": {
-    "mtime": 1779976145.2434072,
-    "hash": "e1ac4766236b86164acfc01ea1919440"
+    "mtime": 1780389666.6368928,
+    "hash": "ede44fa9e4892e765f319c74294be682"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/runner/runner_test.go": {
+    "mtime": 1780071092.5106294,
+    "hash": "51d86de0def49ff8c5cc687acc5b19c5"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/runner/projector.go": {
+    "mtime": 1780367608.0152972,
+    "hash": "b7a5a7a13ad8d657f3a74aab06224dad"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/runner/interpolator.go": {
-    "mtime": 1779978860.5425224,
-    "hash": "efa2450a51e438f325276667f5e1a621"
+    "mtime": 1780207864.424236,
+    "hash": "db90c726977f9828688f3175b1ac755f"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/runner/projector_test.go": {
+    "mtime": 1780404503.925638,
+    "hash": "d81cdf5df3599d0bfa0d1bf6ec07a28b"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/runner/snapshot_test.go": {
     "mtime": 1779981214.3083994,
@@ -104,8 +116,8 @@
     "hash": "9b1d7fb39166f4cb7dd44eec86d2ec04"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/runner/executor.go": {
-    "mtime": 1779978172.7858505,
-    "hash": "17d655420bc884e0c1d551e33305e954"
+    "mtime": 1780207864.424236,
+    "hash": "d8f1a1df8a770b898db4056ec857d671"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/runner/sandbox.go": {
     "mtime": 1779981214.3078413,
@@ -116,20 +128,20 @@
     "hash": "8a9dacb875ba1d811ac84960a8965934"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/runner/builtins.go": {
-    "mtime": 1780050078.4237955,
+    "mtime": 1780060484.5031867,
     "hash": "474641e473b5fa226d7a81806f7d176a"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/runner/printer.go": {
-    "mtime": 1779803194.4056625,
-    "hash": "e73bb4606c21e1cb79026956c567538e"
+    "mtime": 1780207864.4245293,
+    "hash": "754e7b51b83b7e4607a37b8483f4da7c"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/runner/schema.go": {
     "mtime": 1779466553.38958,
     "hash": "48a34b58d823f06d67c4e88d51431843"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/runner/validator.go": {
-    "mtime": 1779369881.0370822,
-    "hash": "3a8d7f14671e2077757b4679f2b9a6ea"
+    "mtime": 1780207864.4245293,
+    "hash": "9d710d55ff4c29314fb250e836e0489c"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/runner/validator_test.go": {
     "mtime": 1779430402.2079544,
@@ -140,8 +152,8 @@
     "hash": "60ffb20d0d08ccfdea548bd59c8ea128"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/runner/runner.go": {
-    "mtime": 1779981214.3078413,
-    "hash": "647ef1809fe4064a5b8ba1cca1c1f28d"
+    "mtime": 1780068406.3686175,
+    "hash": "0de01eac06c17f59473873a706743a04"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/runner/steplocator.go": {
     "mtime": 1779509640.090929,
@@ -172,8 +184,8 @@
     "hash": "244d8bb99574927f3afb506db8411cfe"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/model/test.go": {
-    "mtime": 1779978172.7851312,
-    "hash": "16fcc931db16e2eff6a36335e8bba0ba"
+    "mtime": 1780390332.3262196,
+    "hash": "7bc2fc3ee7454b5b699f4e9a8d3bbdc0"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/model/config.go": {
     "mtime": 1779981214.3074703,
@@ -192,8 +204,8 @@
     "hash": "3453b58bc3eb2a48419add82aaecd1c8"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/converter/curl.go": {
-    "mtime": 1779610548.3001554,
-    "hash": "5f586f3da2f8e64e987156d16135bb9c"
+    "mtime": 1780207864.4229996,
+    "hash": "ff70b677fbb4196139303dd5fa27e098"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/converter/parser.go": {
     "mtime": 1779509543.4532776,
@@ -208,87 +220,123 @@
     "hash": "21f05c83b3bf8fcc5d519811b6a1b031"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/mcp/server.go": {
-    "mtime": 1780052365.5434866,
-    "hash": "ba806a0f00c5a02df66a9b18ff1f896d"
+    "mtime": 1780068455.4699256,
+    "hash": "d019c77e53bbb1bce61ac12d2cca8113"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/mcp/server_test.go": {
     "mtime": 1779976145.2414072,
     "hash": "357ed6c858eae3d21ca8fcdc02c0db7e"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/mcp/resources.go": {
-    "mtime": 1779961685.2058625,
-    "hash": "79100652a7da02a66a4f06e89cce0e6d"
+    "mtime": 1780390368.7474267,
+    "hash": "55a32fd2ad7d9fa8ab91ce32c6ea9ab8"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/mcp/protocol.go": {
     "mtime": 1779520560.992627,
     "hash": "0b871916fc7f24f23a37cfb0a63fc453"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/schema/generator.go": {
-    "mtime": 1779976145.2444072,
-    "hash": "634a53093f00baa60f9c66497b0665cc"
+    "mtime": 1780390352.268332,
+    "hash": "f3f118d483fa15aabbf1b5049ce3d78c"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/schema/generator_test.go": {
     "mtime": 1779976145.2444072,
     "hash": "4498584f11de1282242ee6d5b490e2f2"
   },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/neovim/gherkio.nvim/lua/gherkio/health.lua": {
+    "mtime": 1780223947.4262319,
+    "hash": "be71fae74a4eb892cd33f60e4e723502"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/neovim/gherkio.nvim/lua/gherkio/config.lua": {
+    "mtime": 1780247107.3341072,
+    "hash": "3b13e6803cbab8bf96adf29e5c0f7235"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/neovim/gherkio.nvim/lua/gherkio/init.lua": {
+    "mtime": 1780247122.8892338,
+    "hash": "c8faab6b6dca424cdacd372904d40530"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/neovim/gherkio.nvim/lua/gherkio/core/runner.lua": {
+    "mtime": 1780246534.9231782,
+    "hash": "45522088683b158ec24be3a4be4fa58b"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/neovim/gherkio.nvim/lua/gherkio/core/picker.lua": {
+    "mtime": 1780247100.5750518,
+    "hash": "a9565c7086fc14d15708adb472d46585"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/neovim/gherkio.nvim/lua/gherkio/core/parser.lua": {
+    "mtime": 1780223897.1968784,
+    "hash": "d3f68d1ee7b77f0f73cc88e1dc02b66e"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/neovim/gherkio.nvim/lua/gherkio/core/clipboard.lua": {
+    "mtime": 1780223928.3880978,
+    "hash": "aed4913eabbce52e238ebc23f4b14172"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/neovim/gherkio.nvim/plugin/gherkio.lua": {
+    "mtime": 1780239740.7011087,
+    "hash": "963cf085f4aae78009240d1a5f10d6d6"
+  },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/mermaid-init.js": {
-    "mtime": 1780053861.7357547,
+    "mtime": 1780060484.4372454,
     "hash": "e7b2adbb10de9b286e501de33f44fdcb"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/mermaid.min.js": {
-    "mtime": 1780053857.5897303,
+    "mtime": 1780060484.4609244,
     "hash": "4ffd0477e0bf82f02a255d2f342ea872"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/playground/app.js": {
-    "mtime": 1780039120.12812,
+    "mtime": 1780060484.4609244,
     "hash": "3ac7e0f377aa3efff8c3ff38c9b58677"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/searchindex.js": {
-    "mtime": 1780057894.732805,
-    "hash": "d8c94b1db82d6ed630295afdddb38668"
+    "mtime": 1780210042.3470526,
+    "hash": "d3b90973b5cab7c829d59c6082274326"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/toc.js": {
-    "mtime": 1780057894.5881689,
-    "hash": "561cc68304604d51cd1b17f35766403a"
+    "mtime": 1780210042.209989,
+    "hash": "52fa7cbc481d4c19da5659afa2c8af92"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/highlight.js": {
-    "mtime": 1780057894.5905228,
+    "mtime": 1780210042.2106597,
     "hash": "a59ae1483df68e7fc5c3116462a4c15c"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/mermaid-init.js": {
-    "mtime": 1780057894.5938964,
+    "mtime": 1780210042.2243423,
     "hash": "e7b2adbb10de9b286e501de33f44fdcb"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/elasticlunr.min.js": {
-    "mtime": 1780057894.7332282,
+    "mtime": 1780210042.347409,
     "hash": "bdc2dbed628a3bb7a62d58b999dd7123"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/book.js": {
-    "mtime": 1780057894.5900638,
+    "mtime": 1780210042.2103305,
     "hash": "3a0d3471b2ccae8773f6a1d6c2276d89"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/clipboard.min.js": {
-    "mtime": 1780057894.5906093,
+    "mtime": 1780210042.2107372,
     "hash": "f06c52bfddb458ad87349acf9fac06c5"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/mermaid.min.js": {
-    "mtime": 1780057894.5929592,
+    "mtime": 1780210042.2227006,
     "hash": "4ffd0477e0bf82f02a255d2f342ea872"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/mark.min.js": {
-    "mtime": 1780057894.7331889,
+    "mtime": 1780210042.347383,
     "hash": "2ab50194c1473b8ab8589a3f63f204d8"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/searcher.js": {
-    "mtime": 1780057894.7331467,
+    "mtime": 1780210042.3473532,
     "hash": "346f178fe3640d3a5cb3ecc5320d838e"
   },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/playground/app.js": {
+    "mtime": 1780210042.363614,
+    "hash": "3ac7e0f377aa3efff8c3ff38c9b58677"
+  },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/cmd/root.go": {
-    "mtime": 1780036804.376779,
-    "hash": "14410e89d38bd1367ef8de68ee7d99cb"
+    "mtime": 1780207885.5387065,
+    "hash": "53548b1e005010a6cd95782b260eb2c2"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/cmd/convert.go": {
-    "mtime": 1780051945.0597472,
+    "mtime": 1780060484.4372454,
     "hash": "9cada209ba1eeb37cc0fd48402b5f15e"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/cmd/mcp.go": {
@@ -296,8 +344,8 @@
     "hash": "5302c2bb9d8f26b7965f6986bde4c042"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/cmd/run.go": {
-    "mtime": 1780051951.2487814,
-    "hash": "372331b72788b269d59f9bd3b625d044"
+    "mtime": 1780068444.5688567,
+    "hash": "781c7200d1495dbf5c85a7c27e4115bd"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/cmd/init.go": {
     "mtime": 1779957939.5866144,
@@ -320,24 +368,32 @@
     "hash": "f18b37f991958f0e42d583e1f9d69d74"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/README.md": {
-    "mtime": 1780057753.5387328,
-    "hash": "d9910e7fe9106a3fd331a006cd7ddd16"
+    "mtime": 1780060484.4370987,
+    "hash": "a551e6d9d0c2cbd5de822557dd467941"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/RELEASE_NOTES_v0.1.0-alpha.md": {
     "mtime": 1779807696.4455075,
     "hash": "36e94db5ca6a27895f40cfd62eec730e"
   },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/CHANGELOG.md": {
+    "mtime": 1780060972.4156206,
+    "hash": "11202447ef39be9d8c59fb6e750c8ec8"
+  },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/CODE_OF_CONDUCT.md": {
-    "mtime": 1779796399.3383696,
+    "mtime": 1780060484.436713,
     "hash": "84c0efec7292b67ae754cafb86b862b6"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/llm-map.txt": {
-    "mtime": 1780035571.0683925,
-    "hash": "a61fb57bf17d005ea90874ea77bd047c"
+    "mtime": 1780067392.6722202,
+    "hash": "6b226bfb56896d5b45fbcf5e4224476b"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/internal/report/template.html": {
-    "mtime": 1779802787.466128,
-    "hash": "f699525943a862baf1b57811ec5eafb3"
+    "mtime": 1780207864.4240232,
+    "hash": "eaada4a60dbfa5eaeae82a914f40f5f7"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/neovim/gherkio.nvim/README.md": {
+    "mtime": 1780239732.8769577,
+    "hash": "33beac0aec5410aa2f8db9f02fe3eec5"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/assets/template/report.html": {
     "mtime": 1779401450.6768522,
@@ -375,500 +431,512 @@
     "mtime": 1779356838.822042,
     "hash": "b6fd7dc6a540974682b302cccaa1a2fe"
   },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/playground/index.html": {
-    "mtime": 1780037427.1662204,
-    "hash": "474c945c8ff012c0871648b9f20a41e9"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/404.html": {
-    "mtime": 1780057894.580638,
-    "hash": "caabb43f5da0d3e3091a8104e3cfa88b"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/index.html": {
-    "mtime": 1780057894.5338767,
-    "hash": "cb37dbb150099621507de2625ba7dc94"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/print.html": {
-    "mtime": 1780057894.5871687,
-    "hash": "1cc0409a6d4686e584803e99e8e51b95"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/toc.html": {
-    "mtime": 1780057894.5891688,
-    "hash": "2a4c79aa7cc892c4cac61733cfb4ebb0"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/cli/init.html": {
-    "mtime": 1780057894.553546,
-    "hash": "917d9667bb694d82c64545c7f5fa0590"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/cli/overview.html": {
-    "mtime": 1780057894.551788,
-    "hash": "7f762a7a26970ae1871bd2083017a537"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/cli/schema.html": {
-    "mtime": 1780057894.5564394,
-    "hash": "a68737eff41b4ef7ea2f4312d13dc7a9"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/cli/gherkio.html": {
-    "mtime": 1780057894.552169,
-    "hash": "5f1a0a9668cf82c22d59bee639b3fcde"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/cli/run.html": {
-    "mtime": 1780057894.5542924,
-    "hash": "45bce26a57e1857ec66216c8a312326d"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/cli/completion.html": {
-    "mtime": 1780057894.5578563,
-    "hash": "f1919866ab1112e2d754f4ecb0342c8b"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/cli/convert.html": {
-    "mtime": 1780057894.5551813,
-    "hash": "66fa4348e907edb238da8c8867fd4117"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/cli/validate.html": {
-    "mtime": 1780057894.5557601,
-    "hash": "9712ad7285d6dcf16f45e22a0a86d9fd"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/cli/mcp.html": {
-    "mtime": 1780057894.5571778,
-    "hash": "a2162b09ef7b31a373286cef1d47ae93"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/getting-started/project-setup.html": {
-    "mtime": 1780057894.5361693,
-    "hash": "84b4819521d4504b5dd758c36be9664c"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/getting-started/playground.html": {
-    "mtime": 1780057894.5391693,
-    "hash": "a78467175d9462c31aa282c92f1fdffb"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/getting-started/installation.html": {
-    "mtime": 1780057894.5341692,
-    "hash": "5216efc46f4c6b550d06a23b8236b9f0"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/getting-started/quickstart.html": {
-    "mtime": 1780057894.5351694,
-    "hash": "467a208d95eae07fba40c735e067d398"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/getting-started/introduction.html": {
-    "mtime": 1780057894.5338767,
-    "hash": "664dd8edec4f84b6e897de21f4610a36"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/getting-started/first-test-tutorial.html": {
-    "mtime": 1780057894.5381694,
-    "hash": "9e8c94512536e63e8b1949890d0b7131"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/mcp/setup.html": {
-    "mtime": 1780057894.5681689,
-    "hash": "a67e2aa076a3077415185962458e00f4"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/mcp/llm-integration.html": {
-    "mtime": 1780057894.571169,
-    "hash": "2beb2161be9b8c9880b3936a738fc0b4"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/mcp/overview.html": {
-    "mtime": 1780057894.567169,
-    "hash": "79b07638abed9c8b6d91160b93ae715b"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/mcp/resources.html": {
-    "mtime": 1780057894.570169,
-    "hash": "cf259376e6e4367ce1b96238a597df3e"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/mcp/tools.html": {
-    "mtime": 1780057894.569169,
-    "hash": "054afe8fdba67d2ecdf4ea7d64cb7200"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/contributing/overview.html": {
-    "mtime": 1780057894.577169,
-    "hash": "7bb2866a49800bfd82ab819238dfa51c"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/contributing/architecture.html": {
-    "mtime": 1780057894.5788097,
-    "hash": "ff3ca28141de518f0d061f85e0491558"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/contributing/deploying-docs.html": {
-    "mtime": 1780057894.580638,
-    "hash": "5bdfc70d0e6f0a18aa4c7fc4bb30f221"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/contributing/adding-matchers.html": {
-    "mtime": 1780057894.579615,
-    "hash": "e815796e9563da293a940e71fa378c54"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/dsl/assertions.html": {
-    "mtime": 1780057894.5465615,
-    "hash": "5420c6657a9cdb5052d301d1394fdce9"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/dsl/setup-teardown.html": {
-    "mtime": 1780057894.5425894,
-    "hash": "89eab63fc1158528dc346798ff6cc344"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/dsl/overview.html": {
-    "mtime": 1780057894.5401692,
-    "hash": "fe833883df599e0a1cf54786773f5cb1"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/dsl/composition.html": {
-    "mtime": 1780057894.5452478,
-    "hash": "232c5d842a7c9cbfa8027a1d74d76765"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/dsl/matchers.html": {
-    "mtime": 1780057894.5471692,
-    "hash": "340bc645583f03878f841bbce728ab33"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/dsl/scenarios.html": {
-    "mtime": 1780057894.5417607,
-    "hash": "4d59983fddae90ec96325ff73d7f9ec1"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/dsl/retry.html": {
-    "mtime": 1780057894.551788,
-    "hash": "754b1a7303ba1a1a019a123907a68f74"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/dsl/variables.html": {
-    "mtime": 1780057894.549169,
-    "hash": "b32c76a98c8d04c9ea44e14cd24a28b9"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/dsl/steps.html": {
-    "mtime": 1780057894.5434866,
-    "hash": "99b7ddd50f5405a65eee9c80f5106c2d"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/dsl/requests.html": {
-    "mtime": 1780057894.5442553,
-    "hash": "b21e19b0f942ce3aae5752f316648b4c"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/dsl/schemas.html": {
-    "mtime": 1780057894.5481691,
-    "hash": "3c76581642aec76836aa6f9e9f52b741"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/recipes/parallel-execution.html": {
-    "mtime": 1780057894.565169,
-    "hash": "a254f261ef8aa14cd953a7639deb35e1"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/recipes/overview.html": {
-    "mtime": 1780057894.5578563,
-    "hash": "d2c68637f53a0fe3828d75ba5a6df4c9"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/recipes/bulk-upload.html": {
-    "mtime": 1780057894.559169,
-    "hash": "60ac17c5b8b24cd254793ec89396734f"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/recipes/negative-testing.html": {
-    "mtime": 1780057894.560169,
-    "hash": "f0110cf15f4a6cd4e144b28e308e4f25"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/recipes/authentication.html": {
-    "mtime": 1780057894.5581691,
-    "hash": "84a10a1c5dadcfbfddec9ada56a9a102"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/recipes/data-management.html": {
-    "mtime": 1780057894.566169,
-    "hash": "2b9838b0e8eb0345128959ccc557e467"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/recipes/multi-account.html": {
-    "mtime": 1780057894.563169,
-    "hash": "1f7db7a0dfb6b35a3e19d7b1833a56ab"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/recipes/schema-validation.html": {
-    "mtime": 1780057894.564169,
-    "hash": "0cb7128d4dfb9397da4c7361d69027b7"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/recipes/async-polling.html": {
-    "mtime": 1780057894.5611691,
-    "hash": "ff464f5df559a04f314a97c73cd2cec0"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/reference/configuration.html": {
-    "mtime": 1780057894.5721688,
-    "hash": "2a949e551a989e436fb48669dd5bcce6"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/reference/environments.html": {
-    "mtime": 1780057894.573169,
-    "hash": "cd6c6136d4580ccbbbbbba47b6b4d6fc"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/reference/schema-definitions.html": {
-    "mtime": 1780057894.5761688,
-    "hash": "b3b7efc0f63ba3d23d04a7e0a75440d2"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/fonts/SOURCE-CODE-PRO-LICENSE.txt": {
-    "mtime": 1780057894.5917132,
-    "hash": "9473ccaac27014a922dc77b776f02834"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/fonts/OPEN-SANS-LICENSE.txt": {
-    "mtime": 1780057894.5916717,
-    "hash": "3b83ef96387f14655fc854ddc3c6bd57"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/SUMMARY.md": {
-    "mtime": 1780057871.2304118,
-    "hash": "7786ced2751261b03a2246275538992a"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/README.md": {
-    "mtime": 1780039386.0301862,
-    "hash": "27ac131969a6051c49edd21f7dbb585a"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/cli/convert.md": {
-    "mtime": 1780057894.5001698,
-    "hash": "e1c9fb6820b5921297668b4ef31112f6"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/cli/gherkio.md": {
-    "mtime": 1780057894.5001698,
-    "hash": "f830a7ab2556c99dca8443af5ff4279b"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/cli/validate.md": {
-    "mtime": 1780057894.5001698,
-    "hash": "79ba1657f1e798f6953625f5754a7be9"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/cli/run.md": {
-    "mtime": 1780057894.5001698,
-    "hash": "ef365a5da4815b5e214b50d89c4989db"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/cli/mcp.md": {
-    "mtime": 1780057894.5001698,
-    "hash": "673c27396ee05018ad56c63f374e486e"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/cli/completion.md": {
-    "mtime": 1780052045.5973308,
-    "hash": "58fd6647153052851c44814d4ffc2d30"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/cli/init.md": {
-    "mtime": 1780057894.5001698,
-    "hash": "87e12e0d399dd43deb63129d691b8b75"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/cli/schema.md": {
-    "mtime": 1780057894.5001698,
-    "hash": "ddde3b16dacbaafdbc63636099e1b8e9"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/cli/overview.md": {
-    "mtime": 1780051565.4982283,
-    "hash": "832e3157a8d8559c1bfd09888fe55315"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/getting-started/quickstart.md": {
-    "mtime": 1780039100.4499586,
-    "hash": "f5e005cd332b237d312bfb18a21a97d0"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/getting-started/introduction.md": {
-    "mtime": 1780054562.6244009,
-    "hash": "2e8eca15cb0469670a5e07d9838aae12"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/getting-started/playground.md": {
-    "mtime": 1780038870.0853164,
-    "hash": "d672787d55ef805ee26e5ef2223bca90"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/getting-started/project-setup.md": {
-    "mtime": 1780057807.3011081,
-    "hash": "b59b5d9bdf6c91a5f5c84966ef99ebb1"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/getting-started/first-test-tutorial.md": {
-    "mtime": 1780039379.758354,
-    "hash": "bf75e668b35586dc0680d353bbbc9f45"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/getting-started/installation.md": {
-    "mtime": 1780038989.9102538,
-    "hash": "1d9ecd4ab93c6021a45bc63106e7f86d"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/mcp/tools.md": {
-    "mtime": 1780052371.6885314,
-    "hash": "e0013d5ff7f4aa7cdf0c30b5158b4c7f"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/mcp/resources.md": {
-    "mtime": 1780036888.1745462,
-    "hash": "d7a3b73358109f5e7ac0b82119989520"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/mcp/overview.md": {
-    "mtime": 1780053957.1283307,
-    "hash": "74cf7b4dede34ec7f5db6b7cba21dec8"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/mcp/llm-integration.md": {
-    "mtime": 1780053301.6621845,
-    "hash": "598f699b39fd8307fdd8b9ad12736d15"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/mcp/setup.md": {
-    "mtime": 1780050322.7604423,
-    "hash": "87171edf17e26a2d4f60af237b2c89d7"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/deploying-docs.md": {
-    "mtime": 1780057864.2624853,
-    "hash": "ef8c34201121a3a7e244a1f021bec8af"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/architecture.md": {
-    "mtime": 1780037046.0089543,
-    "hash": "991b66d0f0da504aa79b6340cf55bd5e"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/overview.md": {
-    "mtime": 1780037041.5839155,
-    "hash": "0caa3181d31c1899eb5be6b9fb939f91"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/adding-matchers.md": {
-    "mtime": 1780037051.0389984,
-    "hash": "f6fcbe88e127fc09aefdc0bb3696f3b9"
-  },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/rfcs/04-reporting.md": {
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfc-backup/04-reporting.md": {
     "mtime": 1780034788.2503188,
     "hash": "2b2c9974b59b7cf67ede9a530b9072c0"
   },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/rfcs/15-schema-completeness.md": {
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfc-backup/15-schema-completeness.md": {
     "mtime": 1780034788.2873185,
     "hash": "e5e9b2ac00ae8557bd76545ee3377acf"
   },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/rfcs/17-new-template.md": {
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfc-backup/17-new-template.md": {
     "mtime": 1780034788.2923186,
     "hash": "8d257e160551a1c3a7abfef3caf3c862"
   },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/rfcs/09-setup-teardown.md": {
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfc-backup/09-setup-teardown.md": {
     "mtime": 1780034788.2693186,
     "hash": "63fcf1b5bd9e61cc1aaea226cb151054"
   },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/rfcs/20-parameterized-generators.md": {
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfc-backup/20-parameterized-generators.md": {
     "mtime": 1780034788.3073184,
     "hash": "9994020a790b8806eb64bd469f1f1d2a"
   },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/rfcs/08-configuration-alignment.md": {
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfc-backup/08-configuration-alignment.md": {
     "mtime": 1780034788.2663186,
     "hash": "3e37f89cc4c0cb477aa557ca3e9f31c2"
   },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/rfcs/05-request-retry.md": {
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfc-backup/05-request-retry.md": {
     "mtime": 1780034788.2543187,
     "hash": "c804da8d450fcaa553b402bb0ec42ce2"
   },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/rfcs/10-capability-system.md": {
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfc-backup/10-capability-system.md": {
     "mtime": 1780034788.2723186,
     "hash": "922fd07aee855af0126763e8eab14dd7"
   },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/rfcs/16-qa-experience.md": {
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfc-backup/16-qa-experience.md": {
     "mtime": 1780034788.2893186,
     "hash": "ea8531dc335cff4ca733eb9b3c57e860"
   },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/rfcs/19-domain-sandboxing.md": {
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfc-backup/19-domain-sandboxing.md": {
     "mtime": 1780034788.3013184,
     "hash": "283e004224534846539b63e7f5d560bd"
   },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/rfcs/18-failure-debug-snapshots.md": {
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfc-backup/18-failure-debug-snapshots.md": {
     "mtime": 1780034788.2973185,
     "hash": "04b204da795625fcd9e57f8a6fc236da"
   },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/rfcs/21-multipart-form-data.md": {
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfc-backup/21-multipart-form-data.md": {
     "mtime": 1780034788.3123183,
     "hash": "bfaf056a4fd8d149be8d526fa291fe8c"
   },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/rfcs/07-per-request-timeout.md": {
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfc-backup/07-per-request-timeout.md": {
     "mtime": 1780034788.2623186,
     "hash": "ecff103d04c03eaf2eda6c8fdfeb25c8"
   },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/rfcs/11-negative-assertions.md": {
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfc-backup/11-negative-assertions.md": {
     "mtime": 1780034788.2753186,
     "hash": "e31958180ba2b2618bb9e5c357e5236d"
   },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/rfcs/03-schema-assertions.md": {
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfc-backup/03-schema-assertions.md": {
     "mtime": 1780034788.2463188,
     "hash": "c92ef1438f9efe1bb5107ee5355595bb"
   },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/rfcs/02-advanced-matchers.md": {
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfc-backup/02-advanced-matchers.md": {
     "mtime": 1780034788.2413187,
     "hash": "ad939c9c9cccb28b36768827bb709ace"
   },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/rfcs/06-mcp-server.md": {
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfc-backup/06-mcp-server.md": {
     "mtime": 1780034788.2583187,
     "hash": "ae9e50dd249049f49f079aab6330744f"
   },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/rfcs/14-convert-command.md": {
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfc-backup/14-convert-command.md": {
     "mtime": 1780034788.2843184,
     "hash": "f0116c7d08cc690c6fb03379bf3ce1da"
   },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/rfcs/01-composition.md": {
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfc-backup/01-composition.md": {
     "mtime": 1780034788.2333188,
     "hash": "f1c0968bbb26743a4ba876663597fdbf"
   },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/rfcs/22-documentation-book.md": {
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfc-backup/22-documentation-book.md": {
     "mtime": 1780038570.524572,
     "hash": "d885079dcc4b92ba79778eb770c7453e"
   },
-  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/rfcs/overview.md": {
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfc-backup/overview.md": {
     "mtime": 1780034788.2273188,
     "hash": "79dc690058dc77f8d9f4ad6a5e6af237"
   },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/playground/index.html": {
+    "mtime": 1780060484.4613194,
+    "hash": "474c945c8ff012c0871648b9f20a41e9"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/404.html": {
+    "mtime": 1780210042.2037292,
+    "hash": "caabb43f5da0d3e3091a8104e3cfa88b"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/changelog.html": {
+    "mtime": 1780210042.2027006,
+    "hash": "8bb9f7f0285e17be8dea3c4ece681971"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/index.html": {
+    "mtime": 1780210042.1687007,
+    "hash": "cb37dbb150099621507de2625ba7dc94"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/print.html": {
+    "mtime": 1780210042.2087007,
+    "hash": "dc051f67b1b96eaad73b36a540f281e1"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/toc.html": {
+    "mtime": 1780210042.2102697,
+    "hash": "a78189e63bac665c23d7c8784325b63f"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/cli/init.html": {
+    "mtime": 1780210042.184834,
+    "hash": "917d9667bb694d82c64545c7f5fa0590"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/cli/overview.html": {
+    "mtime": 1780210042.1830175,
+    "hash": "7f762a7a26970ae1871bd2083017a537"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/cli/schema.html": {
+    "mtime": 1780210042.1867127,
+    "hash": "a68737eff41b4ef7ea2f4312d13dc7a9"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/cli/gherkio.html": {
+    "mtime": 1780210042.1837006,
+    "hash": "5f1a0a9668cf82c22d59bee639b3fcde"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/cli/run.html": {
+    "mtime": 1780210042.1853268,
+    "hash": "73917566c0e16139a2d765fd0a39e12b"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/cli/completion.html": {
+    "mtime": 1780210042.188141,
+    "hash": "f1919866ab1112e2d754f4ecb0342c8b"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/cli/convert.html": {
+    "mtime": 1780210042.185781,
+    "hash": "66fa4348e907edb238da8c8867fd4117"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/cli/validate.html": {
+    "mtime": 1780210042.1862886,
+    "hash": "9712ad7285d6dcf16f45e22a0a86d9fd"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/cli/mcp.html": {
+    "mtime": 1780210042.1872325,
+    "hash": "a2162b09ef7b31a373286cef1d47ae93"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/getting-started/project-setup.html": {
+    "mtime": 1780210042.1717007,
+    "hash": "6f3ab5638194e66c40d53f6559326ee6"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/getting-started/playground.html": {
+    "mtime": 1780210042.173967,
+    "hash": "f331a0c45722f8ea3813997e06642b5b"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/getting-started/installation.html": {
+    "mtime": 1780210042.1708164,
+    "hash": "5c76cc3aea91be858b54ebde57bf16c4"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/getting-started/quickstart.html": {
+    "mtime": 1780210042.171388,
+    "hash": "d12deca250289916d1479d2ee6b2ee04"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/getting-started/introduction.html": {
+    "mtime": 1780210042.1697006,
+    "hash": "664dd8edec4f84b6e897de21f4610a36"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/getting-started/first-test-tutorial.html": {
+    "mtime": 1780210042.1727006,
+    "hash": "9e8c94512536e63e8b1949890d0b7131"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/playground/index.html": {
+    "mtime": 1780210042.3639333,
+    "hash": "474c945c8ff012c0871648b9f20a41e9"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/mcp/setup.html": {
+    "mtime": 1780210042.1937006,
+    "hash": "a02c6adfeca8b1e535a1c828de779cba"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/mcp/llm-integration.html": {
+    "mtime": 1780210042.1968148,
+    "hash": "2beb2161be9b8c9880b3936a738fc0b4"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/mcp/overview.html": {
+    "mtime": 1780210042.193065,
+    "hash": "79b07638abed9c8b6d91160b93ae715b"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/mcp/resources.html": {
+    "mtime": 1780210042.1957006,
+    "hash": "cf259376e6e4367ce1b96238a597df3e"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/mcp/tools.html": {
+    "mtime": 1780210042.1947005,
+    "hash": "054afe8fdba67d2ecdf4ea7d64cb7200"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/contributing/overview.html": {
+    "mtime": 1780210042.199487,
+    "hash": "7bb2866a49800bfd82ab819238dfa51c"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/contributing/architecture.html": {
+    "mtime": 1780210042.1997006,
+    "hash": "ff3ca28141de518f0d061f85e0491558"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/contributing/deploying-docs.html": {
+    "mtime": 1780210042.2017007,
+    "hash": "10951f029f79c26199aaacebf91c25ac"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/contributing/adding-matchers.html": {
+    "mtime": 1780210042.2007005,
+    "hash": "e815796e9563da293a940e71fa378c54"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/dsl/assertions.html": {
+    "mtime": 1780210042.179047,
+    "hash": "5420c6657a9cdb5052d301d1394fdce9"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/dsl/setup-teardown.html": {
+    "mtime": 1780210042.1757612,
+    "hash": "89eab63fc1158528dc346798ff6cc344"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/dsl/overview.html": {
+    "mtime": 1780210042.173967,
+    "hash": "fe833883df599e0a1cf54786773f5cb1"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/dsl/composition.html": {
+    "mtime": 1780210042.1781206,
+    "hash": "232c5d842a7c9cbfa8027a1d74d76765"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/dsl/matchers.html": {
+    "mtime": 1780210042.1800716,
+    "hash": "340bc645583f03878f841bbce728ab33"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/dsl/scenarios.html": {
+    "mtime": 1780210042.1751251,
+    "hash": "4d59983fddae90ec96325ff73d7f9ec1"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/dsl/retry.html": {
+    "mtime": 1780210042.1830175,
+    "hash": "754b1a7303ba1a1a019a123907a68f74"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/dsl/variables.html": {
+    "mtime": 1780210042.1820061,
+    "hash": "b32c76a98c8d04c9ea44e14cd24a28b9"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/dsl/steps.html": {
+    "mtime": 1780210042.176468,
+    "hash": "99b7ddd50f5405a65eee9c80f5106c2d"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/dsl/requests.html": {
+    "mtime": 1780210042.1767006,
+    "hash": "669028058c76169a119c85ff6f8cb9bc"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/dsl/schemas.html": {
+    "mtime": 1780210042.1810875,
+    "hash": "3c76581642aec76836aa6f9e9f52b741"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/recipes/parallel-execution.html": {
+    "mtime": 1780210042.1925805,
+    "hash": "a254f261ef8aa14cd953a7639deb35e1"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/recipes/overview.html": {
+    "mtime": 1780210042.188141,
+    "hash": "d2c68637f53a0fe3828d75ba5a6df4c9"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/recipes/bulk-upload.html": {
+    "mtime": 1780210042.1901042,
+    "hash": "60ac17c5b8b24cd254793ec89396734f"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/recipes/negative-testing.html": {
+    "mtime": 1780210042.1906078,
+    "hash": "f0110cf15f4a6cd4e144b28e308e4f25"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/recipes/authentication.html": {
+    "mtime": 1780210042.1887007,
+    "hash": "84a10a1c5dadcfbfddec9ada56a9a102"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/recipes/data-management.html": {
+    "mtime": 1780210042.193065,
+    "hash": "2b9838b0e8eb0345128959ccc557e467"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/recipes/multi-account.html": {
+    "mtime": 1780210042.1915627,
+    "hash": "1f7db7a0dfb6b35a3e19d7b1833a56ab"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/recipes/schema-validation.html": {
+    "mtime": 1780210042.1920235,
+    "hash": "0cb7128d4dfb9397da4c7361d69027b7"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/recipes/async-polling.html": {
+    "mtime": 1780210042.1910553,
+    "hash": "ff464f5df559a04f314a97c73cd2cec0"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/reference/configuration.html": {
+    "mtime": 1780210042.1968148,
+    "hash": "2a949e551a989e436fb48669dd5bcce6"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/reference/environments.html": {
+    "mtime": 1780210042.1977005,
+    "hash": "cd6c6136d4580ccbbbbbba47b6b4d6fc"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/reference/schema-definitions.html": {
+    "mtime": 1780210042.199487,
+    "hash": "b3b7efc0f63ba3d23d04a7e0a75440d2"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/fonts/SOURCE-CODE-PRO-LICENSE.txt": {
+    "mtime": 1780210042.214674,
+    "hash": "9473ccaac27014a922dc77b776f02834"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/fonts/OPEN-SANS-LICENSE.txt": {
+    "mtime": 1780210042.2146306,
+    "hash": "3b83ef96387f14655fc854ddc3c6bd57"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/SUMMARY.md": {
+    "mtime": 1780060484.4616685,
+    "hash": "b3800c55fa2741ecf7ee69a351b40cb0"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/README.md": {
+    "mtime": 1780060484.4614923,
+    "hash": "27ac131969a6051c49edd21f7dbb585a"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/changelog.md": {
+    "mtime": 1780060977.161676,
+    "hash": "11202447ef39be9d8c59fb6e750c8ec8"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/cli/convert.md": {
+    "mtime": 1780210042.0887008,
+    "hash": "e1c9fb6820b5921297668b4ef31112f6"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/cli/gherkio.md": {
+    "mtime": 1780210042.0887008,
+    "hash": "f830a7ab2556c99dca8443af5ff4279b"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/cli/validate.md": {
+    "mtime": 1780210042.0897007,
+    "hash": "79ba1657f1e798f6953625f5754a7be9"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/cli/run.md": {
+    "mtime": 1780210042.0897007,
+    "hash": "efdf4dd841020d9eb43af125dd0464e4"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/cli/mcp.md": {
+    "mtime": 1780210042.0897007,
+    "hash": "673c27396ee05018ad56c63f374e486e"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/cli/completion.md": {
+    "mtime": 1780060484.4616685,
+    "hash": "58fd6647153052851c44814d4ffc2d30"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/cli/init.md": {
+    "mtime": 1780210042.0897007,
+    "hash": "87e12e0d399dd43deb63129d691b8b75"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/cli/schema.md": {
+    "mtime": 1780210042.0897007,
+    "hash": "ddde3b16dacbaafdbc63636099e1b8e9"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/cli/overview.md": {
+    "mtime": 1780060484.4620063,
+    "hash": "832e3157a8d8559c1bfd09888fe55315"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/getting-started/quickstart.md": {
+    "mtime": 1780208337.3295116,
+    "hash": "500a725113ee255d8033088174f6d9a8"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/getting-started/introduction.md": {
+    "mtime": 1780060484.4650033,
+    "hash": "2e8eca15cb0469670a5e07d9838aae12"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/getting-started/playground.md": {
+    "mtime": 1780060484.4650033,
+    "hash": "3ea8e163fbc062b6b9020fa03af450e0"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/getting-started/project-setup.md": {
+    "mtime": 1780208323.608312,
+    "hash": "8ac271b8d3266827502b0050e6846573"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/getting-started/first-test-tutorial.md": {
+    "mtime": 1780060484.4647346,
+    "hash": "bf75e668b35586dc0680d353bbbc9f45"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/getting-started/installation.md": {
+    "mtime": 1780208330.5614133,
+    "hash": "67186a28e116fa68134d6a6c2cf78553"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/mcp/tools.md": {
+    "mtime": 1780060484.4697866,
+    "hash": "e0013d5ff7f4aa7cdf0c30b5158b4c7f"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/mcp/resources.md": {
+    "mtime": 1780060484.4694366,
+    "hash": "d7a3b73358109f5e7ac0b82119989520"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/mcp/overview.md": {
+    "mtime": 1780060484.4694366,
+    "hash": "74cf7b4dede34ec7f5db6b7cba21dec8"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/mcp/llm-integration.md": {
+    "mtime": 1780060484.4694366,
+    "hash": "598f699b39fd8307fdd8b9ad12736d15"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/mcp/setup.md": {
+    "mtime": 1780208317.6042237,
+    "hash": "585a60150e1ebd60bbf276c6d9690aeb"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/deploying-docs.md": {
+    "mtime": 1780060484.4625287,
+    "hash": "ef8c34201121a3a7e244a1f021bec8af"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/architecture.md": {
+    "mtime": 1780060484.4625287,
+    "hash": "991b66d0f0da504aa79b6340cf55bd5e"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/overview.md": {
+    "mtime": 1780060484.4632194,
+    "hash": "0caa3181d31c1899eb5be6b9fb939f91"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/contributing/adding-matchers.md": {
+    "mtime": 1780060484.4620063,
+    "hash": "f6fcbe88e127fc09aefdc0bb3696f3b9"
+  },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/dsl/retry.md": {
-    "mtime": 1780036970.6492872,
+    "mtime": 1780060484.4636142,
     "hash": "62643f7fd9f477fe1cb90db822b66176"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/dsl/matchers.md": {
-    "mtime": 1780049554.5589747,
+    "mtime": 1780060484.4636142,
     "hash": "bd1e457ca0d0589213c963b2199627a3"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/dsl/variables.md": {
-    "mtime": 1780050523.1825972,
+    "mtime": 1780060484.4647346,
     "hash": "8f3c167a87e8835266852745b2155f73"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/dsl/assertions.md": {
-    "mtime": 1780057716.741183,
+    "mtime": 1780060484.4632194,
     "hash": "414427f642b9a35dd37e9aaf2f5baaeb"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/dsl/setup-teardown.md": {
-    "mtime": 1780051274.4142933,
+    "mtime": 1780060484.4642282,
     "hash": "eebc2d5ad387b3c03c4ed0a908ce29fe"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/dsl/requests.md": {
-    "mtime": 1780050304.095241,
-    "hash": "46e2ce2b406d94d4bad62587af5c20c1"
+    "mtime": 1780404508.4027143,
+    "hash": "312f8b1a8e483c67abb54467e5553752"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/dsl/scenarios.md": {
-    "mtime": 1780036913.0157707,
+    "mtime": 1780060484.4642282,
     "hash": "8d6e45525cae92fa5a3bb9599fb8a658"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/dsl/steps.md": {
-    "mtime": 1780048148.1779075,
+    "mtime": 1780060484.4645624,
     "hash": "776fa2dcea7e3a729a72c2b4bf63aaff"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/dsl/composition.md": {
-    "mtime": 1780051191.197625,
+    "mtime": 1780060484.4634595,
     "hash": "230e4ba8858730e815e851cd5b88d027"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/dsl/overview.md": {
-    "mtime": 1780036908.2927282,
+    "mtime": 1780060484.4636142,
     "hash": "ef837f4d512d5cdf5bb4ab8636c58ecb"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/dsl/schemas.md": {
-    "mtime": 1780050609.7725248,
+    "mtime": 1780060484.4642282,
     "hash": "09540f326d16fa4a4259e8032907808e"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/recipes/data-management.md": {
-    "mtime": 1780052171.8851354,
+    "mtime": 1780060484.4699674,
     "hash": "1592cbdbbe4bca7f5cb4b48952b04f61"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/recipes/bulk-upload.md": {
-    "mtime": 1780036984.4554102,
+    "mtime": 1780060484.4699674,
     "hash": "bd836716ad19a9c1cae19a231d22041d"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/recipes/schema-validation.md": {
-    "mtime": 1780037003.2485769,
+    "mtime": 1780060484.4699674,
     "hash": "5e7148619549f26f6d430b5707e50143"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/recipes/overview.md": {
-    "mtime": 1780052195.1182907,
+    "mtime": 1780060484.4699674,
     "hash": "ffac958e0c8f4f53e62c2cd830085e2e"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/recipes/multi-account.md": {
-    "mtime": 1780036998.393534,
+    "mtime": 1780060484.4699674,
     "hash": "9cf98f914e0bf46a362b460dceace699"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/recipes/negative-testing.md": {
-    "mtime": 1780036989.1034515,
+    "mtime": 1780060484.4699674,
     "hash": "97e07f73bd67c163566636a302ab5150"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/recipes/async-polling.md": {
-    "mtime": 1780052156.0560308,
+    "mtime": 1780060484.4697866,
     "hash": "f2aa62e6a6ccb7e5ccc4bd35df0fb009"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/recipes/parallel-execution.md": {
-    "mtime": 1780052166.0020964,
+    "mtime": 1780060484.4699674,
     "hash": "c47123ad9fee9df1aa69297b3b8e351e"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/recipes/authentication.md": {
-    "mtime": 1780036979.6833677,
+    "mtime": 1780060484.4699674,
     "hash": "479390d834baecf5b1415f03e7e3a1aa"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/reference/configuration.md": {
-    "mtime": 1780037020.3607283,
+    "mtime": 1780060484.4699674,
     "hash": "3fa12f90016c7c8a943f48e4599a86e0"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/reference/schema-definitions.md": {
-    "mtime": 1780037032.9888396,
+    "mtime": 1780060484.4707415,
     "hash": "863830343627943d7d9b4194abebcff6"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/reference/environments.md": {
-    "mtime": 1780050316.97438,
+    "mtime": 1780060484.4707415,
     "hash": "2159b06fa3c4a9c56f463fac643b6ddd"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfcs/7-per-request-timeout.md": {
@@ -894,6 +962,10 @@
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfcs/9-setup-teardown-steps.md": {
     "mtime": 1779519033.774184,
     "hash": "4e4d47ae8eae7cea44dd7722a9806917"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfcs/24-gherkio-nvim-plugin.md": {
+    "mtime": 1780222343.2331572,
+    "hash": "73142c092447afa71b2218549b54381d"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfcs/3-schema-assertions.md": {
     "mtime": 1779519033.7251198,
@@ -927,6 +999,10 @@
     "mtime": 1779519033.7651448,
     "hash": "47d22ce069f244b1450d964a3ea79f24"
   },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfcs/23-feedback.md": {
+    "mtime": 1780076152.1563568,
+    "hash": "262908fb7d32bbaa0d0a963d0c5d6901"
+  },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfcs/4-reporting.md": {
     "mtime": 1779519033.7345736,
     "hash": "409da0e252f80e41e0651fb7687496a5"
@@ -943,6 +1019,10 @@
     "mtime": 1779519033.7149274,
     "hash": "3266e9a7eff6ed53ce42ee86c6e59c73"
   },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfcs/23-declarative-collection-projections.md": {
+    "mtime": 1780367668.064705,
+    "hash": "d7a0ef89f39cca260fb79713ab1f2441"
+  },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/rfcs/5-request-retry.md": {
     "mtime": 1779519033.7439508,
     "hash": "4492ee450503993e3a24475200267e16"
@@ -952,15 +1032,23 @@
     "hash": "d17e7e6b857e3fecf5976f0ede4b8f67"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/favicon.svg": {
-    "mtime": 1780057894.5903652,
+    "mtime": 1780210042.2105567,
     "hash": "2ab545f5294e510e3574d29bf08fc719"
   },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/favicon.png": {
-    "mtime": 1780057894.5902848,
+    "mtime": 1780210042.210502,
     "hash": "99aa04c6ee89063ee9fe65f6544e3d0b"
   },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/mcp/gherkio_mcp_architecture.png": {
+    "mtime": 1780210042.3487005,
+    "hash": "bc2aa4948eff995055b5abca619b5ff2"
+  },
   "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/book/FontAwesome/fonts/fontawesome-webfont.svg": {
-    "mtime": 1780057894.5909457,
+    "mtime": 1780210042.2117255,
     "hash": "912ec66d7572ff821749319396470bde"
+  },
+  "/home/muhfaris/Documents/projects/sourcecode/src/github.com/muhfaris/gherkio/docs/book/src/mcp/gherkio_mcp_architecture.png": {
+    "mtime": 1780060484.4692454,
+    "hash": "bc2aa4948eff995055b5abca619b5ff2"
   }
 }

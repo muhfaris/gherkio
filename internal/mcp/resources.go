@@ -141,6 +141,7 @@ All string values in request fields support variable substitution:
 - **${var}** — Explicit braces syntax (e.g. ${accessToken})
 - **${var:default}** — With default fallback (e.g. ${role:user})
 - **$string(var)**, **$int(var)**, **$bool(var)**, **$float(var)** — Type-casting operators to cast variables in request bodies (e.g. $string(emp_id))
+- **$if(condition, then, else)** — Conditional value selection inside transform select blocks (e.g. $if(item.is_answered, item.free_text_answer, item.default_answer))
 - **$accounts.<name>.<field>** — Access any account's credentials directly from .gherkio/credentials/<env>.yaml without needing --account flag (e.g. $accounts.alice.username)
 - **${func(arg1,arg2)}** — Parametrized built-in generator with arguments (e.g. ${randomInt(1,100)})
 
@@ -185,6 +186,7 @@ You can coerce field types during selection by wrapping variable paths in castin
 - **$int(var)** — Parses/coerces the field value directly to an integer.
 - **$float(var)** — Parses/coerces the field value directly to a float.
 - **$bool(var)** — Parses/coerces the field value directly to a boolean.
+- **$if(condition, then, else)** — Conditional value selection: if condition is truthy, uses then value; otherwise uses else value (omitting else returns null).
 
 **Example:**
 
@@ -393,5 +395,31 @@ teardown:
         Authorization: Bearer $accessToken
     expect:
       status: 200
+
+---
+# Transform with conditional ($if) example: map answer based on question type
+# Uses source data from a previous step's save
+scenario: survey answer with conditional projection
+
+steps:
+  - request:
+      method: GET
+      url: /surveys/132
+    save:
+      raw_questions: body.questions
+
+  - request:
+      method: POST
+      url: /surveys/132/submit
+      body:
+        survey_id: 132
+      transform:
+        answers:
+          from: $raw_questions
+          as: q
+          select:
+            question_id: $q.id
+            # Conditionally map answer based on question type
+            answer_value: "$if(q.is_answered, q.free_text_answer, q.default_answer)"
 `
 }
