@@ -16,6 +16,7 @@ func InterpolateRequest(req model.Request, vars map[string]interface{}) (model.R
 		Method:  req.Method,
 		URL:     req.URL,
 		Headers: make(map[string]string),
+		Query:   make(map[string]string),
 		Timeout: req.Timeout,
 	}
 
@@ -36,6 +37,15 @@ func InterpolateRequest(req model.Request, vars map[string]interface{}) (model.R
 		interpolatedHeaders[k] = interpolatedValue
 	}
 	interpolated.Headers = interpolatedHeaders
+
+	// Interpolate Query
+	for k, v := range req.Query {
+		interpolatedValue, err := interpolateString(v, vars)
+		if err != nil {
+			return model.Request{}, fmt.Errorf("failed to interpolate query '%s': %w", k, err)
+		}
+		interpolated.Query[k] = interpolatedValue
+	}
 
 	// Interpolate Body
 	interpolatedBody, err := interpolateBody(req.Body, vars)

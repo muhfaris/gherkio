@@ -11,6 +11,7 @@ All keys in the Gherkio DSL are case-sensitive and must be written in lowercase.
 | Key | Type | Required | Description | Example |
 | :--- | :--- | :--- | :--- | :--- |
 | `scenario` | `string` | Yes | Human-readable name of the test scenario | `scenario: Create new user` |
+| `description` | `string` | No | Detailed description of what this scenario tests. Shown in HTML report header | `description: Verify user can login with valid credentials` |
 | `tags` | `array` | No | List of categories/labels for execution filtering | `tags: [smoke, active]` |
 | `setup` | `array` | No | Pre-condition HTTP requests or composed files | (See Setup/Teardown chapter) |
 | `steps` | `array` | Yes | Primary sequence of API request and assertion steps | (See Steps chapter) |
@@ -24,6 +25,7 @@ Tags are strings that allow you to segment and filter test executions. They are 
 
 ```yaml
 scenario: Authenticated checkout flow
+description: Verifies a logged-in user can add items to cart and complete checkout with valid payment.
 tags:
   - e2e
   - checkout

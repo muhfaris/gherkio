@@ -3,6 +3,7 @@ package runner
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -33,6 +34,7 @@ type RunConfig struct {
 // RunResult holds the overall execution result.
 type RunResult struct {
 	Scenario     string                 `json:"scenario"`
+	Description  string                 `json:"description,omitempty"`
 	TestFile     string                 `json:"testFile,omitempty"`
 	Account      string                 `json:"account,omitempty"` // Account name used (if any)
 	Steps        []StepResult           `json:"steps"`
@@ -87,8 +89,9 @@ func Run(cfg RunConfig) (*RunResult, error) {
 
 	// 3. Execute steps
 	result := &RunResult{
-		Scenario: testFile.Scenario,
-		Account:  cfg.AccountName,
+		Scenario:    testFile.Scenario,
+		Description: testFile.Description,
+		Account:     cfg.AccountName,
 	}
 
 	vars := make(map[string]interface{})
@@ -193,6 +196,7 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 	for _, step := range steps {
 		stepStart := time.Now()
 		stepResult := StepResult{
+			Name:     step.Name,
 			Original: step,
 			Depth:    depth,
 			Role:     role,
@@ -279,6 +283,7 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 		stepResult.Request = &RequestInfo{
 			Method:  interpolatedRequest.Method,
 			URL:     url,
+			Query:   interpolatedRequest.Query,
 			Headers: interpolatedRequest.Headers,
 		}
 		if interpolatedRequest.Body != nil {
@@ -588,6 +593,7 @@ func loadEnvironment(projectDir, envName string) (*model.Environment, error) {
 }
 
 // resolveURL builds the full URL using environment baseUrl or service-specific baseUrl.
+// If req.Query is non-empty, its key-value pairs are appended as URL query parameters.
 func resolveURL(env *model.Environment, req model.Request) string {
 	baseURL := env.BaseURL
 
@@ -597,7 +603,27 @@ func resolveURL(env *model.Environment, req model.Request) string {
 		}
 	}
 
-	return baseURL + req.URL
+	finalURL := baseURL + req.URL
+
+	if len(req.Query) > 0 {
+		sep := "?"
+		if strings.Contains(finalURL, "?") {
+			sep = "&"
+		}
+		first := true
+		for k, v := range req.Query {
+			escapedKey := url.QueryEscape(k)
+			escapedVal := url.QueryEscape(v)
+			if first {
+				finalURL += sep + escapedKey + "=" + escapedVal
+				first = false
+			} else {
+				finalURL += "&" + escapedKey + "=" + escapedVal
+			}
+		}
+	}
+
+	return finalURL
 }
 
 // resolveUsePath tries to find the file referenced in a 'use' step.

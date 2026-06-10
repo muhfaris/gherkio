@@ -109,6 +109,7 @@ func (s *Server) buildSpecResource() string {
 
 ### Structural Keys
 - **scenario**: (String, Required) Human readable name of the scenario.
+- **description**: (String, Optional) Detailed description of what this scenario tests. Shown in HTML report header.
 - **setup**: (List of Steps, Optional) Pre-condition HTTP requests or composed files (e.g. login, session setup, data seeding).
 - **steps**: (List of Steps, Required) The primary test/execution block.
 - **teardown**: (List of Steps, Optional) Post-execution cleanup steps (e.g. deleting created resources).
@@ -120,6 +121,7 @@ Use setup, steps, and teardown blocks strategically:
 3. **Teardown**: The teardown block is *guaranteed* to execute even if setup or steps fail. ALWAYS put cleanup/deletion requests in teardown to prevent test data leaks.
 
 ### Step Block
+- **name**: (String, Optional) Human-readable label for the step. Shown in test output instead of the default "METHOD /url".
 - **use**: (String, Conditional) Path to compose/execute another scenario. Mutually exclusive with request.
 - **request**: (Request object, Conditional) HTTP Request config. Mutually exclusive with use.
 - **expect**: (Expect object, Optional) Response assertions.
@@ -130,6 +132,7 @@ Use setup, steps, and teardown blocks strategically:
 - **service**: (String, Optional) Named service override matching environments.
 - **method**: (String, Required) HTTP Method (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS).
 - **url**: (String, Required) Target endpoint url (appends to baseUrl). Supports variable interpolation.
+- **query**: (Map of string:string, Optional) Query parameters appended to the URL. Supports variable interpolation in values.
 - **headers**: (Map of string:string, Optional) Custom HTTP headers. Supports variable interpolation in values.
 - **body**: (Free-form object/string, Optional) Request body content. Supports variable interpolation in string values.
 - **transform**: (Map of path:ProjectionConfig, Optional) Declarative collections projected into the request payload.

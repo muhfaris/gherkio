@@ -14,6 +14,7 @@ type RequestFields struct {
 	Service string            `yaml:"service,omitempty"`
 	Method  string            `yaml:"method"`
 	URL     string            `yaml:"url"`
+	Query   map[string]string `yaml:"query,omitempty"`
 	Headers map[string]string `yaml:"headers,omitempty"`
 	Body    interface{}       `yaml:"body,omitempty"`
 	Timeout string            `yaml:"timeout,omitempty"`
@@ -24,6 +25,7 @@ type ExpectFields struct {
 }
 
 type YamlStep struct {
+	Name    string         `yaml:"name,omitempty"`
 	Request RequestFields `yaml:"request"`
 	Expect  ExpectFields  `yaml:"expect"`
 }
@@ -94,10 +96,12 @@ func FormatYAML(req *ParsedRequest, scenarioName string, stepOnly bool, projectD
 	strippedURL, serviceName := ResolveURLForDSL(req.URL, projectDir, envName)
 
 	step := YamlStep{
+		Name: req.Name,
 		Request: RequestFields{
 			Service: serviceName,
 			Method:  req.Method,
 			URL:     strippedURL,
+			Query:   req.Query,
 			Headers: req.Headers,
 			Body:    req.Body,
 			Timeout: req.Timeout,

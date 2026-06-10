@@ -9,8 +9,10 @@ import (
 
 // ParsedRequest represents the HTTP request properties extracted from a cURL command.
 type ParsedRequest struct {
+	Name    string
 	Method  string
 	URL     string
+	Query   map[string]string
 	Headers map[string]string
 	Body    interface{}
 	Timeout string
