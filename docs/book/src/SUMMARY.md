@@ -18,6 +18,7 @@
   - [Assertions & Validation](dsl/assertions.md)
     - [Value Matchers](dsl/matchers.md)
     - [Schema Validation](dsl/schemas.md)
+  - [Editor Autocomplete Schema](dsl/editor-schema.md)
   - [Variables & Context](dsl/variables.md)
     - [Credentials](dsl/credentials.md)
     - [Retry & Polling](dsl/retry.md)
