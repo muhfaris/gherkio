@@ -36,8 +36,10 @@ type ScenarioData struct {
 // ReportStep represents a single step in the report.
 type ReportStep struct {
 	Index        int
+	Name         string
 	Method       string
 	URL          string
+	Query        map[string]string `json:"query,omitempty"`
 	StatusCode   int
 	StatusText   string
 	Duration     string

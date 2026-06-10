@@ -152,12 +152,15 @@ func MapResultToReportData(result *runner.RunResult, env string, maskFields []st
 
 		method := ""
 		url := ""
+		var query map[string]string
 		if step.Request != nil {
 			method = step.Request.Method
 			url = step.Request.URL
+			query = step.Request.Query
 		} else if step.Original.Request.URL != "" {
 			method = step.Original.Request.Method
 			url = step.Original.Request.URL
+			query = step.Original.Request.Query
 		}
 
 		var retryHistory []RetryEntry
@@ -173,8 +176,10 @@ func MapResultToReportData(result *runner.RunResult, env string, maskFields []st
 
 		reportSteps = append(reportSteps, ReportStep{
 			Index:        stepIndex,
+			Name:         step.Name,
 			Method:       method,
 			URL:          url,
+			Query:        query,
 			StatusCode:   statusCode,
 			StatusText:   statusText,
 			Duration:     runner.FormatDuration(step.Duration),
