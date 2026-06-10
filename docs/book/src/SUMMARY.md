@@ -53,6 +53,7 @@
   - [Environments](reference/environments.md)
   - [Credentials File](reference/credentials-file.md)
   - [Schema Definitions](reference/schema-definitions.md)
+  - [Test Reports & Run Results](reference/reports.md)
 
 - [Contributing](contributing/overview.md)
   - [Architecture](contributing/architecture.md)
