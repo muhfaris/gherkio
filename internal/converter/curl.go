@@ -3,6 +3,7 @@ package converter
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -108,7 +109,7 @@ func ConvertStepToCurl(req model.Request, projectDir string, envName string, var
 		}
 	}
 
-	// 2. Leniently interpolate the request URL, headers, and body
+	// 2. Leniently interpolate the request URL, headers, body, and query params
 	interpolatedURL := LenientInterpolateString(req.URL, vars)
 	if baseURL != "" && !strings.HasPrefix(interpolatedURL, "http://") && !strings.HasPrefix(interpolatedURL, "https://") {
 		// Append stripped URL to BaseURL
@@ -116,6 +117,25 @@ func ConvertStepToCurl(req model.Request, projectDir string, envName string, var
 			baseURL += "/"
 		}
 		interpolatedURL = baseURL + interpolatedURL
+	}
+
+	// Append query params if present
+	if len(req.Query) > 0 {
+		sep := "?"
+		if strings.Contains(interpolatedURL, "?") {
+			sep = "&"
+		}
+		first := true
+		for k, v := range req.Query {
+			escapedKey := url.QueryEscape(k)
+			escapedVal := url.QueryEscape(LenientInterpolateString(v, vars))
+			if first {
+				interpolatedURL += sep + escapedKey + "=" + escapedVal
+				first = false
+			} else {
+				interpolatedURL += "&" + escapedKey + "=" + escapedVal
+			}
+		}
 	}
 
 	interpolatedHeaders := make(map[string]string)

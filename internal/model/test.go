@@ -25,6 +25,7 @@ type TimingConfig struct {
 
 // Step represents a single step in a scenario.
 type Step struct {
+	Name    string            `yaml:"name,omitempty" json:"name,omitempty" jsonschema:"description=Human-readable name for this step (shown in output instead of method+URL)"`
 	Use     string            `yaml:"use,omitempty" json:"use,omitempty" jsonschema:"description=References another scenario file to execute"`
 	Request Request           `yaml:"request,omitempty" json:"request,omitempty" jsonschema:"description=HTTP request definition"`
 	Retry   *RetryConfig      `yaml:"retry,omitempty" json:"retry,omitempty" jsonschema:"description=Retry configuration for the step"`
@@ -38,6 +39,7 @@ type Request struct {
 	Service   string            `yaml:"service,omitempty" json:"service,omitempty" jsonschema:"description=Name of the service defined in environment"`
 	Method    string            `yaml:"method" json:"method" jsonschema:"required,enum=GET,enum=POST,enum=PUT,enum=DELETE,enum=PATCH,description=HTTP method"`
 	URL       string            `yaml:"url" json:"url" jsonschema:"required,description=Request URL path or absolute URL. Supports variable interpolation ($var ${var:default} $accounts.(name).(field) $uuid $ulid $randomInt $randomEmail $randomPhone)"`
+	Query     map[string]string `yaml:"query,omitempty" json:"query,omitempty" jsonschema:"description=Query parameters to append to the URL. Supports variable interpolation in values."`
 	Headers   map[string]string `yaml:"headers,omitempty" json:"headers,omitempty" jsonschema:"description=HTTP request headers. Supports variable interpolation in values ($var ${var:default} $accounts.(name).(field) $uuid $ulid $randomInt $randomEmail $randomPhone)"`
 	Body      interface{}       `yaml:"body,omitempty" json:"body,omitempty" jsonschema:"description=HTTP request body as JSON object or string. Supports variable interpolation in string values ($var ${var:default} $accounts.(name).(field) $uuid $ulid $randomInt $randomEmail $randomPhone) and type casting operators ($string(var) $int(var) $bool(var) $float(var))"`
 	Multipart *MultipartConfig  `yaml:"multipart,omitempty" json:"multipart,omitempty" jsonschema:"description=Multipart form-data configuration for file uploads and form fields"`

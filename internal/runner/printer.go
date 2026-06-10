@@ -193,7 +193,9 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 
 		// Step header with number and status
 		var stepLabel string
-		if step.Request != nil {
+		if step.Name != "" {
+			stepLabel = step.Name
+		} else if step.Request != nil {
 			stepLabel = fmt.Sprintf("%s %s", step.Request.Method, step.Request.URL)
 		} else {
 			if step.Original.Request.URL != "" {
@@ -599,7 +601,9 @@ func PrintStepResult(result *RunResult, verbose bool, maskFields []string) {
 		}
 
 		var stepLabel string
-		if step.Request != nil {
+		if step.Name != "" {
+			stepLabel = step.Name
+		} else if step.Request != nil {
 			stepLabel = fmt.Sprintf("%s %s", step.Request.Method, step.Request.URL)
 		} else {
 			if step.Original.Request.URL != "" {

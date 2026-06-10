@@ -22,6 +22,7 @@ import (
 
 // StepResult holds the result of a single step execution.
 type StepResult struct {
+	Name         string                 `json:"name,omitempty"`
 	Original     model.Step             `json:"original"`
 	Depth        int                    `json:"depth"`
 	IsUseStart   bool                   `json:"isUseStart"`
@@ -53,6 +54,7 @@ type RetryEntry struct {
 type RequestInfo struct {
 	Method  string            `json:"method"`
 	URL     string            `json:"url"`
+	Query   map[string]string `json:"query,omitempty"`
 	Headers map[string]string `json:"headers"`
 	Body    string            `json:"body,omitempty"`
 }
