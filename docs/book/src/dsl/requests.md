@@ -10,6 +10,7 @@ The `request` block defines the outgoing HTTP request. Gherkio supports full-fea
 | :--- | :--- | :--- | :--- | :--- |
 | `method` | `string` | Yes | HTTP Method (GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD) | `method: GET` |
 | `url` | `string` | Yes | Target path (relative to `baseUrl`) or fully qualified absolute URL | `url: /v1/profile` |
+| `query` | `map[string]string` | No | Query parameters appended to the URL. Supports variable interpolation in values. | `query: { status: available, limit: "10" }` |
 | `service`| `string` | No | Target service key to override default `baseUrl` | `service: payment` |
 | `headers`| `object` | No | Map of custom key-value HTTP headers | `headers: { Content-Type: application/json }` |
 | `body` | `any` | No | Request payload. Can be JSON objects, lists, strings, or numbers | (See below) |
@@ -55,6 +56,36 @@ steps:
           firstName: "John"
           lastName: "Doe"
           age: ${randomInt(18,65)}
+```
+
+### Query Parameters (`query`)
+
+Use the `query` block to append URL query parameters instead of embedding them directly in the URL string. This keeps URLs clean and allows variable interpolation for dynamic values:
+
+```yaml
+steps:
+  - request:
+      method: GET
+      url: /pets/findByStatus
+      query:
+        status: available
+        limit: "10"
+    expect:
+      status: 200
+```
+
+Query parameter values support full variable interpolation:
+
+```yaml
+steps:
+  - request:
+      method: GET
+      url: /users
+      query:
+        role: $userRole
+        page: "${randomInt(1,5)}"
+    expect:
+      status: 200
 ```
 
 ---

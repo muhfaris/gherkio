@@ -9,7 +9,8 @@ Steps are the execution blocks inside Gherkio's `setup`, `steps`, and `teardown`
 A scenario step is defined as a YAML map containing structural blocks that configure the action, validate the response, extract variables, or control loops.
 
 ```yaml
-- request:                       # 1. Action: Trigger HTTP request
+- name: Create checkout order        # Optional human-readable step label
+  request:                       # 1. Action: Trigger HTTP request
     method: POST
     url: /v1/checkout
     timeout: 5s
@@ -30,6 +31,7 @@ Each step in a scenario sequence supports the following top-level keys:
 
 | Property Key | Type | Required | Description | Example |
 | :--- | :--- | :--- | :--- | :--- |
+| `name` | `string` | No | Human-readable label for the step. Shown in test output and HTML report instead of `METHOD /url`. | `name: Create new order` |
 | `request` | `object` | Conditional | HTTP request payload block. **Mutually exclusive with `use`**. | (See Request Properties below) |
 | `use` | `string` | Conditional | Scenario composition. Imports and executes another scenario YAML file inline. | `use: shared/login.yaml` |
 | `expect` | `object` | No | Assertions mapping target dot-notation paths to expected formats or matchers. | `expect: { status: 200 }` |
