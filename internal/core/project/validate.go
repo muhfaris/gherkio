@@ -16,10 +16,11 @@ import (
 
 // ValidationIssue represents a static analysis finding in a test scenario file.
 type ValidationIssue struct {
-	File  string
-	Field string
-	Code  string
-	Msg   string
+	File     string
+	Field    string
+	Code     string
+	Msg      string
+	Severity string // "error" (default) or "warning"
 }
 
 // ValidationResult groups all static analysis issues for a single file.
@@ -116,9 +117,10 @@ func ValidateFile(filePath, projectDir string, creds *model.Credentials, schemas
 	if err == nil && !storeResult.Valid {
 		for _, e := range storeResult.Errors {
 			result.Issues = append(result.Issues, ValidationIssue{
-				Field: e.Field,
-				Code:  e.Code,
-				Msg:   e.Message,
+				Field:    e.Field,
+				Code:     e.Code,
+				Msg:      e.Message,
+				Severity: "error",
 			})
 		}
 	}
@@ -130,6 +132,7 @@ func ValidateFile(filePath, projectDir string, creds *model.Credentials, schemas
 	result.Issues = append(result.Issues, validateSchemaReferences(test, schemas)...)
 	result.Issues = append(result.Issues, validateBodyPaths(test)...)
 	result.Issues = append(result.Issues, validateMultipartFiles(test, projectDir, filePath)...)
+	result.Issues = append(result.Issues, validateStepCompleteness(test)...)
 
 	return result
 }
@@ -418,6 +421,84 @@ func validateMultipartFiles(test *model.TestFile, projectDir, testFilePath strin
 					Code:  "file_not_found",
 					Msg:   fmt.Sprintf("multipart file %q does not exist", filePath),
 				})
+			}
+		}
+	}
+
+	return issues
+}
+
+// validateStepCompleteness checks if step names suggest certain request fields should be present.
+// For example, a step named "Filter by X" should have query parameters.
+// This is a heuristic warning — step names are free-form, so it may produce false positives.
+func validateStepCompleteness(test *model.TestFile) []ValidationIssue {
+	var issues []ValidationIssue
+
+	allSteps := append(append(test.Setup, test.Steps...), test.Teardown...)
+
+	// Keyword → expected condition
+	type hint struct {
+		keywords    []string
+		expectCond func(*model.Step) bool
+		msg        string
+	}
+	hints := []hint{
+		{
+			keywords: []string{"filter", "search", "cari", "saring"},
+			expectCond: func(s *model.Step) bool {
+				return len(s.Request.Query) > 0
+			},
+			msg: "step name suggests filtering/searching but has no query parameters",
+		},
+		{
+			keywords: []string{"create", "tambah", "add new", "buat"},
+			expectCond: func(s *model.Step) bool {
+				return s.Request.Body != nil && s.Request.Method != "GET"
+			},
+			msg: "step name suggests creating a resource but has no request body",
+		},
+		{
+			keywords: []string{"update", "edit", "ubah", "perbarui"},
+			expectCond: func(s *model.Step) bool {
+				return s.Request.Body != nil && s.Request.Method != "GET"
+			},
+			msg: "step name suggests updating a resource but has no request body",
+		},
+		{
+			keywords: []string{"delete", "hapus", "remove"},
+			expectCond: func(s *model.Step) bool {
+				return s.Request.Method == "DELETE" || len(s.Request.Query) > 0 || s.Request.Body != nil
+			},
+			msg: "step name suggests deleting a resource but has no DELETE method, query, or body",
+		},
+		{
+			keywords: []string{"upload", "unggah"},
+			expectCond: func(s *model.Step) bool {
+				return s.Request.Multipart != nil
+			},
+			msg: "step name suggests file upload but has no multipart configuration",
+		},
+	}
+
+	for i, step := range allSteps {
+		if step.Name == "" || step.Use != "" {
+			continue // skip unnamed steps and composition steps
+		}
+		nameLower := strings.ToLower(step.Name)
+
+		for _, h := range hints {
+			for _, kw := range h.keywords {
+				if strings.Contains(nameLower, kw) {
+					if !h.expectCond(&step) {
+						issues = append(issues, ValidationIssue{
+							Field:    fmt.Sprintf("steps[%d]", i),
+							Code:     "step_name_hint",
+							Msg:      fmt.Sprintf("step name %q suggests %s", step.Name, h.msg),
+							Severity: "warning",
+						})
+					}
+					break // only warn once per step per hint category
+				}
 			}
 		}
 	}
