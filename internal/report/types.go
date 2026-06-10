@@ -5,6 +5,7 @@ package report
 // For multi-scenario runs, Scenarios is populated and Steps is nil.
 type ReportData struct {
 	ScenarioName  string
+	Description   string
 	Environment   string
 	Timestamp     string
 	TotalDuration string
@@ -20,6 +21,7 @@ type ReportData struct {
 // ScenarioData holds the report data for a single scenario within a suite run.
 type ScenarioData struct {
 	Name          string
+	Description   string
 	TestFile      string
 	Account       string `json:"account,omitempty"` // Account name used (if any)
 	TotalDuration string

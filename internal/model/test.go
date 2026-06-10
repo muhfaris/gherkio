@@ -2,11 +2,12 @@ package model
 
 // TestFile represents a single Gherkio test YAML file.
 type TestFile struct {
-	Scenario string   `yaml:"scenario" json:"scenario" jsonschema:"required,description=The name of the test scenario"`
-	Tags     []string `yaml:"tags,omitempty" json:"tags,omitempty" jsonschema:"description=Tags for organizing and filtering tests (e.g. smoke auth critical)"`
-	Setup    []Step   `yaml:"setup,omitempty" json:"setup,omitempty" jsonschema:"description=Pre-condition steps executed before main steps"`
-	Steps    []Step   `yaml:"steps" json:"steps" jsonschema:"required,description=Main steps to execute for this scenario"`
-	Teardown []Step   `yaml:"teardown,omitempty" json:"teardown,omitempty" jsonschema:"description=Post-condition steps that always execute, even on failure"`
+	Scenario    string   `yaml:"scenario" json:"scenario" jsonschema:"required,description=The name of the test scenario"`
+	Description string   `yaml:"description,omitempty" json:"description,omitempty" jsonschema:"description=Detailed description of what this scenario tests"`
+	Tags        []string `yaml:"tags,omitempty" json:"tags,omitempty" jsonschema:"description=Tags for organizing and filtering tests (e.g. smoke auth critical)"`
+	Setup       []Step   `yaml:"setup,omitempty" json:"setup,omitempty" jsonschema:"description=Pre-condition steps executed before main steps"`
+	Steps       []Step   `yaml:"steps" json:"steps" jsonschema:"required,description=Main steps to execute for this scenario"`
+	Teardown    []Step   `yaml:"teardown,omitempty" json:"teardown,omitempty" jsonschema:"description=Post-condition steps that always execute, even on failure"`
 }
 
 // RetryConfig defines the configuration for a step's retry loop.

@@ -109,6 +109,7 @@ func (s *Server) buildSpecResource() string {
 
 ### Structural Keys
 - **scenario**: (String, Required) Human readable name of the scenario.
+- **description**: (String, Optional) Detailed description of what this scenario tests. Shown in HTML report header.
 - **setup**: (List of Steps, Optional) Pre-condition HTTP requests or composed files (e.g. login, session setup, data seeding).
 - **steps**: (List of Steps, Required) The primary test/execution block.
 - **teardown**: (List of Steps, Optional) Post-execution cleanup steps (e.g. deleting created resources).

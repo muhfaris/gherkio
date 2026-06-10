@@ -34,6 +34,7 @@ type RunConfig struct {
 // RunResult holds the overall execution result.
 type RunResult struct {
 	Scenario     string                 `json:"scenario"`
+	Description  string                 `json:"description,omitempty"`
 	TestFile     string                 `json:"testFile,omitempty"`
 	Account      string                 `json:"account,omitempty"` // Account name used (if any)
 	Steps        []StepResult           `json:"steps"`
@@ -88,8 +89,9 @@ func Run(cfg RunConfig) (*RunResult, error) {
 
 	// 3. Execute steps
 	result := &RunResult{
-		Scenario: testFile.Scenario,
-		Account:  cfg.AccountName,
+		Scenario:    testFile.Scenario,
+		Description: testFile.Description,
+		Account:     cfg.AccountName,
 	}
 
 	vars := make(map[string]interface{})

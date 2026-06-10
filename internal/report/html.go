@@ -30,6 +30,7 @@ func MapResultsToSuiteReportData(results []*runner.RunResult, env string, maskFi
 		// Create a scenario entry from the per-result data
 		scenario := ScenarioData{
 			Name:          result.Scenario,
+			Description:   result.Description,
 			TestFile:      result.TestFile,
 			Account:       result.Account,
 			TotalDuration: runner.FormatDuration(result.Duration),
@@ -202,6 +203,7 @@ func MapResultToReportData(result *runner.RunResult, env string, maskFields []st
 
 	return ReportData{
 		ScenarioName:  result.Scenario,
+		Description:   result.Description,
 		Environment:   env,
 		Timestamp:     time.Now().Format(time.RFC1123),
 		TotalDuration: runner.FormatDuration(result.Duration),
