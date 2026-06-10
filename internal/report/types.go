@@ -39,7 +39,8 @@ type ReportStep struct {
 	Name         string
 	Method       string
 	URL          string
-	Query        map[string]string `json:"query,omitempty"`
+	Query        map[string]string   `json:"query,omitempty"`
+	Headers      map[string]string   `json:"headers,omitempty"`
 	StatusCode   int
 	StatusText   string
 	Duration     string

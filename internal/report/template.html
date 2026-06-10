@@ -236,6 +236,56 @@
         margin: 0 6px;
         flex-shrink: 0;
       }
+      .req-details {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        margin-bottom: 8px;
+      }
+      .req-details td {
+        padding: 3px 0;
+        vertical-align: top;
+      }
+      .req-label {
+        color: var(--text-secondary);
+        font-weight: 500;
+        width: 60px;
+        white-space: nowrap;
+        padding-right: 12px;
+      }
+      .req-value {
+        color: var(--text);
+        word-break: break-all;
+      }
+      .req-param {
+        display: inline-block;
+        background: var(--info-bg);
+        color: var(--info-text);
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-family: var(--mono);
+        font-size: 11px;
+        margin: 2px 3px 2px 0;
+      }
+      .req-header {
+        display: block;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-secondary);
+        margin: 2px 0;
+      }
+      .req-header-key {
+        color: var(--text);
+        font-weight: 500;
+      }
+      .req-body-label {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        margin: 6px 0 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
       .method-GET {
         background: var(--info-bg);
         color: var(--info-text);
@@ -765,17 +815,31 @@
               </div>
             </div>
 
-            <!-- Request body -->
-            {{if $step.RequestBody}}
-            <div class="section" id="req-s{{$sIdx}}-{{$i}}">
+            <!-- Request details -->
+            <div class="section open" id="req-s{{$sIdx}}-{{$i}}">
               <div class="section-title" onclick="toggleSection('req-s{{$sIdx}}-{{$i}}')">
-                <span class="section-chevron">▶</span> Request body
+                <span class="section-chevron">▶</span> Request details
               </div>
               <div class="section-content">
+                <table class="req-details">
+                  <tr><td class="req-label">URL</td><td class="req-value"><code>{{$step.URL}}</code></td></tr>
+                  {{if $step.Query}}
+                  <tr><td class="req-label">Query</td><td class="req-value">
+                    {{range $k, $v := $step.Query}}<span class="req-param">{{$k}}={{$v}}</span>{{end}}
+                  </td></tr>
+                  {{end}}
+                  {{if $step.Headers}}
+                  <tr><td class="req-label">Headers</td><td class="req-value">
+                    {{range $k, $v := $step.Headers}}<span class="req-header"><span class="req-header-key">{{$k}}</span>: <span class="req-header-val">{{$v}}</span></span>{{end}}
+                  </td></tr>
+                  {{end}}
+                </table>
+                {{if $step.RequestBody}}
+                <div class="req-body-label">Body</div>
                 <pre class="code-block">{{$step.RequestBody}}</pre>
+                {{end}}
               </div>
             </div>
-            {{end}}
 
             <!-- Response body -->
             {{if $step.ResponseBody}}
@@ -945,17 +1009,31 @@
               </div>
             </div>
 
-            <!-- Request body -->
-            {{if $step.RequestBody}}
-            <div class="section" id="req-{{$i}}">
+            <!-- Request details -->
+            <div class="section open" id="req-{{$i}}">
               <div class="section-title" onclick="toggleSection('req-{{$i}}')">
-                <span class="section-chevron">▶</span> Request body
+                <span class="section-chevron">▶</span> Request details
               </div>
               <div class="section-content">
+                <table class="req-details">
+                  <tr><td class="req-label">URL</td><td class="req-value"><code>{{$step.URL}}</code></td></tr>
+                  {{if $step.Query}}
+                  <tr><td class="req-label">Query</td><td class="req-value">
+                    {{range $k, $v := $step.Query}}<span class="req-param">{{$k}}={{$v}}</span>{{end}}
+                  </td></tr>
+                  {{end}}
+                  {{if $step.Headers}}
+                  <tr><td class="req-label">Headers</td><td class="req-value">
+                    {{range $k, $v := $step.Headers}}<span class="req-header"><span class="req-header-key">{{$k}}</span>: <span class="req-header-val">{{$v}}</span></span>{{end}}
+                  </td></tr>
+                  {{end}}
+                </table>
+                {{if $step.RequestBody}}
+                <div class="req-body-label">Body</div>
                 <pre class="code-block">{{$step.RequestBody}}</pre>
+                {{end}}
               </div>
             </div>
-            {{end}}
 
             <!-- Response body -->
             {{if $step.ResponseBody}}
