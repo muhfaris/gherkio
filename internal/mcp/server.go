@@ -109,6 +109,25 @@ func (s *Server) handleListTools(id interface{}, params json.RawMessage) {
 				InputSchema: InputSchema{Type: "object", Properties: map[string]interface{}{}},
 			},
 			{
+				Name:        "use_project",
+				Description: "Switch the active Gherkio project directory. Useful when working with multiple projects without re-initializing.",
+				InputSchema: InputSchema{
+					Type: "object",
+					Properties: map[string]interface{}{
+						"path": map[string]interface{}{
+							"type":        "string",
+							"description": "Absolute or relative path to the Gherkio project directory to switch to.",
+						},
+					},
+					Required: []string{"path"},
+				},
+			},
+			{
+				Name:        "get_config",
+				Description: "View the parsed contents of .gherkio/config.yaml for the active project.",
+				InputSchema: InputSchema{Type: "object", Properties: map[string]interface{}{}},
+			},
+			{
 				Name:        "list_tests",
 				Description: "Scan and retrieve a list of all Gherkio test scenarios (.yaml) with their step counts and scenario names.",
 				InputSchema: InputSchema{Type: "object", Properties: map[string]interface{}{}},
@@ -475,7 +494,7 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 		return
 	}
 
-	if s.projectDir == "" && call.Name != "get_project_info" && call.Name != "init_project" && call.Name != "convert_curl_to_yaml" && call.Name != "get_dsl_variables" && call.Name != "get_dsl_spec" && call.Name != "get_dsl_matchers" {
+	if s.projectDir == "" && call.Name != "get_project_info" && call.Name != "use_project" && call.Name != "get_config" && call.Name != "init_project" && call.Name != "convert_curl_to_yaml" && call.Name != "get_dsl_variables" && call.Name != "get_dsl_spec" && call.Name != "get_dsl_matchers" {
 		// MCP capability check: let LLM know we are outside of a Gherkio workspace
 		s.writeToolError(id, "Gherkio project not initialized in this directory. Call 'init_project' or configure workspace.")
 		return
@@ -518,6 +537,45 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 		}
 		data, _ := json.MarshalIndent(meta, "", "  ")
 		s.writeToolResponse(id, string(data))
+
+	case "use_project":
+		pathArg, _ := call.Arguments["path"].(string)
+		if pathArg == "" {
+			s.writeToolError(id, "Missing required argument 'path'")
+			return
+		}
+		var targetDir string
+		if filepath.IsAbs(pathArg) {
+			targetDir = pathArg
+		} else if s.projectDir != "" {
+			targetDir = filepath.Join(s.projectDir, pathArg)
+		} else {
+			targetDir = pathArg
+		}
+		// Verify the target directory has a .gherkio/config.yaml
+		configPath := filepath.Join(targetDir, ".gherkio", "config.yaml")
+		if _, err := os.Stat(configPath); os.IsNotExist(err) {
+			s.writeToolError(id, fmt.Sprintf("No Gherkio project found at %s (missing .gherkio/config.yaml)", targetDir))
+			return
+		}
+		s.projectDir = targetDir
+		s.writeToolResponse(id, fmt.Sprintf("✓ Switched to Gherkio project at %s", targetDir))
+
+	case "get_config":
+		configPath := filepath.Join(s.projectDir, ".gherkio", "config.yaml")
+		data, err := os.ReadFile(configPath)
+		if err != nil {
+			s.writeToolError(id, fmt.Sprintf("Failed to read config: %v", err))
+			return
+		}
+		// Parse YAML to return structured config
+		var cfg model.Config
+		if err := yaml.Unmarshal(data, &cfg); err != nil {
+			s.writeToolError(id, fmt.Sprintf("Failed to parse config: %v", err))
+			return
+		}
+		out, _ := json.MarshalIndent(cfg, "", "  ")
+		s.writeToolResponse(id, string(out))
 
 	case "list_tests":
 		meta, err := project.GetMeta(s.projectDir)
@@ -610,12 +668,6 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 			return
 		}
 
-		var tf model.TestFile
-		if err := yaml.Unmarshal([]byte(scenarioYaml), &tf); err != nil {
-			s.writeToolError(id, fmt.Sprintf("Invalid YAML structure: %v", err))
-			return
-		}
-
 		meta, err := project.GetMeta(s.projectDir)
 		if err != nil {
 			s.writeToolError(id, fmt.Sprintf("Failed to get project info: %v", err))
@@ -623,7 +675,55 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 		}
 
 		fullPath := s.resolvePath(path)
-		err = teststore.UpdateTest(fullPath, &tf, meta.SchemasDir)
+
+		// Read existing file for deep merge
+		existingData, err := os.ReadFile(fullPath)
+		if err != nil {
+			s.writeToolError(id, fmt.Sprintf("Failed to read existing test file: %v", err))
+			return
+		}
+
+		var existing model.TestFile
+		if err := yaml.Unmarshal(existingData, &existing); err != nil {
+			s.writeToolError(id, fmt.Sprintf("Failed to parse existing test file: %v", err))
+			return
+		}
+
+		// Parse which top-level keys are present in the incoming YAML
+		var rawIncoming map[string]interface{}
+		if err := yaml.Unmarshal([]byte(scenarioYaml), &rawIncoming); err != nil {
+			s.writeToolError(id, fmt.Sprintf("Invalid YAML structure: %v", err))
+			return
+		}
+
+		var incoming model.TestFile
+		if err := yaml.Unmarshal([]byte(scenarioYaml), &incoming); err != nil {
+			s.writeToolError(id, fmt.Sprintf("Invalid YAML structure: %v", err))
+			return
+		}
+
+		// Deep merge: only apply fields that are explicitly present in incoming YAML
+		merged := existing
+		if _, ok := rawIncoming["scenario"]; ok {
+			merged.Scenario = incoming.Scenario
+		}
+		if _, ok := rawIncoming["description"]; ok {
+			merged.Description = incoming.Description
+		}
+		if _, ok := rawIncoming["tags"]; ok {
+			merged.Tags = incoming.Tags
+		}
+		if _, ok := rawIncoming["setup"]; ok {
+			merged.Setup = incoming.Setup
+		}
+		if _, ok := rawIncoming["steps"]; ok {
+			merged.Steps = incoming.Steps
+		}
+		if _, ok := rawIncoming["teardown"]; ok {
+			merged.Teardown = incoming.Teardown
+		}
+
+		err = teststore.UpdateTest(fullPath, &merged, meta.SchemasDir)
 		if err != nil {
 			s.writeToolError(id, fmt.Sprintf("Failed to update test: %v", err))
 			return
