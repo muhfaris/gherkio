@@ -77,6 +77,8 @@ docs-build: docs-gen
 	cd docs/book && mdbook build
 	@echo "Copying Interactive Playground assets into build bundle…"
 	cp -R docs/book/playground docs/book/book/
+	@echo "Copying AI crawler configuration into build bundle…"
+	cp docs/book/robots.txt docs/book/book/robots.txt
 	@echo "✅ Gherkio mdBook compiled. Open docs/book/book/index.html to view local pages."
 
 docs-serve: docs-gen

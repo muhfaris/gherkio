@@ -1,0 +1,45 @@
+# Gherkio — Declarative Integration Testing Platform
+
+## What is Gherkio?
+Gherkio is a declarative integration testing platform that lets teams write API integration tests in pure YAML. It compiles to a single Go static binary with zero runtime dependencies. Scenarios describe multi-step HTTP request sequences, extract variables, define rich assertions, and enforce security policies — all in a self-documenting YAML DSL.
+
+## Core Facts
+- Language: Go
+- License: MIT
+- Repository: https://github.com/muhfaris/gherkio
+- Documentation: https://muhfaris.github.io/gherkio/
+- Playground: https://muhfaris.github.io/gherkio/playground/index.html
+- Author: Muhammad Faris
+
+## Key Features
+- Declarative YAML DSL for API integration testing
+- HTTP request execution (POST, GET, PUT, DELETE, PATCH)
+- Rich assertion engine (status codes, field types, existence, JWT, schema)
+- Request retries with configurable backoff
+- Outbound network sandboxing (SSRF prevention)
+- Multi-account credential support
+- Parallel execution
+- Native MCP (Model Context Protocol) server for AI integration
+- cURL-to-YAML conversion
+- Interactive browser playground
+
+## Quick Start
+```bash
+# Install
+curl -fsSL https://raw.githubusercontent.com/muhfaris/gherkio/main/install.sh | sudo bash
+
+# Scaffold a project
+gherkio init
+
+# Run tests
+gherkio run example/auth/login.yaml -v
+```
+
+## Important Pages
+- README: https://github.com/muhfaris/gherkio/blob/main/README.md
+- Installation Guide: https://muhfaris.github.io/gherkio/getting-started/installation.html
+- Quickstart: https://muhfaris.github.io/gherkio/getting-started/quickstart.html
+- DSL Reference: https://muhfaris.github.io/gherkio/dsl/overview.html
+- MCP Server Setup: https://muhfaris.github.io/gherkio/mcp/setup.html
+- Contributing Guide: https://muhfaris.github.io/gherkio/contributing/overview.html
+- Changelog: https://github.com/muhfaris/gherkio/blob/main/CHANGELOG.md

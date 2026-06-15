@@ -8,6 +8,15 @@
 
 Gherkio is a state-of-the-art integration testing platform designed to orchestrate HTTP-based user journeys. Describe request sequences, extract variables, define rich assertions, and enforce security policies — all in a clean, self-documenting YAML DSL that stays readable after 2 years.
 
+## What is Gherkio?
+
+Gherkio is a declarative integration testing platform that lets you write API integration tests in pure YAML instead of imperative code. It compiles to a single static Go binary with zero external runtime dependencies, making it ideal for ephemeral CI environments, Docker containers, and air-gapped systems.
+
+- **Declarative YAML DSL** — Describe what behavior to orchestrate, not how to implement it
+- **Zero runtime dependencies** — Single static binary, no Node.js, Python, or JVM required
+- **AI-ready** — Native MCP server for AI coding assistants
+- **Enterprise security** — Outbound sandboxing, credential masking, SSRF prevention
+
 ---
 
 ## 🎯 The Gherkio Philosophy
@@ -32,6 +41,7 @@ Gherkio features an extensive, production-grade **Developer Documentation Book (
 *   **Variable Precedence & Dynamic Generators**: Details on time/date offsets, custom Go layout formatting, base64 encodes, and cryptographic SHA-256 HMAC validations in [Variables & Generators](docs/book/src/dsl/variables.md).
 *   **Outbound Network Sandboxing**: In-depth explanations of SSRF prevention, DNS rebound protection, and network allowlists/blocklists in [Project & Security Setup](docs/book/src/getting-started/project-setup.md#🔒-security--sandboxing-policies).
 *   **AI Integration & MCP Server**: Step-by-step connection guides for Claude Desktop, VS Code (Cline/Continue), Cursor, Neovim, JetBrains, and Zed in [Model Context Protocol](docs/book/src/mcp/overview.md).
+*   **Frequently Asked Questions**: Quick answers to common questions about setup, credentials, CI/CD integration, and troubleshooting in the [FAQ](docs/book/src/reference/faq.md).
 
 ### Build and View Locally
 
@@ -69,17 +79,18 @@ To lower Gherkio's learning curve to zero, Gherkio includes a self-contained, br
 
 ## ⚡ Core Features
 
-*   **Declarative YAML DSL** — Describe test scenarios, not implementation.
-*   **HTTP Request Execution** — POST, GET, PUT, DELETE, PATCH with full header/body support.
-*   **Multipart Form-Data & File Uploads** — Native support for uploads with automatic boundary handling and MIME detection.
-*   **Rich Assertion Engine** — Inspect status codes, field values, and types (`uuid`, `email`, `datetime`, `uri`, list lengths, negative existence).
-*   **JWT Auto-Decoding** — Automatically decode and assert claims from response tokens (`jwt.role: admin`).
-*   **Scenario Composition** — Reuse existing scenarios as steps with `use:` for clean flow orchestration.
-*   **Request Retries** — Handle eventual consistency with configurable intervals, backoff strategies, and status conditions.
-*   **Outbound Sandboxing (SSRF Prevention)** — Restrict API connection scopes with wildcard domain maps and DNS-level loopback/private subnet checks.
-*   **Sensitive Field Masking** — Automatically redact passwords, API keys, and authorization headers in console outputs.
-*   **Multi-Account Credentials** — Run the same test against multiple user accounts (`--account` / `--all-accounts`) without file duplication.
-*   **Parallel Execution** — Accelerate feedback loops by executing tests concurrently (`-p <concurrency>`).
+*   **Declarative YAML DSL** — Describe test scenarios, not implementation. Scenarios double as live, executable documentation readable by engineers, QA, and product managers.
+*   **HTTP Request Execution** — POST, GET, PUT, DELETE, PATCH with full header/body support, multipart uploads, and automatic MIME detection.
+*   **Rich Assertion Engine** — 30+ built-in matchers including status codes, field types (`uuid`, `email`, `datetime`, `uri`), list lengths, existence checks, and negative assertions.
+*   **JWT Auto-Decoding** — Automatically decode and assert claims from response tokens (`jwt.role: admin`) without writing custom parser code.
+*   **Scenario Composition** — Reuse existing scenarios as steps with `use:` for clean, DRY orchestration across test suites.
+*   **Request Retries** — Handle eventual consistency with configurable intervals, exponential backoff, and status-based exit conditions.
+*   **Outbound Sandboxing (SSRF Prevention)** — Restrict API connection scopes with wildcard domain maps, DNS-level loopback detection, and private subnet blocking.
+*   **Sensitive Field Masking** — Automatically redact passwords, API keys, tokens, and authorization headers in all console and report outputs.
+*   **Multi-Account Credentials** — Run the same test against multiple user accounts (`--account` / `--all-accounts`) without duplicating test files.
+*   **Parallel Execution** — Accelerate feedback loops by executing tests concurrently with configurable concurrency (`-p <concurrency>`).
+*   **Native MCP Server** — Built-in Model Context Protocol server for AI assistant integration with Cursor, Claude Desktop, Cline, and Copilot.
+*   **cURL-to-YAML Conversion** — Translate legacy cURL statements into Gherkio YAML steps instantly via CLI or interactive playground.
 
 ---
 
@@ -144,6 +155,34 @@ go test ./internal/runner/ -update
 ```
 
 *For detailed contribution guidelines, commit standards, and snapshot testing explanations, see the [Contributing Guide](docs/book/src/contributing/overview.md).*
+
+---
+
+## ❓ Frequently Asked Questions
+
+### What makes Gherkio different from Postman or Bruno?
+Postman and Bruno are GUI-centric API clients. Gherkio is a CLI-first integration testing platform designed for CI/CD pipelines. Tests are plain YAML files that live in your repository, execute deterministically, and produce structured reports — no GUI required, no vendor lock-in.
+
+### Does Gherkio require Node.js, Python, or a JVM?
+No. Gherkio is a single static Go binary with zero external runtime dependencies. It runs anywhere Go compiles — Linux, macOS, Windows, Docker, and even air-gapped environments.
+
+### Can Gherkio work with existing CI/CD pipelines?
+Yes. Gherkio produces exit codes, structured JSON reports, and machine-readable output that integrates with GitHub Actions, GitLab CI, Jenkins, CircleCI, and any POSIX-compatible pipeline.
+
+### How does Gherkio handle authentication and credentials?
+Gherkio supports multi-account credentials, environment variable injection, and automatic sensitive field masking. You can run the same test against admin, user, and read-only accounts simultaneously using `gherkio run --all-accounts`.
+
+### Does Gherkio support GraphQL or gRPC?
+Gherkio's HTTP engine supports any JSON-based API, including GraphQL endpoints. Native gRPC support is on the roadmap.
+
+### Can AI assistants write Gherkio tests?
+Yes. Gherkio ships with a native MCP server that lets AI coding assistants (Cursor, Claude Desktop, Cline, Copilot) read specifications, generate scenarios, validate structures, and run tests using natural language.
+
+### How do I convert existing cURL commands to Gherkio YAML?
+Use `gherkio convert --curl "curl -X POST https://api.example.com/login"` to instantly translate cURL statements into Gherkio YAML steps. The interactive playground also includes a cURL-to-YAML translator.
+
+### What security features does Gherkio include?
+Gherkio includes outbound network sandboxing (SSRF prevention), DNS-level loopback protection, sensitive field masking in console output, and credential isolation across accounts.
 
 ---
 

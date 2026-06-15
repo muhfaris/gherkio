@@ -1,8 +1,8 @@
 [book]
 title = "Gherkio Documentation"
-authors = ["Faris"]
+authors = ["Muhammad Faris"]
 language = "en"
-description = "Declarative Integration Testing Platform — Documentation"
+description = "Gherkio is a declarative API integration testing platform. Write tests in YAML, run as a static Go binary with zero dependencies. Features native MCP server for AI assistants, SSRF prevention sandboxing, and structured CI/CD reporting."
 
 [output.html]
 additional-js = ["mermaid.min.js", "mermaid-init.js"]
