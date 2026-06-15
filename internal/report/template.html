@@ -964,6 +964,16 @@
             </div>
             {{end}}
 
+            {{if $step.Warnings}}
+            <!-- Step Warnings -->
+            <div style="background: var(--warn-bg); border: 0.5px solid var(--warn-text); border-radius: var(--radius); padding: 12px; margin-bottom: 12px;">
+              <div style="font-weight: 600; font-size: 13px; color: var(--warn-text); margin-bottom: 4px;">⚠ Save Warnings</div>
+              {{range $step.Warnings}}
+              <div style="font-family: var(--mono); font-size: 12px; color: var(--warn-text); padding: 2px 0;">⚠ {{.}}</div>
+              {{end}}
+            </div>
+            {{end}}
+
             <!-- Retry History -->
             {{if $step.RetryHistory}}
             <div class="section" id="retry-{{$i}}">
