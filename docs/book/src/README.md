@@ -1,6 +1,8 @@
-# Gherkio
+# Gherkio Documentation
 
 > **The Declarative Integration Testing Platform** — Build bulletproof API test suites in pure YAML. No boilerplate, no runtime compilation, zero custom glue-code required.
+
+Gherkio is a declarative integration testing platform that compiles to a single static Go binary. Teams use it to write API integration tests by describing HTTP request sequences, assertions, and variable extractions in pure YAML — no imperative code required. It features a native MCP server for AI assistant integration, outbound network sandboxing for security, and structured reporting for CI/CD pipelines.
 
 ---
 
@@ -62,3 +64,4 @@ To learn Gherkio systematically, follow our structured, progressive onboarding c
 | **3** | 📁 **[Getting Started: Project & Folder Setup](getting-started/project-setup.md)** | Master config files, environments overrides, and microservice hosts mapping. |
 | **4** | 📝 **[Tutorial: Build Your First Test](getting-started/first-test-tutorial.md)** | Step-by-step walkthrough detailing request modeling, data assertions, and variable saving. |
 | **5** | 🎨 **[Interactive Browser Playground](getting-started/playground.md)** | Visualize test steps dynamically and convert legacy cURL statements instantly. |
+| **6** | ❓ **[Frequently Asked Questions](reference/faq.md)** | Common questions about setup, credentials, CI/CD, and troubleshooting. |

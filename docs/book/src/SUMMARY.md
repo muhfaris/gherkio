@@ -49,6 +49,7 @@
   - [Resources Reference](mcp/resources.md)
   - [LLM Integration](mcp/llm-integration.md)
 
+- [FAQ](reference/faq.md)
 - [Reference](reference/configuration.md)
   - [Environments](reference/environments.md)
   - [Credentials File](reference/credentials-file.md)
