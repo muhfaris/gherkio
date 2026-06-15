@@ -219,6 +219,13 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 			fmt.Printf("%s✗ failed\n", statusIndent)
 		}
 
+		// Display save warnings (do not affect pass/fail)
+		if len(step.Warnings) > 0 {
+			for _, w := range step.Warnings {
+				fmt.Printf("%s  ⚠ %s\n", statusIndent, w)
+			}
+		}
+
 		if step.RetryCount > 0 {
 			if stepPassed {
 				fmt.Printf("%s└─ retry: %d, last at retry %d\n", statusIndent, step.RetryCount, step.RetryCount)

@@ -34,6 +34,7 @@ type StepResult struct {
 	Response     *ResponseInfo          `json:"response"`
 	Assertions   []AssertionResult      `json:"assertions"`
 	SavedVars    map[string]interface{} `json:"savedVars,omitempty"`
+	Warnings     []string                     `json:"warnings,omitempty"`
 	Duration     time.Duration          `json:"duration"`
 	Error        string                 `json:"error,omitempty"`
 	RetryCount   int                    `json:"retryCount,omitempty"`
@@ -1076,7 +1077,11 @@ func resolvePath(data interface{}, path string) (interface{}, bool) {
 //   - response.<field>      → backward-compatible alias for body.<field>
 //   - request.body.<field>  → interpolated request body
 //   - jwt.<claim>           → decoded JWT claim
-func extractValues(vars map[string]interface{}, save map[string]string, resp *ResponseInfo, jwtClaims map[string]interface{}, requestBody interface{}) {
+//
+// Returns a list of warning messages for save paths that could not be resolved.
+func extractValues(vars map[string]interface{}, save map[string]string, resp *ResponseInfo, jwtClaims map[string]interface{}, requestBody interface{}) []string {
+	var warnings []string
+
 	for name, path := range save {
 		// Interpolate the path to resolve variables like $randomInt(1,10) or $previousVar
 		// before using it as a path expression. In practice the save key acts as the
@@ -1086,6 +1091,7 @@ func extractValues(vars map[string]interface{}, save map[string]string, resp *Re
 			path = interpolatedPath
 		}
 		// If interpolation fails (e.g. undefined var), fall back to the original path
+		var resolved bool
 
 		switch {
 		case strings.HasPrefix(path, "jwt."):
@@ -1093,6 +1099,7 @@ func extractValues(vars map[string]interface{}, save map[string]string, resp *Re
 			val, found := resolvePath(jwtClaims, claimPath)
 			if found {
 				vars[name] = val
+				resolved = true
 			}
 
 		case strings.HasPrefix(path, "response.body."):
@@ -1102,6 +1109,7 @@ func extractValues(vars map[string]interface{}, save map[string]string, resp *Re
 				val, found := resolvePath(resp.Parsed, bodyPath)
 				if found {
 					vars[name] = val
+					resolved = true
 				}
 			}
 
@@ -1112,6 +1120,7 @@ func extractValues(vars map[string]interface{}, save map[string]string, resp *Re
 				val, found := resolvePath(resp.Parsed, bodyPath)
 				if found {
 					vars[name] = val
+					resolved = true
 				}
 			}
 
@@ -1123,6 +1132,7 @@ func extractValues(vars map[string]interface{}, save map[string]string, resp *Re
 					val, found := resolvePath(parsed, bodyPath)
 					if found {
 						vars[name] = val
+						resolved = true
 					}
 				}
 			}
@@ -1134,10 +1144,17 @@ func extractValues(vars map[string]interface{}, save map[string]string, resp *Re
 				val, found := resolvePath(resp.Parsed, bodyPath)
 				if found {
 					vars[name] = val
+					resolved = true
 				}
 			}
 		}
+
+		if !resolved {
+			warnings = append(warnings, fmt.Sprintf("save: %s — path %q not found in response", name, path))
+		}
 	}
+
+	return warnings
 }
 
 // decodeJWT parses the JWT payload without verification and returns the claims.

@@ -506,7 +506,10 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 
 		// Extract variables
 		if lastResp != nil {
-			extractValues(vars, step.Save, lastResp, lastJwtClaims, interpolatedRequest.Body)
+			warnings := extractValues(vars, step.Save, lastResp, lastJwtClaims, interpolatedRequest.Body)
+			if len(warnings) > 0 {
+				stepResult.Warnings = warnings
+			}
 		}
 
 		// Track saved variable values for display

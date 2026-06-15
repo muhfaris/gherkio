@@ -52,6 +52,7 @@ type ReportStep struct {
 	Passed       bool
 	Assertions   []ReportAssertion
 	Error        string
+	Warnings     []string `json:"warnings,omitempty"`
 	RetryCount   int
 	RetryHistory []RetryEntry
 	Role         string `json:"role,omitempty"` // "setup", "steps", "teardown"
