@@ -198,6 +198,7 @@ func MapResultToReportData(result *runner.RunResult, env string, maskFields []st
 			Warnings:     step.Warnings,
 			RetryCount:   step.RetryCount,
 			RetryHistory: retryHistory,
+			SavedVars:    step.SavedVars,
 			Role:         step.Role,
 		})
 		stepIndex++
