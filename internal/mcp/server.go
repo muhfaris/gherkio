@@ -238,13 +238,13 @@ func (s *Server) handleListTools(id interface{}, params json.RawMessage) {
 							"type":        "string",
 							"description": "Optional account name from environments credentials to use for dynamic variable injection. Not needed if the test uses $accounts.<name>.<field> syntax directly.",
 						},
-						"step": map[string]interface{}{
+"step": map[string]interface{}{
 							"type":        "integer",
-							"description": "Step index to execute in isolation (0-indexed). Defaults to -1 (run entire scenario or section if section is set).",
+							"description": "Step index to execute in isolation (0-indexed). Defaults to -1 (run entire scenario). When 'step' is set without 'section', defaults to the 'steps' section (use 'section' to target setup/teardown steps).",
 						},
 						"section": map[string]interface{}{
 							"type":        "string",
-							"description": "Section to run (setup, steps, teardown). When set without step, runs ALL steps in that section only.",
+							"description": "Section to run (setup, steps, teardown). When set without 'step', runs ALL steps in that section only. When combined with 'step', targets a specific step within that section (e.g. section=setup, step=0 runs the first setup step).",
 						},
 						"dryRun": map[string]interface{}{
 							"type":        "boolean",
@@ -254,9 +254,9 @@ func (s *Server) handleListTools(id interface{}, params json.RawMessage) {
 							"type":        "boolean",
 							"description": "Show full request/response payloads and resolved variables. Defaults to true.",
 						},
-						"until": map[string]interface{}{
+"until": map[string]interface{}{
 							"type":        "string",
-							"description": "Execute steps until a specific target, e.g. 'steps:1' or '2'.",
+							"description": "Execute steps until a specific target. Format: '<section>:<index>' (e.g. 'steps:2' runs steps 0,1,2; 'setup:0' runs first setup step only). Or just a raw index '2' to slice the overall steps array. Sections: setup, steps, teardown.",
 						},
 					},
 					Required: []string{"path"},
