@@ -136,7 +136,7 @@ type PathInfo struct {
 // This is the single source of truth — used by MCP resources and documentation.
 func GetPathInfo() []PathInfo {
 	info := []PathInfo{
-		{Path: "body.<field>", Description: "Response JSON body field", Usage: "body.token, body.data.0.name"},
+{Path: "body.<field>", Description: "Response JSON body field — use bracket notation for array indexing (e.g. body.items[0].name, body.data[2].id)", Usage: "body.token, body.items[0].name"},
 		{Path: "headers.<name>", Description: "Response header", Usage: "headers.content-type"},
 		{Path: "jwt.<claim>", Description: "Decoded JWT claim (auto-decoded from body.token or body.access_token)", Usage: "jwt.role, jwt.sub"},
 		{Path: "status", Description: "HTTP status code", Usage: "status"},

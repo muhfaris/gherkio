@@ -125,7 +125,7 @@ Use setup, steps, and teardown blocks strategically:
 - **use**: (String, Conditional) Path to compose/execute another scenario. Mutually exclusive with request.
 - **request**: (Request object, Conditional) HTTP Request config. Mutually exclusive with use.
 - **expect**: (Expect object, Optional) Response assertions.
-- **save**: (Map of name:path, Optional) Extract dynamic values to context variables. Paths support variable interpolation (e.g. 'body.data[$randomInt(0,9)].id').
+- **save**: (Map of name:path, Optional) Extract dynamic values to context variables. Paths support variable interpolation (e.g. 'body.data[$randomInt(0,9)].id') and **bracket notation** for array indexing (e.g. 'body.users[0].id').
 - **timing**: (TimingConfig, Optional) Execution latency check.
 
 ### Request Config
@@ -135,6 +135,15 @@ Use setup, steps, and teardown blocks strategically:
 - **query**: (Map of string:string, Optional) Query parameters appended to the URL. Supports variable interpolation in values.
 - **headers**: (Map of string:string, Optional) Custom HTTP headers. Supports variable interpolation in values.
 - **body**: (Free-form object/string, Optional) Request body content. Supports variable interpolation in string values.
+- **query**: (Map of string:string, Optional) Query parameters appended to the URL. Supports variable interpolation in values. Example: 'status: available' generates ?status=available.
+- **multipart**: (MultipartConfig, Optional) Multipart form-data for file uploads and form fields.
+  - **fields**: (Map of string:string) Text form fields (e.g. 'username: $user', 'role: admin'). Supports variable interpolation.
+  - **files**: (Map of string:item) File uploads. Each item supports:
+    - **path**: (String, Required) Path to the file (relative to project root or absolute).
+    - **contentType**: (String, Optional) MIME type (auto-detected if omitted).
+    - **filename**: (String, Optional) Custom filename sent in the Content-Disposition header.
+  Simple syntax: 'avatar: fixtures/avatar.png' (path only).
+  Advanced syntax: 'document: {path: doc.pdf, contentType: application/pdf, filename: report.pdf}'.
 - **transform**: (Map of path:ProjectionConfig, Optional) Declarative collections projected into the request payload.
 
 
@@ -202,11 +211,19 @@ You can coerce field types during selection by wrapping variable paths in castin
 
 ### Assertions (Expect)
 - **status**: (Integer) Expected HTTP status (e.g. 'status: 200').
-- **body.<path>**: Assert on JSON body fields using a matcher or literal value (e.g. 'body.id: exists', 'body.name: Emily').
+- **body.<path>**: Assert on JSON body fields using a matcher or literal value. Use **bracket notation** for array indexing (e.g. 'body.items[0].id: exists', 'body.data[1].name: Emily').
 - **headers.<name>**: Assert on response header values (e.g. 'headers.content-type: contains application/json').
 - **jwt.<claim>**: Assert on decoded JWT claims (e.g. 'jwt.role: admin').
 - **schema**: Validate full body against a YAML schema file in .gherkio/schemas/ (e.g. 'schema: user-profile').
   Negative form: 'schema: not <name>' asserts the response does NOT match the schema.
+
+**Array Indexing (Path Syntax):**
+Access array elements using square brackets with a numeric index:
+- **body.items[0]** — First element of the items array
+- **body.data[2].id** — id field of the third element in the data array
+- **body.users[1].address.city** — Nested path through array
+- **save: firstUserId: body.users[0].id** — Save the first user's id
+This works in both **expect** and **save** paths. The index must be a non-negative integer.
 
 **Available Matchers:**
 - 'exists' / 'not exists' — Field present / absent
@@ -238,6 +255,10 @@ You can coerce field types during selection by wrapping variable paths in castin
       body.role: admin          # literal equality
       body.count: gt 10         # numeric > 10
       body.name: contains John
+      body.items[0].id: exists  # first item in array has an id
+      body.items[0].title: string # first item's title is a string
+      body.users[2].email: email  # third user's email is valid
+      body.tags: empty          # array, string, or object is empty
       count(body.items): 5      # exactly 5 items
       count(body.items).gte: 1  # at least 1 item (has data)
       schema: user-profile
@@ -350,6 +371,66 @@ steps:
     save:
       productId: body.id
       sku: body.sku
+
+---
+# Array access with bracket notation: access specific array elements
+# Use body.items[0] for first element, body.data[2].field for third element
+scenario: array indexing with bracket notation
+
+steps:
+  - request:
+      method: GET
+      url: /products
+    expect:
+      status: 200
+      body.products: array
+      body.products[0].id: exists
+      body.products[0].title: string
+      body.products[1].price: number
+    save:
+      firstProductId: body.products[0].id
+      secondProductTitle: body.products[1].title
+
+---
+# Query parameters example: filter results with query params
+scenario: query parameters with filter and sort
+
+steps:
+  - request:
+      method: GET
+      url: /products/search
+      query:
+        q: "phone"
+        limit: "5"
+        sortBy: "price"
+        order: "asc"
+    expect:
+      status: 200
+      body.products: array
+      count(body.products).gte: 1
+
+---
+# Multipart upload example: file upload with form fields
+scenario: upload avatar with multipart form-data
+
+steps:
+  - request:
+      method: POST
+      url: /users/1/avatar
+      headers:
+        Authorization: Bearer $accessToken
+      multipart:
+        fields:
+          description: "Profile avatar"
+          userId: "1"
+        files:
+          avatar:
+            path: fixtures/avatar.png
+            contentType: image/png
+            filename: my-avatar.png
+    expect:
+      status: 200
+      body.url: uri
 
 ---
 # Lifecycle example: robust setup, steps, and guaranteed teardown
