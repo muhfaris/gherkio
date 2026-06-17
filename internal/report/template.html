@@ -503,6 +503,33 @@
         margin-top: 2px;
       }
 
+      /* ── Saved Variables ── */
+      .saved-vars {
+        margin-top: 8px;
+      }
+      .saved-var-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 6px 0;
+        border-bottom: 0.5px solid var(--border);
+        font-size: 13px;
+      }
+      .saved-var-item:last-child {
+        border-bottom: none;
+      }
+      .saved-var-key {
+        font-family: var(--mono);
+        font-weight: 600;
+        color: var(--accent);
+        min-width: 140px;
+      }
+      .saved-var-val {
+        font-family: var(--mono);
+        color: var(--text);
+        word-break: break-all;
+      }
+
       /* ── Response info row ── */
       .response-info {
         display: flex;
@@ -884,6 +911,25 @@
               </div>
             </div>
             {{end}}
+
+            {{if $step.SavedVars}}
+            <!-- Saved Variables -->
+            <div class="section open" id="saved-s{{$sIdx}}-{{$i}}">
+              <div class="section-title" onclick="toggleSection('saved-s{{$sIdx}}-{{$i}}')">
+                <span class="section-chevron">▶</span> Saved Variables ({{len $step.SavedVars}})
+              </div>
+              <div class="section-content">
+                <div class="saved-vars">
+                  {{range $k, $v := $step.SavedVars}}
+                  <div class="saved-var-item">
+                    <span class="saved-var-key">{{$k}}</span>
+                    <span class="saved-var-val">{{$v}}</span>
+                  </div>
+                  {{end}}
+                </div>
+              </div>
+            </div>
+            {{end}}
           </div>
         </div>
         {{end}}
@@ -1082,6 +1128,25 @@
                       <div class="assert-detail">{{.Detail}}</div>
                       {{end}}
                     </div>
+                  </div>
+                  {{end}}
+                </div>
+              </div>
+            </div>
+            {{end}}
+
+            {{if $step.SavedVars}}
+            <!-- Saved Variables -->
+            <div class="section open" id="saved-{{$i}}">
+              <div class="section-title" onclick="toggleSection('saved-{{$i}}')">
+                <span class="section-chevron">▶</span> Saved Variables ({{len $step.SavedVars}})
+              </div>
+              <div class="section-content">
+                <div class="saved-vars">
+                  {{range $k, $v := $step.SavedVars}}
+                  <div class="saved-var-item">
+                    <span class="saved-var-key">{{$k}}</span>
+                    <span class="saved-var-val">{{$v}}</span>
                   </div>
                   {{end}}
                 </div>

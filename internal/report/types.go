@@ -47,6 +47,7 @@ type ReportStep struct {
 	TimingFailed bool
 	RequestID    string
 	CurlCommand  string
+	SavedVars    map[string]interface{} `json:"savedVars,omitempty"`
 	RequestBody  string
 	ResponseBody string
 	Passed       bool
