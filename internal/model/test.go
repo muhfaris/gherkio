@@ -28,6 +28,7 @@ type TimingConfig struct {
 type Step struct {
 	Name    string            `yaml:"name,omitempty" json:"name,omitempty" jsonschema:"description=Human-readable name for this step (shown in output instead of method+URL)"`
 	Use     string            `yaml:"use,omitempty" json:"use,omitempty" jsonschema:"description=References another scenario file to execute"`
+	With    map[string]string `yaml:"with,omitempty" json:"with,omitempty" jsonschema:"description=Variable overrides passed into a 'use' step (e.g. with: {username: $accounts.alpha.email})"`
 	Request Request           `yaml:"request,omitempty" json:"request,omitempty" jsonschema:"description=HTTP request definition"`
 	Retry   *RetryConfig      `yaml:"retry,omitempty" json:"retry,omitempty" jsonschema:"description=Retry configuration for the step"`
 	Expect  Expect            `yaml:"expect,omitempty" json:"expect,omitempty" jsonschema:"description=Assertions for the step response"`

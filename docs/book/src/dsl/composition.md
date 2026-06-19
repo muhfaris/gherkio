@@ -131,3 +131,60 @@ To protect runner performance and prevent system freezes:
 ### 4. Context Inheritance & Variables Bubbling
 *   Any dynamic variables or state captured (via the `save` keyword) inside a composed scenario are **automatically merged and bubbled up** into the parent scenario's execution context.
 *   Once a composed step finishes executing, all subsequent steps in the parent file have full access to its saved variables.
+
+---
+
+## ↔ Variable Overrides (`with:`)
+
+Sometimes you need to pass a value *into* a composed scenario, rather than just consuming values that bubble *out*. The `with:` block lets you inject temporary variables into the used scenario's context:
+
+```yaml
+- use: shared/lookup/status_claim.yaml
+  with:
+    PARENT_CLAIM_ISSUE_ID: $STATUS_APPROVED_ID
+```
+
+### How it works
+
+1. Each key in `with:` is **interpolated** against the current execution context before injection.
+2. The resolved values are injected as local variables into the used scenario for the duration of its execution.
+3. After the `use:` step completes, the **previous values are restored** — the override doesn't leak to subsequent steps.
+
+### Real-world example
+
+```yaml
+scenario: check claim status after approval
+
+setup:
+  - request:
+      method: POST
+      url: /auth/login
+      body:
+        username: $accounts.default.username
+        password: $accounts.default.password
+    expect:
+      status: 200
+    save:
+      STATUS_APPROVED_ID: body.approvedStatusId
+
+steps:
+  # Pass the approved status ID into a shared lookup scenario
+  - use: shared/lookup/status_claim.yaml
+    with:
+      PARENT_CLAIM_ISSUE_ID: $STATUS_APPROVED_ID
+
+  - request:
+      method: GET
+      url: /claims/$CLAIM_ID
+      headers:
+        Authorization: "Bearer ${adminToken}"
+    expect:
+      status: 200
+      body.status: Approved
+```
+
+### Notes
+
+- `with:` is **only valid on `use:` steps**. It cannot be combined with `request:`.
+- Values support full variable interpolation (`$var`, `${var:default}`, `$accounts.<name>.<field>`, built-in generators, etc.).
+- Overrides take precedence over any variables with the same name from the parent context, but only inside the used scenario.

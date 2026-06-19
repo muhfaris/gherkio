@@ -122,8 +122,9 @@ Use setup, steps, and teardown blocks strategically:
 
 ### Step Block
 - **name**: (String, Optional) Human-readable label for the step. Shown in test output instead of the default "METHOD /url".
-- **use**: (String, Conditional) Path to compose/execute another scenario. Mutually exclusive with request.
-- **request**: (Request object, Conditional) HTTP Request config. Mutually exclusive with use.
+|- **use**: (String, Conditional) Path to compose/execute another scenario. Mutually exclusive with request.
+|- **with**: (Map of string:string, Optional) Variable overrides injected into a 'use:' step. Values are interpolated against current context before injection. The used scenario sees these as local variables; original values are restored after the 'use:' completes. Only valid with 'use:'. Example: 'with: { PARENT_CLAIM_ISSUE_ID: $STATUS_APPROVED_ID }'
+|- **request**: (Request object, Conditional) HTTP Request config. Mutually exclusive with use.
 - **expect**: (Expect object, Optional) Response assertions.
 - **save**: (Map of name:path, Optional) Extract dynamic values to context variables. Paths support variable interpolation (e.g. 'body.data[$randomInt(0,9)].id') and **bracket notation** for array indexing (e.g. 'body.users[0].id').
 - **timing**: (TimingConfig, Optional) Execution latency check.
@@ -505,5 +506,39 @@ steps:
             question_id: $q.id
             # Conditionally map answer based on question type
             answer_value: "$if(q.is_answered, q.free_text_answer, q.default_answer)"
+
+---
+# Variable overrides with with: - pass context into a composed scenario
+# The with: block injects temporary variables into the used scenario
+scenario: compose with variable overrides
+
+setup:
+  - request:
+      method: POST
+      url: /auth/login
+      body:
+        username: $accounts.default.username
+        password: $accounts.default.password
+    expect:
+      status: 200
+    save:
+      STATUS_APPROVED_ID: body.approvedStatusId
+
+steps:
+  # The with: interpolates $STATUS_APPROVED_ID and injects it as
+  # $PARENT_CLAIM_ISSUE_ID inside status_claim.yaml.
+  # After the use completes, the original variable value is restored.
+  - use: shared/lookup/status_claim.yaml
+    with:
+      PARENT_CLAIM_ISSUE_ID: $STATUS_APPROVED_ID
+
+  - request:
+      method: GET
+      url: /claims/$CLAIM_ID
+      headers:
+        Authorization: Bearer ***
+    expect:
+      status: 200
+      body.status: Approved
 `
 }

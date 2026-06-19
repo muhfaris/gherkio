@@ -29,6 +29,7 @@ type RunConfig struct {
 	DryRun         bool                   // Preview without executing HTTP requests
 	Snapshot      SnapshotConfig          // Configuration for failure snapshots
 	Until          string                 // Execute steps until a specific target, e.g. "steps:1" or "2"
+	FailFast       bool                   // Stop executing remaining steps when a step fails
 }
 
 // RunResult holds the overall execution result.
@@ -133,7 +134,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 
 	// Execute setup steps first
 	if len(testFile.Setup) > 0 {
-		setupSteps, setupPass, setupFail, setupPassed := executeSteps(testFile.Setup, env, vars, cfg.ProjectDir, currentDir, 0, "setup", cfg.DryRun, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
+		setupSteps, setupPass, setupFail, setupPassed := executeSteps(testFile.Setup, env, vars, cfg.ProjectDir, currentDir, 0, "setup", cfg.DryRun, cfg.FailFast, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
 		for i := range setupSteps {
 			setupSteps[i].ScenarioName = testFile.Scenario
 			setupSteps[i].TestFile = cfg.TestPath
@@ -148,7 +149,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 
 	// Execute main steps (skip if setup failed)
 	if !setupFailed {
-		mainSteps, mainPass, mainFail, mainPassed := executeSteps(testFile.Steps, env, vars, cfg.ProjectDir, currentDir, 0, "steps", cfg.DryRun, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
+		mainSteps, mainPass, mainFail, mainPassed := executeSteps(testFile.Steps, env, vars, cfg.ProjectDir, currentDir, 0, "steps", cfg.DryRun, cfg.FailFast, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
 		for i := range mainSteps {
 			mainSteps[i].ScenarioName = testFile.Scenario
 			mainSteps[i].TestFile = cfg.TestPath
@@ -164,7 +165,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 	// Execute teardown steps (always, even if setup or steps failed)
 	// Teardown failures are recorded but don't affect overall pass/fail
 	if len(testFile.Teardown) > 0 {
-		teardownSteps, _, _, _ := executeSteps(testFile.Teardown, env, vars, cfg.ProjectDir, currentDir, 0, "teardown", cfg.DryRun, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
+		teardownSteps, _, _, _ := executeSteps(testFile.Teardown, env, vars, cfg.ProjectDir, currentDir, 0, "teardown", cfg.DryRun, cfg.FailFast, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
 		for i := range teardownSteps {
 			teardownSteps[i].ScenarioName = testFile.Scenario
 			teardownSteps[i].TestFile = cfg.TestPath
@@ -186,7 +187,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 }
 
 // executeSteps executes a list of steps. If dryRun is true, skips HTTP calls and produces preview output.
-func executeSteps(steps []model.Step, env *model.Environment, vars map[string]interface{}, projectDir string, currentDir string, depth int, role string, dryRun bool, sandbox *model.SandboxConfig, snapCfg SnapshotConfig, scenario string, testFile string) ([]StepResult, int, int, bool) {
+func executeSteps(steps []model.Step, env *model.Environment, vars map[string]interface{}, projectDir string, currentDir string, depth int, role string, dryRun bool, failFast bool, sandbox *model.SandboxConfig, snapCfg SnapshotConfig, scenario string, testFile string) ([]StepResult, int, int, bool) {
 	var stepResults []StepResult
 	totalPass := 0
 	totalFail := 0
@@ -247,8 +248,45 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 			}
 
 			usedCurrentDir := filepath.Dir(resolvedPath)
-			nestedSteps, nestedPass, nestedFail, _ := executeSteps(usedTest.Steps, env, vars, projectDir, usedCurrentDir, depth+1, role, dryRun, sandbox, snapCfg, scenario, testFile)
 
+			// Apply 'with' variable overrides before executing the used scenario
+			// Interpolate each value against current vars, inject into vars,
+			// and restore after the nested execution.
+			var restoredVars []struct {
+				name  string
+				value interface{}
+				exist bool
+			}
+			if step.With != nil {
+				for name, rawVal := range step.With {
+					interpolated, err := interpolateString(rawVal, vars)
+					if err != nil {
+						continue // skip overrides that fail to interpolate
+					}
+					oldVal, exists := vars[name]
+					restoredVars = append(restoredVars, struct {
+						name  string
+						value interface{}
+						exist bool
+					}{name: name, value: oldVal, exist: exists})
+					vars[name] = interpolated
+				}
+			}
+
+			nestedSteps, nestedPass, nestedFail, _ := executeSteps(usedTest.Steps, env, vars, projectDir, usedCurrentDir, depth+1, role, dryRun, failFast, sandbox, snapCfg, scenario, testFile)
+
+			// Restore previous variable values after the used scenario completes
+			if step.With != nil {
+				for _, rv := range restoredVars {
+					if rv.exist {
+						vars[rv.name] = rv.value
+					} else {
+						delete(vars, rv.name)
+					}
+				}
+			}
+
+			// Flatten the results
 			// Flatten the results
 			stepResults = append(stepResults, nestedSteps...)
 			// add a dummy end step for 'use'
@@ -264,6 +302,9 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 			totalFail += nestedFail
 			if nestedFail > 0 {
 				allPassed = false
+				if failFast {
+					break
+				}
 			}
 			continue
 		}
@@ -272,9 +313,12 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 		// Interpolate variables in the request once before the loop
 		interpolatedRequest, err := InterpolateRequest(step.Request, vars)
 		if err != nil {
-			stepResult.Error = fmt.Sprintf("Variable interpolation failed: %v", err)
+		stepResult.Error = fmt.Sprintf("Variable interpolation failed: %v", err)
 			stepResults = append(stepResults, stepResult)
 			allPassed = false
+			if failFast {
+				break
+			}
 			continue
 		}
 
@@ -301,6 +345,9 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 			stepResults = append(stepResults, stepResult)
 			allPassed = false
 			totalFail++
+			if failFast {
+				break
+			}
 			continue
 		}
 
@@ -498,6 +545,9 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 
 			stepResults = append(stepResults, stepResult)
 			stepIndex++
+			if failFast {
+				break
+			}
 			continue
 		}
 
@@ -558,6 +608,10 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 
 		stepResults = append(stepResults, stepResult)
 		stepIndex++
+
+		if failFast && stepHasFailedAssertions {
+			break
+		}
 	}
 
 	allPassed = totalFail == 0
@@ -720,7 +774,7 @@ func RunSingleStep(cfg RunConfig, env *model.Environment, testFile *model.TestFi
 	}
 
 	currentDir := filepath.Dir(cfg.TestPath)
-	runSteps, pass, fail, passed := executeSteps(stepsToRun, env, vars, cfg.ProjectDir, currentDir, 0, section, cfg.DryRun, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
+	runSteps, pass, fail, passed := executeSteps(stepsToRun, env, vars, cfg.ProjectDir, currentDir, 0, section, cfg.DryRun, cfg.FailFast, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
 
 	for i := range runSteps {
 		runSteps[i].ScenarioName = testFile.Scenario
