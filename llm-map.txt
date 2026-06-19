@@ -315,6 +315,7 @@ type RunConfig struct {
     StepIndex      int                    // Index of step to run (0-indexed). Negative means run all.
     StepSection    string                 // Section of the step ("setup", "steps", "teardown")
     DryRun         bool                   // Preview without executing HTTP requests
+    FailFast       bool                   // Stop executing remaining steps when a step fails
 }
 type RunResult struct {
     Scenario    string
@@ -663,6 +664,7 @@ Project root detection: walks up from cwd looking for `.gherkio/` directory.
 - ✅ cURL ↔ DSL Conversion (`gherkio convert`) — Bidirectional cURL and YAML DSL converter
 - ✅ Parametrized randomInt (`${randomInt(min,max)}`) — Random integer with custom range via function-call syntax in interpolator
 - ✅ count().gte/gt/lte/lt — Range-based array length assertions (e.g. `count(body.items).gte: 1` for "has data")
+- ✅ Fail-Fast (`failFast`) — Stop executing remaining steps on first failure. Available via MCP `run_test` tool's `failFast` parameter. Teardown always runs regardless.
 
 ### MVP Complete
 
@@ -809,6 +811,7 @@ When a test file references `$accounts.`, the "N accounts found..." hint is auto
 - `gherkio://dsl/examples` resource includes a multi-account example using `$accounts`
 - `run_test` handler passes `AllAccounts` from `Credentials.ToMap()` so LLM-generated tests using `$accounts` work via MCP
 - `run_test` MCP tool has a `section` parameter: when set without `step`, runs ALL steps in that section only (setup/steps/teardown)
+- `run_test` MCP tool has a `failFast` parameter: when `true`, stops executing remaining steps as soon as any step fails (applies within each lifecycle section; teardown always runs regardless)
 - New MCP resources: `gherkio://dsl/matchers` (all assertion matchers with descriptions), `gherkio://dsl/variables` (built-in generator variables), `gherkio://dsl/paths` (canonical assertion/save paths) — exposed as JSON, fully dynamic via `runner.GetMatchersInfo()`, `runner.GetVariableInfo()`, `runner.GetPathInfo()`
 - New MCP resource: `gherkio://project/structure` — explains the `.gherkio/` directory layout so LLMs know where to create files
 - New MCP tools for LLM self-service: `create_credential`, `update_credential`, `read_credential`, `create_environment`, `read_environment`, `update_environment`, `create_schema`, `update_schema`

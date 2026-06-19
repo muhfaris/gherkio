@@ -258,6 +258,10 @@ func (s *Server) handleListTools(id interface{}, params json.RawMessage) {
 							"type":        "string",
 							"description": "Execute steps until a specific target. Format: '<section>:<index>' (e.g. 'steps:2' runs steps 0,1,2; 'setup:0' runs first setup step only). Or just a raw index '2' to slice the overall steps array. Sections: setup, steps, teardown.",
 						},
+						"failFast": map[string]interface{}{
+							"type":        "boolean",
+							"description": "Stop executing remaining steps when a step fails. Defaults to false.",
+						},
 					},
 					Required: []string{"path"},
 				},
@@ -773,6 +777,7 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 			verbose = v
 		}
 		untilArg, _ := call.Arguments["until"].(string)
+		failFast, _ := call.Arguments["failFast"].(bool)
 
 		if path == "" {
 			s.writeToolError(id, "Missing required argument 'path'")
@@ -870,6 +875,7 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 			DryRun:         dryRun,
 			Snapshot:       snapshotCfg,
 			Until:          untilArg,
+			FailFast:       failFast,
 		}
 
 		result, err := runner.Run(cfg)

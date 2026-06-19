@@ -34,6 +34,7 @@ Each step in a scenario sequence supports the following top-level keys:
 | `name` | `string` | No | Human-readable label for the step. Shown in test output and HTML report instead of `METHOD /url`. | `name: Create new order` |
 | `request` | `object` | Conditional | HTTP request payload block. **Mutually exclusive with `use`**. | (See Request Properties below) |
 | `use` | `string` | Conditional | Scenario composition. Imports and executes another scenario YAML file inline. | `use: shared/login.yaml` |
+| `with` | `map[string]string`| No | Variable overrides injected into a `use:` step. Values interpolated before injection; original values restored after completion. | `with: { PARENT_CLAIM_ISSUE_ID: $STATUS_APPROVED_ID }` |
 | `expect` | `object` | No | Assertions mapping target dot-notation paths to expected formats or matchers. | `expect: { status: 200 }` |
 | `save` | `map[string]string`| No | Context extraction map. Binds response parameters to dynamic variables. | `save: { token: body.accessToken }` |
 | `retry` | `object` | No | Automated polling loop rules for testing eventually consistent resources. | (See Retry & Polling chapter) |

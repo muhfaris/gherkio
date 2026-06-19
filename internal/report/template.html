@@ -863,7 +863,10 @@
                 </table>
                 {{if $step.RequestBody}}
                 <div class="req-body-label">Body</div>
-                <pre class="code-block">{{$step.RequestBody}}</pre>
+                <div class="code-block-wrap">
+                  <pre class="code-block" id="req-body-code-s{{$sIdx}}-{{$i}}">{{$step.RequestBody}}</pre>
+                  <button class="copy-btn" onclick="copyEl('req-body-code-s{{$sIdx}}-{{$i}}')">Copy</button>
+                </div>
                 {{end}}
               </div>
             </div>
@@ -875,7 +878,10 @@
                 <span class="section-chevron">▶</span> Response body
               </div>
               <div class="section-content">
-                <pre class="code-block">{{$step.ResponseBody}}</pre>
+                 <div class="code-block-wrap">
+                   <pre class="code-block" id="res-code-s{{$sIdx}}-{{$i}}">{{$step.ResponseBody}}</pre>
+                   <button class="copy-btn" onclick="copyEl('res-code-s{{$sIdx}}-{{$i}}')">Copy</button>
+                 </div>
               </div>
             </div>
             {{end}}
@@ -924,6 +930,7 @@
                   <div class="saved-var-item">
                     <span class="saved-var-key">{{$k}}</span>
                     <span class="saved-var-val">{{$v}}</span>
+                    <button class="copy-btn" style="position:static;flex-shrink:0;margin-left:auto;" onclick="copyText('{{$v}}', event)">Copy</button>
                   </div>
                   {{end}}
                 </div>
@@ -1086,7 +1093,10 @@
                 </table>
                 {{if $step.RequestBody}}
                 <div class="req-body-label">Body</div>
-                <pre class="code-block">{{$step.RequestBody}}</pre>
+                <div class="code-block-wrap">
+                  <pre class="code-block" id="req-body-code-{{$i}}">{{$step.RequestBody}}</pre>
+                  <button class="copy-btn" onclick="copyEl('req-body-code-{{$i}}')">Copy</button>
+                </div>
                 {{end}}
               </div>
             </div>
@@ -1098,7 +1108,10 @@
                 <span class="section-chevron">▶</span> Response body
               </div>
               <div class="section-content">
-                <pre class="code-block">{{$step.ResponseBody}}</pre>
+                <div class="code-block-wrap">
+                  <pre class="code-block" id="res-code-{{$i}}">{{$step.ResponseBody}}</pre>
+                  <button class="copy-btn" onclick="copyEl('res-code-{{$i}}')">Copy</button>
+                </div>
               </div>
             </div>
             {{end}}
@@ -1147,6 +1160,7 @@
                   <div class="saved-var-item">
                     <span class="saved-var-key">{{$k}}</span>
                     <span class="saved-var-val">{{$v}}</span>
+                    <button class="copy-btn" style="position:static;flex-shrink:0;margin-left:auto;" onclick="copyText('{{$v}}', event)">Copy</button>
                   </div>
                   {{end}}
                 </div>

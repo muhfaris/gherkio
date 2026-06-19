@@ -74,6 +74,7 @@ Execute a Gherkio test scenario (fully or step-isolated) and receive highly deta
   - `section` (string, optional): Section to run (`setup`, `steps`, `teardown`).
   - `dryRun` (boolean, optional): Preview test execution without making HTTP requests.
   - `verbose` (boolean, optional): Show full request/response payloads. Defaults to `true`.
+  - `failFast` (boolean, optional): Stop executing remaining steps when a step fails. Defaults to `false`.
 
 ### 9. `validate_test`
 Validate a Gherkio scenario's syntax, structure, request methods, and schema/composition references without executing it.
