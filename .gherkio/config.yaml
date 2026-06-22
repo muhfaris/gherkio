@@ -5,7 +5,7 @@
 # custom credential masking, and request sandboxing.
 
 # Gherkio tool version that initialized this project config.
-gherkio_version: v0.1.0-alpha.2
+gherkio_version: v0.1.0-alpha.5
 
 # ----------------------------------------------------------------------
 # 1. Project Metadata

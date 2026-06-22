@@ -246,7 +246,7 @@ gherkio schema > .gherkio-schema.json
 
 > 💡 **Zero-Install Alternative:** If you do not have the binary installed on your local system path, you can run the generator dynamically using remote `go run`:
 > ```bash
-> go run github.com/muhfaris/gherkio@v0.1.0-alpha.4 schema > .gherkio-schema.json
+> go run github.com/muhfaris/gherkio@v0.1.0-alpha.5 schema > .gherkio-schema.json
 > ```
 
 ---

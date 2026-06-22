@@ -44,10 +44,10 @@ If you have Go installed but do not want to compile or place the Gherkio binary 
 
 ```bash
 # Initialize a project sandbox
-go run github.com/muhfaris/gherkio@v0.1.0-alpha.4 init
+go run github.com/muhfaris/gherkio@v0.1.0-alpha.5 init
 
 # Execute tests
-go run github.com/muhfaris/gherkio@v0.1.0-alpha.4 run .gherkio/tests/example/login.yaml
+go run github.com/muhfaris/gherkio@v0.1.0-alpha.5 run .gherkio/tests/example/login.yaml
 ```
 
 This is the perfect approach for quick trial runs or executing Gherkio inside ephemeral, single-use CI/CD runner pipelines.
@@ -65,5 +65,5 @@ gherkio --version
 
 You should see an output similar to:
 ```
-gherkio version v0.1.0-alpha.4 (commit: 45edd86, built: 2026-05-31, go1.26)
+gherkio version v0.1.0-alpha.5 (commit: 45edd86, built: 2026-05-31, go1.26)
 ```
