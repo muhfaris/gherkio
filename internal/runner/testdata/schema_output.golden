@@ -2,7 +2,7 @@
 ✗ schema validation
 
 1. GET https://api.example.com/users
-   ✗ failed
+   ✗ failed (50ms)
    ✓ status = 200
    ✗ schema = users/user-response (actual: field body.email: expected format email, got not-an-email)
        └─ field body.email: expected format email, got not-an-email

@@ -2,7 +2,7 @@
 ✓ timing test
 
 1. GET https://dummyjson.com/health
-   ✓ success
+   ✓ success (312ms)
    ✓ status = 200
    ✓ timing.duration = lte 500ms (actual: 312ms)
 

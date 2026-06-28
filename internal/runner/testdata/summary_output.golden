@@ -2,7 +2,7 @@
 ✗ login example
 
 1. POST https://dummyjson.com/auth/login
-   ✗ failed
+   ✗ failed (388ms)
    ✓ status = 200
    ✓ body.accessToken exists
    ✓ body.refreshToken exists

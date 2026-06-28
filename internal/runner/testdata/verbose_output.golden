@@ -2,10 +2,12 @@
 ✗ login example
 
 1. POST https://dummyjson.com/auth/login
-   ✗ failed
+   ✗ failed (388ms)
 
    Request:
    POST https://dummyjson.com/auth/login
+   Headers:
+     Content-Type: application/json
    Body:    {
      "expiresInMins": 30,
      "password": "***masked***",
