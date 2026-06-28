@@ -2,7 +2,7 @@
 ✓ advanced matchers test
 
 1. GET https://dummyjson.com/users/1
-   ✓ success
+   ✓ success (150ms)
    ✓ status = 200
    ✓ body.id = valid UUID format
    ✓ body.email = valid email format

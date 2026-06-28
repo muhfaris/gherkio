@@ -10,6 +10,7 @@ import (
 
 	"github.com/muhfaris/gherkio/internal/converter"
 	"github.com/muhfaris/gherkio/internal/core/credentialstore"
+	"github.com/muhfaris/gherkio/internal/core/envcontext"
 	"github.com/muhfaris/gherkio/internal/core/envstore"
 	"github.com/muhfaris/gherkio/internal/core/project"
 	"github.com/muhfaris/gherkio/internal/core/schemastore"
@@ -213,6 +214,11 @@ func (s *Server) handleListTools(id interface{}, params json.RawMessage) {
 			{
 				Name:        "list_environments",
 				Description: "List all configured Gherkio test environments along with their baseUrl and overriding services.",
+				InputSchema: InputSchema{Type: "object", Properties: map[string]interface{}{}},
+			},
+			{
+				Name:        "get_environment_context",
+				Description: "Get unified environment context with auto-selection hints. Returns environments, accounts per environment, and computed hints for automatic selection. Use this to determine what env/account should be auto-selected when only one option exists.",
 				InputSchema: InputSchema{Type: "object", Properties: map[string]interface{}{}},
 			},
 			{
@@ -755,6 +761,15 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 			return
 		}
 		data, _ := json.MarshalIndent(envs, "", "  ")
+		s.writeToolResponse(id, string(data))
+
+	case "get_environment_context":
+		ctx, err := envcontext.GetContext(s.projectDir)
+		if err != nil {
+			s.writeToolError(id, fmt.Sprintf("Failed to get environment context: %v", err))
+			return
+		}
+		data, _ := json.MarshalIndent(ctx, "", "  ")
 		s.writeToolResponse(id, string(data))
 
 	case "list_schemas":

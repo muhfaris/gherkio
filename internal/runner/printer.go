@@ -214,9 +214,9 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 
 		fmt.Printf("%s%s\n", prefix, stepLabel)
 		if stepPassed {
-			fmt.Printf("%s✓ success\n", statusIndent)
+			fmt.Printf("%s✓ success (%s)\n", statusIndent, FormatDuration(step.Duration))
 		} else {
-			fmt.Printf("%s✗ failed\n", statusIndent)
+			fmt.Printf("%s✗ failed (%s)\n", statusIndent, FormatDuration(step.Duration))
 		}
 
 		// Display save warnings (do not affect pass/fail)
@@ -251,8 +251,14 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 			fmt.Println()
 
 			// Request details
-			if step.Request != nil {
+		if step.Request != nil {
 				fmt.Printf("%sRequest:\n%s%s %s\n", statusIndent, statusIndent, step.Request.Method, step.Request.URL)
+				if len(step.Request.Headers) > 0 {
+					fmt.Printf("%sHeaders:\n", statusIndent)
+					for k, v := range step.Request.Headers {
+						fmt.Printf("%s  %s: %s\n", statusIndent, k, v)
+					}
+				}
 				if step.Request.Body != "" {
 					fmt.Printf("%sBody: %s\n", statusIndent, indentBlock(FormatRequestBody(step.Request.Body, maskFields), statusIndent))
 				}
@@ -261,7 +267,14 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 
 			// Response (always shown in verbose)
 			if step.Response != nil {
-				fmt.Printf("%sResponse:\n%sStatus: %d\n\n%sBody:\n%s\n", statusIndent, statusIndent, step.Response.Status, statusIndent, indentBlock(FormatRequestBody(step.Response.Body, maskFields), statusIndent))
+				fmt.Printf("%sResponse:\n%sStatus: %d\n", statusIndent, statusIndent, step.Response.Status)
+				if len(step.Response.Headers) > 0 {
+					fmt.Printf("%sHeaders:\n", statusIndent)
+					for k, v := range step.Response.Headers {
+						fmt.Printf("%s  %s: %s\n", statusIndent, k, v)
+					}
+				}
+				fmt.Printf("\n%sBody:\n%s\n", statusIndent, indentBlock(FormatRequestBody(step.Response.Body, maskFields), statusIndent))
 				fmt.Println()
 			}
 
@@ -625,7 +638,7 @@ func PrintStepResult(result *RunResult, verbose bool, maskFields []string) {
 			prefix = indentPrefix(indent) + "   ├ ▼ "
 		}
 
-		fmt.Printf("%s%s\n", prefix, stepLabel)
+		fmt.Printf("%s%s (%s)\n", prefix, stepLabel, FormatDuration(step.Duration))
 
 		// Print assertions
 		for _, a := range step.Assertions {
