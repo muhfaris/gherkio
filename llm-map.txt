@@ -82,12 +82,14 @@ gherkio/
 │   ├── init.go                      # `gherkio init` — scaffold project
 │   ├── run.go                       # `gherkio run <file>` — execute tests
 │   ├── convert.go                   # `gherkio convert` — bidirectionally convert cURL/YAML
-│   └── mcp.go                       # `gherkio mcp` — start Model Context Protocol stdio server
+│   ├── mcp.go                       # `gherkio mcp` — start Model Context Protocol stdio server
+│   └── env.go                       # `gherkio env` — environment management commands
 ├── internal/
 │   ├── core/                        # Reusable programmatic Gherkio domain core
 │   │   ├── project/                 # Workspace discovery & meta loader
 │   │   ├── teststore/               # Discovers scenarios, test CRUD & validations
 │   │   ├── envstore/                # Environment configuration CRUD
+│   │   ├── envcontext/              # Unified environment context with auto-select hints
 │   │   └── schemastore/             # Custom schema validators CRUD
 │   ├── mcp/                         # Model Context Protocol stdio engine
 │   │   ├── protocol.go              # JSON-RPC 2.0 frames & MCP models
@@ -626,6 +628,8 @@ gherkio run <test-file> --tag <tag>                    # Filter tests by tag (AN
 gherkio run --parallel <N>                             # Run tests concurrently
 gherkio validate                                       # Lint test files statically
 gherkio schema                              # Generate JSON Schema for YAML autocomplete
+gherkio env context                         # Get unified env context (for programmatic consumption)
+gherkio env context --json                  # Get env context as JSON (for nvim/MCP)
 ```
 
 Test file resolution order:
@@ -814,7 +818,7 @@ When a test file references `$accounts.`, the "N accounts found..." hint is auto
 - `run_test` MCP tool has a `failFast` parameter: when `true`, stops executing remaining steps as soon as any step fails (applies within each lifecycle section; teardown always runs regardless)
 - New MCP resources: `gherkio://dsl/matchers` (all assertion matchers with descriptions), `gherkio://dsl/variables` (built-in generator variables), `gherkio://dsl/paths` (canonical assertion/save paths) — exposed as JSON, fully dynamic via `runner.GetMatchersInfo()`, `runner.GetVariableInfo()`, `runner.GetPathInfo()`
 - New MCP resource: `gherkio://project/structure` — explains the `.gherkio/` directory layout so LLMs know where to create files
-- New MCP tools for LLM self-service: `create_credential`, `update_credential`, `read_credential`, `create_environment`, `read_environment`, `update_environment`, `create_schema`, `update_schema`
+- New MCP tools for LLM self-service: `create_credential`, `update_credential`, `read_credential`, `create_environment`, `read_environment`, `update_environment`, `create_schema`, `update_schema`, `get_environment_context`
 - New MCP fallback tools for tool-only LLMs: `get_dsl_variables` (built-in variables & generators), `get_dsl_spec` (full syntax spec), `get_dsl_matchers` (assertion matchers) — provides complete DSL specifications directly via tool calls for environments/clients that do not support or query MCP resources natively.
 
 
