@@ -15,6 +15,49 @@ For string boundary isolation inside header fields or request bodies, wrap them 
 If a variable might not be defined under the current context, you can specify a default fallback:
 - `role: "${role:user}"` ➔ resolves to the value of `$role` if defined, otherwise defaults to `"user"`.
 
+### Array Indexing (Bracket Notation)
+If a saved variable contains an array, you can access individual elements by index using bracket notation:
+- `$tags[0].id` ➔ accesses the `id` field of the first element in the `$tags` array
+- `$tags[${randomInt(0,4)}].id` ➔ picks a random element each time (useful with retry)
+- `$items[2].name` ➔ accesses the `name` field of the third element
+
+This works in all variable interpolation contexts: request body, headers, URLs, save paths, and assertion values.
+
+**Example** — randomly pick an issue tag from a saved array:
+
+```yaml
+steps:
+  - request:
+      method: GET
+      url: /v1/issue-tags/l3
+    save:
+      issueTags: body.data          # save the full array
+
+  - request:
+      method: POST
+      url: /v1/tickets
+      body:
+        issue_tag_id: $issueTags[${randomInt(0,4)}].id   # random tag each time
+```
+
+Combined with `retry`, each attempt picks a different random index — useful for avoiding resource conflicts:
+
+```yaml
+  - request:
+      method: POST
+      url: /v1/tickets
+      body:
+        issue_tag_id: $issueTags[${randomInt(0,9)}].id
+        name: "ticket-${randomInt}"
+    retry:
+      attempts: 5
+      interval: 300
+      backoff: constant
+      onStatus: [409]
+    expect:
+      status: 200
+```
+
 ---
 
 ## 🎲 Built-in Single-Value Generators

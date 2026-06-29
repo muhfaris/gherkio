@@ -436,7 +436,7 @@ Assertion and save paths follow dot-notation:
 
 ### 6. Variable Interpolation
 
-- Syntax: `$var` or `${var}` or `${var:default}` or `$accounts.eka.username` or `${randomInt(min,max)}`
+- Syntax: `$var` or `${var}` or `${var:default}` or `$accounts.eka.username` or `${randomInt(min,max)}` or `$var[N].field` (array-index)
 - Function-call syntax: `${func(arg1,arg2)}` for parametrized built-in generators (e.g. `${randomInt(1,100)}`). Falls back to normal variable lookup if function name is not recognized.
 - Dotted-path syntax: `$accounts.<name>.<field>` navigates nested maps (e.g. all injected credentials)
 ### 7. Variable Interpolation
@@ -482,9 +482,22 @@ Available in every test run with no setup. Generated once per `Run()` call via `
 - `toLower(val)` — Converts string to lowercase.
 - `trim(val)` — Trims leading and trailing whitespace from a string.
 
-**Per-step regeneration:** Built-in variables are regenerated fresh at the start of each step iteration (inside `executeSteps()` in `runner.go`). This means each request in a scenario gets unique values — critical for real QA testing where every API call needs distinct IDs, idempotency keys, or random data.
+**Per-step + per-retry regeneration:** Built-in variables are regenerated fresh at the start of each step iteration (inside `executeSteps()` in `runner.go`) AND at the start of each retry attempt (inside the retry loop in `runner.go`). This means each request in a scenario gets unique values — critical for real QA testing where every API call needs distinct IDs, idempotency keys, or random data.
 
-Within a single step, all occurrences of `$uuid` (URL, headers, body) resolve to the same value. But step 2 will get a different `$uuid` than step1.
+Within a single step (single attempt), all occurrences of `$uuid` (URL, headers, body) resolve to the same value. But step 2 will get a different `$uuid` than step 1, and each retry attempt will get different builtin values than the previous attempt.
+
+**Array-index bracket notation:** Saved array variables can be indexed by position using `$name[N]` syntax (e.g. `$issueTags[0].id`, `$items[${randomInt(0,4)}].id`). Combined with per-retry builtin regeneration, this enables patterns like:
+```yaml
+save:
+  issueTags: body.data
+
+request:
+  body:
+    issue_tag_id: $issueTags[${randomInt(0,4)}].id  # different tag each retry
+retry:
+  attempts: 5
+  onStatus: [409]
+```
 
 **Variable precedence (per step):**
 1. Host Environment variables (prefixed with `GHERKIO_`, loaded at start)

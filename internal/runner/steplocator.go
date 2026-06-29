@@ -18,7 +18,7 @@ type StepLocation struct {
 
 var (
 	sectionRegex   = regexp.MustCompile(`^\s*(setup|steps|teardown)\s*:`)
-	stepStartRegex = regexp.MustCompile(`^\s*-\s*(request|use)\s*:`)
+	stepStartRegex = regexp.MustCompile(`^\s*-\s`)
 )
 
 // LocateStep finds the step containing a specific line number within a Gherkio test file.

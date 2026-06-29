@@ -406,6 +406,37 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 		var lastAssertions []AssertionResult
 
 		for i := 1; i <= attempts; i++ {
+			// Re-inject fresh built-in generator variables per retry attempt so
+			// ${randomInt}, ${uuid}, and other dynamic values change on each attempt.
+			// This also causes array-index references like $issueTags[${randomInt(0,4)}].id
+			// to resolve to a different element on each retry.
+			for key, val := range BuiltinVars() {
+				vars[key] = val
+			}
+
+			// Re-interpolate request with fresh variables so each retry attempt gets
+			// a potentially different body (e.g. different random index for issue tag).
+			freshReq, reqErr := InterpolateRequest(step.Request, vars)
+			if reqErr == nil {
+				interpolatedRequest = freshReq
+				url = resolveURL(env, interpolatedRequest)
+
+				// Update stepResult.Request to reflect the current attempt's values
+				stepResult.Request = &RequestInfo{
+					Method:  interpolatedRequest.Method,
+					URL:     url,
+					Query:   interpolatedRequest.Query,
+					Headers: interpolatedRequest.Headers,
+				}
+				if interpolatedRequest.Body != nil {
+					if bodyJSON, err := json.Marshal(interpolatedRequest.Body); err == nil {
+						stepResult.Request.Body = string(bodyJSON)
+					} else {
+						stepResult.Request.Body = fmt.Sprintf("%v", interpolatedRequest.Body)
+					}
+				}
+			}
+
 			if maxDuration > 0 && time.Since(stepStart) >= maxDuration {
 				stepErr = fmt.Errorf("maxDuration %s exceeded", step.Retry.MaxDuration)
 				break
