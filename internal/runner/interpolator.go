@@ -3,6 +3,7 @@ package runner
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/muhfaris/gherkio/internal/model"
@@ -133,16 +134,42 @@ func interpolateMultipart(mp *model.MultipartConfig, vars map[string]interface{}
 // Supports:
 //   - Simple vars: $var, ${var}
 //   - Nested/dotted paths: $accounts.alice.username, ${accounts.alice.username}
+//   - Array-index notation: $issueTags[0].id, ${issueTags[${randomInt(0,4)}].id}
 //   - Default values: ${var:default}, ${accounts.alice.username:default}
 //   - Parametrized generators: ${randomInt(1,100)}, ${randomInt()}
 func interpolateString(s string, vars map[string]interface{}) (string, error) {
-	// This regex matches $var, ${var}, dotted paths like $accounts.alice.username,
-	// defaults like ${var:default}, and parametrized generators like ${randomInt(1,100)}
+	// Pre-pass: resolve ${func(args)} generator calls embedded anywhere in the string
+	// (e.g. inside bracket notation like $issueTags[${randomInt(0,4)}].id).
+	// These are self-contained (no variable dependencies), so resolving them first
+	// lets the main pass handle the now-literal bracket indices.
+	//
+	// This regex matches ${funcName(args)} patterns only (must have parens).
+	reFunc := regexp.MustCompile(`\$\{([a-zA-Z_][a-zA-Z0-9_]*)\(([^)]*)\)\}`)
+	funcs := GetGeneratorFuncs()
+	s = reFunc.ReplaceAllStringFunc(s, func(match string) string {
+		submatch := reFunc.FindStringSubmatch(match)
+		if len(submatch) < 3 {
+			return match
+		}
+		funcName := submatch[1]
+		args := submatch[2]
+		if fn, ok := funcs[funcName]; ok {
+			val, err := fn(args)
+			if err != nil {
+				return match // leave unresolved if fn fails
+			}
+			return fmt.Sprintf("%v", val)
+		}
+		return match
+	})
+
+	// Main pass: resolve variable references including dotted paths, array-index
+	// bracket notation $issueTags[0].id, defaults, and parametrized generators.
 	// Capture groups:
-	//   1: variable/function name (e.g. randomInt, accounts.eka.username)
+	//   1: variable/function name (e.g. randomInt, accounts.eka.username, issueTags[0].id)
 	//   2: arguments inside parens (e.g. 1,100) — optional
 	//   3: default value after colon (e.g. 42 in ${var:42}) — optional
-	re := regexp.MustCompile(`\$\{?([a-zA-Z_][a-zA-Z0-9_]+(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)(?:\(([^)]*)\))?(?::([^}]*))?}?`)
+	re := regexp.MustCompile(`\$\{?([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*|\[\d+\])*)(?:\(([^)]*)\))?(?::([^}]*))?}?`)
 
 	var evalErr error
 
@@ -222,20 +249,51 @@ func interpolateString(s string, vars map[string]interface{}) (string, error) {
 // resolveNestedVar looks up a potentially dotted variable path in the vars map.
 // For simple names like "username", it's equivalent to vars["username"].
 // For dotted paths like "accounts.alice.username", it navigates the nested map structure.
+// For array-index paths like "issueTags[0].id", it navigates into arrays by index.
 func resolveNestedVar(path string, vars map[string]interface{}) (interface{}, bool) {
 	parts := strings.Split(path, ".")
 	current := interface{}(vars)
 
 	for _, part := range parts {
-		m, ok := current.(map[string]interface{})
-		if !ok {
-			return nil, false
+		// Handle array index: "name[0]" or "field[3]"
+		if idxStart := strings.Index(part, "["); idxStart >= 0 {
+			fieldName := part[:idxStart]
+			idxStr := part[idxStart+1 : len(part)-1]
+			idx, err := strconv.Atoi(idxStr)
+			if err != nil {
+				return nil, false
+			}
+
+			// Navigate into the field if there's a name before the bracket
+			if fieldName != "" {
+				m, ok := current.(map[string]interface{})
+				if !ok {
+					return nil, false
+				}
+				val, found := m[fieldName]
+				if !found {
+					return nil, false
+				}
+				current = val
+			}
+
+			// Navigate into array by index
+			arr, ok := current.([]interface{})
+			if !ok || idx < 0 || idx >= len(arr) {
+				return nil, false
+			}
+			current = arr[idx]
+		} else {
+			m, ok := current.(map[string]interface{})
+			if !ok {
+				return nil, false
+			}
+			val, found := m[part]
+			if !found {
+				return nil, false
+			}
+			current = val
 		}
-		val, found := m[part]
-		if !found {
-			return nil, false
-		}
-		current = val
 	}
 
 	return current, true

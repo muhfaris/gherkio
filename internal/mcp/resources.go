@@ -153,6 +153,7 @@ All string values in request fields support variable substitution:
 - **$var** — Simple variable reference (e.g. $username, $token)
 - **${var}** — Explicit braces syntax (e.g. ${accessToken})
 - **${var:default}** — With default fallback (e.g. ${role:user})
+- **$var[N].field** — Array element access by index (e.g. $issueTags[0].id, $items[${randomInt(0,4)}].id)
 - **$string(var)**, **$int(var)**, **$bool(var)**, **$float(var)** — Type-casting operators to cast variables in request bodies (e.g. $string(emp_id))
 - **$if(condition, then, else)** — Conditional value selection inside transform select blocks (e.g. $if(item.is_answered, item.free_text_answer, item.default_answer))
 - **$accounts.<name>.<field>** — Access any account's credentials directly from .gherkio/credentials/<env>.yaml without needing --account flag (e.g. $accounts.alice.username)

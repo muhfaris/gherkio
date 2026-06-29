@@ -104,3 +104,85 @@ teardown:
 		t.Errorf("expected teardown step 0, got section %s index %d", loc.Section, loc.Index)
 	}
 }
+
+func TestScanSteps_NamedSteps(t *testing.T) {
+	content := `scenario: named steps test
+steps:
+  - use: auth/login.yaml
+    with:
+      username: $username
+
+  - name: Create Ticket
+    request:
+      method: POST
+      url: /v1/tickets
+    expect:
+      status: 201
+
+  - name: Push Notification
+    request:
+      method: POST
+      url: /v1/notifications
+    expect:
+      status: 200
+`
+
+	tmpFile, err := os.CreateTemp("", "gherkio-named-*.yaml")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.WriteString(content); err != nil {
+		t.Fatalf("failed to write content: %v", err)
+	}
+	tmpFile.Close()
+
+	steps, err := ScanSteps(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("unexpected error scanning steps: %v", err)
+	}
+
+	// Expect 3 steps: 1 use + 2 named
+	if len(steps) != 3 {
+		t.Fatalf("expected 3 steps, got %d", len(steps))
+	}
+
+	// Verify each step section and index
+	if steps[0].Section != "steps" || steps[0].Index != 0 {
+		t.Errorf("step 0 (use) mismatch: %+v", steps[0])
+	}
+	if steps[1].Section != "steps" || steps[1].Index != 1 {
+		t.Errorf("step 1 (Create Ticket) mismatch: %+v", steps[1])
+	}
+	if steps[2].Section != "steps" || steps[2].Index != 2 {
+		t.Errorf("step 2 (Push Notification) mismatch: %+v", steps[2])
+	}
+
+	// Test cursor on "- name: Create Ticket" line
+	loc, err := LocateStep(tmpFile.Name(), 7)
+	if err != nil {
+		t.Fatalf("failed to locate step at line 7: %v", err)
+	}
+	if loc.Section != "steps" || loc.Index != 1 {
+		t.Errorf("expected steps step 1 (Create Ticket), got section %s index %d", loc.Section, loc.Index)
+	}
+
+	// Test cursor on "- name: Push Notification" line
+	loc, err = LocateStep(tmpFile.Name(), 14)
+	if err != nil {
+		t.Fatalf("failed to locate step at line 14: %v", err)
+	}
+	if loc.Section != "steps" || loc.Index != 2 {
+		t.Errorf("expected steps step 2 (Push Notification), got section %s index %d", loc.Section, loc.Index)
+	}
+
+	// Test cursor on "- use: auth/login.yaml" line
+	loc, err = LocateStep(tmpFile.Name(), 3)
+	if err != nil {
+		t.Fatalf("failed to locate step at line 3: %v", err)
+	}
+	if loc.Section != "steps" || loc.Index != 0 {
+		t.Errorf("expected steps step 0 (use), got section %s index %d", loc.Section, loc.Index)
+	}
+}
