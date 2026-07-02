@@ -9,6 +9,7 @@ type Config struct {
 	Schemas        SchemasConfig  `yaml:"schemas,omitempty" jsonschema:"description=Schema directory path"`
 	Security       SecurityConfig `yaml:"security,omitempty" jsonschema:"description=Security and masking configuration"`
 	Reports        ReportsConfig  `yaml:"reports,omitempty" jsonschema:"description=Report generation configuration"`
+	JWTTokenPath   string         `yaml:"jwt_token_path,omitempty" jsonschema:"description=Custom JSON path to find JWT token in response body, e.g. 'data.access_token' or 'body.token'"`
 }
 
 type ProjectConfig struct {

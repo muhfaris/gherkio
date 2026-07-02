@@ -40,6 +40,16 @@ The `body.` prefix targets the response body payload (expected to be JSON). Gher
 *   **Array Indexing**: Use brackets to access specific list items (e.g., `body.items[0].id`).
 *   **Case Sensitivity**: JSON keys are strictly case-sensitive. `body.userId` is different from `body.userid`.
 
+#### Negative Assertions with `not exists`
+You can assert that a field is **absent** from the response body using `not exists`. This is useful for verifying that optional fields are omitted on purpose, or that error/cleanup fields are not present:
+
+```yaml
+expect:
+  body.deletedAt: not exists    # soft-delete field should not appear
+  body.error: not exists        # no error on success path
+  body.archived: not exists     # field completely absent from payload
+```
+
 #### 💡 Intelligent Spelling Suggestion Engine
 If you write an assertion for a path that does not exist in the response payload, Gherkio's smart diff engine doesn't just fail; it analyzes the keys that *were* actually present in the response and prints helpful spelling suggestions in your terminal:
 

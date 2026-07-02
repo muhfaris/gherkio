@@ -45,6 +45,7 @@ type InitializeResult struct {
 type ServerCapabilities struct {
 	Resources struct{} `json:"resources"`
 	Tools     struct{} `json:"tools"`
+	Prompts   struct{} `json:"prompts"`
 }
 
 // Implementation identifies the server software name and version.
@@ -113,4 +114,47 @@ type ResourceContent struct {
 	URI      string `json:"uri"`
 	MimeType string `json:"mimeType,omitempty"`
 	Text     string `json:"text"`
+}
+
+// Prompt describes a reusable prompt template.
+type Prompt struct {
+	Name        string           `json:"name"`
+	Description string           `json:"description"`
+	Arguments   []PromptArgument `json:"arguments,omitempty"`
+}
+
+// PromptArgument describes a parameter for a prompt template.
+type PromptArgument struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Required    bool   `json:"required,omitempty"`
+}
+
+// ListPromptsResult is returned on prompts/list.
+type ListPromptsResult struct {
+	Prompts []Prompt `json:"prompts"`
+}
+
+// GetPromptRequest represents parameters for fetching a prompt.
+type GetPromptRequest struct {
+	Name      string                 `json:"name"`
+	Arguments map[string]interface{} `json:"arguments,omitempty"`
+}
+
+// GetPromptResult is returned on prompts/get.
+type GetPromptResult struct {
+	Description string          `json:"description,omitempty"`
+	Messages    []PromptMessage `json:"messages"`
+}
+
+// PromptMessage is a single message in a prompt template.
+type PromptMessage struct {
+	Role    string        `json:"role"`
+	Content PromptContent `json:"content"`
+}
+
+// PromptContent holds the content of a prompt message.
+type PromptContent struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
 }

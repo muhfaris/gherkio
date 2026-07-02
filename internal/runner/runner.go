@@ -30,6 +30,8 @@ type RunConfig struct {
 	Snapshot      SnapshotConfig          // Configuration for failure snapshots
 	Until          string                 // Execute steps until a specific target, e.g. "steps:1" or "2"
 	FailFast       bool                   // Stop executing remaining steps when a step fails
+	SessionVars map[string]interface{} // Session-persistent variables across step runs (mutated in place, may be nil)
+	SessionFile  string                 // Path to session file for CLI persistence (empty = no file persistence)
 }
 
 // RunResult holds the overall execution result.
@@ -114,6 +116,23 @@ func Run(cfg RunConfig) (*RunResult, error) {
 		vars["accounts"] = cfg.AllAccounts
 	}
 
+	// Merge session vars from previous step runs (overrides credentials, overridden by builtins)
+	if cfg.SessionVars != nil {
+		for key, val := range cfg.SessionVars {
+			vars[key] = val
+		}
+	}
+
+	// Load session vars from file (CLI file-based persistence across processes)
+	if cfg.SessionFile != "" {
+		loaded, err := loadSessionVars(cfg.SessionFile)
+		if err == nil && loaded != nil {
+			for key, val := range loaded {
+				vars[key] = val
+			}
+		}
+	}
+
 	// Capture initial variable state for verbose output
 	result.ResolvedVars = snapshotVars(vars, cfg.MaskFields)
 
@@ -181,6 +200,18 @@ func Run(cfg RunConfig) (*RunResult, error) {
 	// If we haven't set Passed to false yet, check main steps pass/fail
 	if result.TotalFail == 0 && setupFailed == false {
 		result.Passed = true
+	}
+
+	// Write back session vars for subsequent step runs
+	if cfg.SessionVars != nil {
+		for key, val := range vars {
+			cfg.SessionVars[key] = val
+		}
+	}
+
+	// Persist session to file for CLI cross-process usage
+	if cfg.SessionFile != "" {
+		_ = saveSessionVars(cfg.SessionFile, vars)
 	}
 
 	return result, nil
@@ -398,7 +429,7 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 			return m == "GET" || m == "HEAD" || m == "OPTIONS" || m == "TRACE"
 		}
 		if hasRetry && !isIdempotent(interpolatedRequest.Method) {
-			fmt.Printf("⚠ %s %s — retrying non-idempotent request\n", interpolatedRequest.Method, url)
+			fmt.Fprintf(os.Stderr, "⚠ %s %s — retrying non-idempotent request\n", interpolatedRequest.Method, url)
 		}
 
 		var lastResp *ResponseInfo
@@ -442,6 +473,9 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 				break
 			}
 
+			attemptLabel := fmt.Sprintf("%d/%d", i, attempts)
+			fmt.Fprintf(os.Stderr, "→ [%s] %s %s...\n", attemptLabel, interpolatedRequest.Method, url)
+
 			attemptStart := time.Now()
 			resp, err = executeRequest(interpolatedRequest.Method, url, interpolatedRequest.Headers, interpolatedRequest.Body, interpolatedRequest.Multipart, interpolatedRequest.Timeout, projectDir)
 
@@ -450,18 +484,22 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 				Duration: time.Since(attemptStart),
 			}
 
+			attemptDuration := time.Since(attemptStart)
 			if err != nil {
 				entry.Error = err.Error()
 				retryHistory = append(retryHistory, entry)
 				if i == attempts {
+					fmt.Fprintf(os.Stderr, "✗ [%s] %s %s → error: %v\n", attemptLabel, interpolatedRequest.Method, url, err)
 					stepErr = err
 					break
 				}
+				fmt.Fprintf(os.Stderr, "✗ [%s] %s %s → error: %v (will retry)\n", attemptLabel, interpolatedRequest.Method, url, err)
 				time.Sleep(calculateBackoff(backoffStrat, intervalMs, i))
 				continue
 			}
 
 			entry.Status = resp.Status
+			fmt.Fprintf(os.Stderr, "← [%s] %s %s → %d (%s)\n", attemptLabel, interpolatedRequest.Method, url, resp.Status, attemptDuration.Round(time.Millisecond))
 			if len(resp.Body) > 500 {
 				entry.Body = resp.Body[:500] + "..."
 			} else {
@@ -471,7 +509,17 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 
 			jwtClaims = nil
 			if resp.Parsed != nil {
-				for _, field := range []string{"token", "accessToken", "access_token"} {
+				// Build token search paths: custom config path first, then defaults
+				var jwtTokenPaths []string
+				appCfg, _ := LoadConfig(projectDir)
+				if appCfg != nil && appCfg.JWTTokenPath != "" {
+					jwtTokenPaths = append(jwtTokenPaths, appCfg.JWTTokenPath)
+				}
+				jwtTokenPaths = append(jwtTokenPaths,
+					"data.token", "data.accessToken", "data.access_token",
+					"body.data.token", "body.data.accessToken", "body.data.access_token",
+					"token", "accessToken", "access_token")
+				for _, field := range jwtTokenPaths {
 					if tokenVal, found := resolvePath(resp.Parsed, field); found {
 						if tokenStr, ok := tokenVal.(string); ok {
 							claims, derr := decodeJWT(tokenStr)
@@ -790,6 +838,23 @@ func RunSingleStep(cfg RunConfig, env *model.Environment, testFile *model.TestFi
 		vars["accounts"] = cfg.AllAccounts
 	}
 
+	// Merge session vars from previous step runs
+	if cfg.SessionVars != nil {
+		for key, val := range cfg.SessionVars {
+			vars[key] = val
+		}
+	}
+
+	// Load session vars from file (CLI file-based persistence across processes)
+	if cfg.SessionFile != "" {
+		loaded, err := loadSessionVars(cfg.SessionFile)
+		if err == nil && loaded != nil {
+			for key, val := range loaded {
+				vars[key] = val
+			}
+		}
+	}
+
 	// Capture initial variable state for verbose output
 	initialVars := snapshotVars(vars, cfg.MaskFields)
 
@@ -893,6 +958,18 @@ func RunSingleStep(cfg RunConfig, env *model.Environment, testFile *model.TestFi
 		Passed:       passed,
 	}
 
+	// Write back session vars for subsequent step runs
+	if cfg.SessionVars != nil {
+		for key, val := range vars {
+			cfg.SessionVars[key] = val
+		}
+	}
+
+	// Persist session to file for CLI cross-process usage
+	if cfg.SessionFile != "" {
+		_ = saveSessionVars(cfg.SessionFile, vars)
+	}
+
 	return result, nil
 }
 
@@ -987,4 +1064,54 @@ func parseUntil(untilStr string, testFile *model.TestFile) (string, int, error) 
 	}
 
 	return section, index, nil
+}
+
+
+// loadSessionVars reads a session file and returns the stored variables.
+// Returns nil without error if the file doesn't exist.
+func loadSessionVars(path string) (map[string]interface{}, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var vars map[string]interface{}
+	if err := yaml.Unmarshal(data, &vars); err != nil {
+		return nil, err
+	}
+	return vars, nil
+}
+
+// saveSessionVars persists vars to a session file, excluding built-in generator keys.
+func saveSessionVars(path string, vars map[string]interface{}) error {
+	filtered := make(map[string]interface{})
+	for k, v := range vars {
+		if !isBuiltinKey(k) {
+			filtered[k] = v
+		}
+	}
+	if len(filtered) == 0 {
+		os.Remove(path)
+		return nil
+	}
+	data, err := yaml.Marshal(filtered)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0644)
+}
+
+// isBuiltinKey returns true if the key is a built-in generator variable name.
+func isBuiltinKey(key string) bool {
+	switch key {
+	case "uuid", "ulid", "randomInt", "randomEmail", "randomPhone",
+		"timestamp", "timestampMs", "accounts":
+		return true
+	}
+	return false
 }
