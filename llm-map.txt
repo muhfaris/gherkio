@@ -884,6 +884,23 @@ Gherkio supports generating standalone HTML reports for test runs.
   - `internal/report/template.html` — supports both modes via `{{if .Scenarios}}...{{else}}...{{end}}`
 - **Implementation**: Uses `html/template` with `//go:embed` to embed `assets/template/report.html` directly into the binary (no external dependencies). Housed in the `internal/report/` package.
 
+### 13. HTTP Progress Output (Stderr)
+
+`gherkio run` prints real-time progress to stderr for every HTTP request:
+
+| Symbol | Meaning |
+|--------|---------|
+| `→ [N/M] METHOD url...` | Request started (N = attempt, M = total attempts) |
+| `← [N/M] METHOD url → STATUS (duration)` | Response received successfully |
+| `✗ [N/M] METHOD url → error: msg` | Request failed (network/dns/timeout) |
+| `✗ [N/M] METHOD url → error: msg (will retry)` | Failure but will retry (only shown for non-final attempts) |
+
+**Where it's implemented**: `internal/runner/runner.go` in the `executeSteps()` function, inside the retry loop around `executeRequest()`. 
+- Non-idempotent retry warnings also go to stderr.
+- Dry-run mode skips HTTP calls so no progress is printed.
+- Stderr was chosen intentionally: it never corrupts JSON-RPC 2.0 frames (MCP) or structured output.
+- Progress lines are emitted as complete lines with `\n` (not carriage-return-overwritten) for clean log capture.
+
 ======================================================================
 🚨 LLM / AI AGENT DEVELOPMENT GUIDELINES
 ======================================================================
@@ -938,10 +955,55 @@ Host OS Environment Variables (GHERKIO_*)
   *   **`teardown`**: Put cleanups here (e.g. deleting created users, logging out, cleaning up database state).
 - **Reason**: Gherkio guarantees `teardown` execution even if `setup` or `steps` fail. By segregating cleanups to the `teardown` block, you prevent severe resource leaks in the target testing environments. If preconditions fail in `setup`, Gherkio skips `steps` entirely and jumps straight to `teardown`, preserving system stability.
 
-### 8. Generator & Schema Synchronization Rule
+### 8. MCP Prompts Capability
+
+Gherkio's MCP server implements the standard `prompts/list` and `prompts/get` methods.
+
+**ServerCapabilities** includes `Prompts struct{}` alongside `Resources` and `Tools`.
+
+**Registered prompts:**
+
+| Prompt | Arguments | Purpose |
+|---|---|---|
+| `plan-scenario` | `endpoint` (req), `authRequired` (opt) | Decision tree: auth check, setup/teardown vs standalone, reuse extraction |
+| `discover-endpoint` | `endpoint` (req), `method` (opt) | Gather request/response details, identify variable extraction |
+| `specify-assertions` | `endpoint` (req), `method` (opt), `responseStructure` (opt) | Choose assertion depth (1-4): minimal through chain assertions |
+
+**Implementation:**
+- `internal/mcp/protocol.go` — `Prompt`, `PromptArgument`, `ListPromptsResult`, `GetPromptRequest`, `GetPromptResult`, `PromptMessage`, `PromptContent` types
+- `internal/mcp/server.go` — `handleListPrompts()`, `handleGetPrompt()` handlers, dispatch in `Start()`
+- `internal/mcp/prompts.go` — content builder methods: `buildPlanScenarioPrompt()`, `buildDiscoverEndpointPrompt()`, `buildSpecifyAssertionsPrompt()`
+- `handleGetPrompt()` dynamically lists existing tests from the workspace when available
+- Each prompt returns a system message (encoded rules/workflow) and a user message (parameterized task)
+
+### 9. Generator & Schema Synchronization Rule
 - **Crucial Rule**: When adding or updating built-in generators, parameterized generator functions (in `internal/runner/builtins.go`), or DSL schema rules, you MUST always ensure that all of the following components are fully updated and synchronized:
   *   **MCP Dynamic Resources**: Update registration mappings and descriptions in `internal/mcp/server.go` (specifically under `gherkio://dsl/spec` and `gherkio://dsl/variables`).
   *   **CLI Compiler Schemas**: Ensure `GetVariableInfo()` in `internal/runner/engine.go` exposes the new signature/metadata so it is returned by the dynamic `gherkio schema` CLI command.
   *   **Static Reference maps**: Document the changes/additions immediately inside this manifest (`llm-map.txt`) and official mdBook documentation.
 - **Reason**: This prevents information drift, guarantees the CLI schema validation remains completely correct, and ensures subsequent AI/LLM clients discovering Gherkio through the MCP bridge can utilize the newly added functions immediately.
 
+
+
+### 10. Session Cache (MCP Variable Persistence)
+
+The MCP server maintains a `sessionVars` map that persists across `run_test` calls, enabling incremental step-by-step execution:
+
+**Auto-reset rules:** Session is cleared when:
+- Test file path changes vs the previous call
+- Environment name changes vs the previous call
+
+**Note:** Session is NOT cleared on step index boundaries. This means incremental step-by-step execution (run step 0, then step 1, etc.) accumulates variables naturally. If you need a fresh session within the same file/environment, restart the MCP server.
+
+**Implementation:**
+- `internal/runner/runner.go` — `RunConfig.SessionVars map[string]interface{}` merged into `vars` at start, written back after execution completes
+- `internal/mcp/server.go` — `Server.sessionVars`, `lastTestPath`, `lastEnv` fields; reset logic before `RunConfig` creation
+- Session vars are injected after credentials but overridden by built-in generators (fresh per step)
+
+**Example flow:**
+```
+run_test(path=test.yaml, section=setup, step=0) → session: {$accessToken: "abc"}
+run_test(path=test.yaml, section=steps, step=0) → session preserved, sees $accessToken ✓
+run_test(path=test.yaml, section=steps, step=1) → session: {$accessToken, $id: "123"}
+run_test(path=other.yaml, step=0)              → session cleared (different file)
+```

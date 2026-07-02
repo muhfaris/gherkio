@@ -53,6 +53,8 @@ The `request` block defines the HTTP action Gherkio will execute. It supports th
 | `service` | `string` | No | Routes the request to a specific microservice defined in the active environment. | `service: auth` |
 | `headers` | `map[string]string`| No | Key-value mapping of custom HTTP headers. Supports variable interpolation. | `headers: { Content-Type: "application/json" }` |
 | `body` | `any` | No | Request body payload. Supports JSON maps, lists, raw strings, and variable injection. | `body: { role: "admin" }` |
+| `query` | `map[string]string` | No | Query parameters appended to the URL. Supports variable interpolation in values. | `query: { status: available }` |
+| `transform` | `object` | No | Declarative collection projections: filter, slice, and reshape arrays from saved variables into the request payload. | (See Requests chapter) |
 | `multipart` | `object` | No | Multipart form-data wrapper used for sending form fields and binary file uploads. | (See Requests chapter) |
 | `timeout` | `string` | No | HTTP socket timeout limit (parsed via standard Go duration strings like `5s`, `500ms`, `1m`). | `timeout: 10s` |
 

@@ -24,7 +24,10 @@ import (
 
 // Server implements a native Model Context Protocol (MCP) server over stdio.
 type Server struct {
-	projectDir string
+	projectDir  string
+	sessionVars map[string]interface{} // Persistent across run_test calls within the same session
+	lastTestPath string                 // Last test file path run (for session reset detection)
+	lastEnv      string                 // Last environment used (for session reset detection)
 }
 
 // NewServer creates a new instance of the MCP server.
@@ -65,8 +68,12 @@ func (s *Server) Start() error {
 			s.handleCallTool(req.ID, req.Params)
 		case "resources/list":
 			s.handleListResources(req.ID, req.Params)
-		case "resources/read":
+	case "resources/read":
 			s.handleReadResource(req.ID, req.Params)
+		case "prompts/list":
+			s.handleListPrompts(req.ID, req.Params)
+		case "prompts/get":
+			s.handleGetPrompt(req.ID, req.Params)
 		default:
 			s.writeError(req.ID, MethodNotFound, fmt.Sprintf("Method not found: '%s'", req.Method), nil)
 		}
@@ -149,7 +156,7 @@ func (s *Server) handleListTools(id interface{}, params json.RawMessage) {
 			},
 			{
 				Name:        "validate_test",
-				Description: "Validate a Gherkio scenario's syntax, structure, request methods, and schema/composition references.",
+				Description: "Validate a Gherkio scenario's syntax, structure, request methods, and schema/composition references.\nCall this AFTER authoring a test scenario and BEFORE calling create_test or run_test.",
 				InputSchema: InputSchema{
 					Type: "object",
 					Properties: map[string]interface{}{
@@ -163,7 +170,7 @@ func (s *Server) handleListTools(id interface{}, params json.RawMessage) {
 			},
 			{
 				Name:        "create_test",
-				Description: "Create a new Gherkio test scenario file in the project workspace (.gherkio/tests/). Checks validity before creation.",
+				Description: "Create a new Gherkio test scenario file in the project workspace (.gherkio/tests/). Checks validity before creation.\nBEFORE calling this tool, call prompts/get with name 'plan-scenario' to plan the test structure (auth check, setup/teardown vs standalone, reuse extraction).\nAFTER creating, call run_test with dryRun=true to validate expanded variables before real execution.",
 				InputSchema: InputSchema{
 					Type: "object",
 					Properties: map[string]interface{}{
@@ -228,7 +235,7 @@ func (s *Server) handleListTools(id interface{}, params json.RawMessage) {
 			},
 			{
 				Name:        "run_test",
-				Description: "Execute a Gherkio test scenario (fully or single-step isolated) and receive highly detailed, structured results.",
+				Description: "Execute a Gherkio test scenario (fully or single-step isolated) and receive highly detailed, structured results.\nUse dryRun=true to preview expanded requests without making HTTP calls — do this before real execution for new or modified tests.",
 				InputSchema: InputSchema{
 					Type: "object",
 					Properties: map[string]interface{}{
@@ -410,7 +417,7 @@ func (s *Server) handleListTools(id interface{}, params json.RawMessage) {
 			},
 			{
 				Name:        "convert_curl_to_yaml",
-				Description: "Convert a raw cURL command string into a formatted Gherkio DSL YAML test scenario or step.",
+				Description: "Convert a raw cURL command string into a formatted Gherkio DSL YAML test scenario or step.\nBEFORE calling, consider prompts/get with name 'discover-endpoint' to identify the endpoint structure and assertion requirements.\nAFTER converting, call validate_test to check the YAML, then run_test with dryRun=true.",
 				InputSchema: InputSchema{
 					Type: "object",
 					Properties: map[string]interface{}{
@@ -876,6 +883,15 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 			}
 		}
 
+	// Session management: persists variables across run_test calls.
+	// Clears only when the test file or environment changes.
+	if s.sessionVars == nil {
+			s.sessionVars = make(map[string]interface{})
+		}
+		if fullPath != s.lastTestPath || envName != s.lastEnv {
+			s.sessionVars = make(map[string]interface{})
+		}
+
 		cfg := runner.RunConfig{
 			TestPath:       fullPath,
 			EnvName:        envName,
@@ -891,6 +907,7 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 			Snapshot:       snapshotCfg,
 			Until:          untilArg,
 			FailFast:       failFast,
+			SessionVars:    s.sessionVars,
 		}
 
 		result, err := runner.Run(cfg)
@@ -898,6 +915,10 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 			s.writeToolError(id, fmt.Sprintf("Execution execution failed: %v", err))
 			return
 		}
+
+		// Track session state for auto-reset on next call
+		s.lastTestPath = fullPath
+		s.lastEnv = envName
 
 		// Write HTML/JSON report if configured in the config file
 		if appCfg != nil && appCfg.Reports.Format != "" {
@@ -1341,6 +1362,97 @@ func (s *Server) handleReadResource(id interface{}, params json.RawMessage) {
 			},
 		},
 	}
+	s.writeResponse(id, result, nil)
+}
+
+func (s *Server) handleListPrompts(id interface{}, params json.RawMessage) {
+	result := ListPromptsResult{
+		Prompts: []Prompt{
+			{
+				Name:        "plan-scenario",
+				Description: "Plan a Gherkio test scenario structure. Encodes the full decision tree: auth dependency check, setup/teardown vs standalone, and reuse extraction.",
+				Arguments: []PromptArgument{
+					{Name: "endpoint", Description: "The endpoint path to test (e.g. /orders/create)", Required: true},
+					{Name: "authRequired", Description: "Whether the endpoint requires a bearer token", Required: false},
+				},
+			},
+			{
+				Name:        "discover-endpoint",
+				Description: "Discover endpoint details: HTTP method, params, query strings, body shape, and expected response structure. Guides source code inspection and response shape analysis.",
+				Arguments: []PromptArgument{
+					{Name: "endpoint", Description: "The endpoint path to discover (e.g. /users/me)", Required: true},
+					{Name: "method", Description: "HTTP method for context (e.g. GET, POST)", Required: false},
+				},
+			},
+			{
+				Name:        "specify-assertions",
+				Description: "Guide assertion depth decisions: simple status+field checks vs full schema validation vs chain request extraction. Ensures appropriate assertion coverage.",
+				Arguments: []PromptArgument{
+					{Name: "endpoint", Description: "The endpoint path to assert on", Required: true},
+					{Name: "method", Description: "HTTP method for context", Required: false},
+					{Name: "responseStructure", Description: "Known response shape or schema description to guide assertion choices", Required: false},
+				},
+			},
+		},
+	}
+	s.writeResponse(id, result, nil)
+}
+
+func (s *Server) handleGetPrompt(id interface{}, params json.RawMessage) {
+	var req GetPromptRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		s.writeError(id, InvalidParams, "Invalid prompt get parameters", err.Error())
+		return
+	}
+
+	var result GetPromptResult
+
+	// Gather existing tests for prompts that need them
+	existingTests := "(unavailable — no project context)"
+	if s.projectDir != "" {
+		meta, err := project.GetMeta(s.projectDir)
+		if err == nil {
+			tests, err := teststore.ListTests(meta.TestsDir)
+			if err == nil {
+				var names []string
+for _, t := range tests {
+					names = append(names, t.RelativePath)
+				}
+				if len(names) > 0 {
+					existingTests = strings.Join(names, "\n  ")
+				} else {
+					existingTests = "(no tests yet)"
+				}
+			}
+		}
+	}
+
+	endpoint, _ := req.Arguments["endpoint"].(string)
+	method, _ := req.Arguments["method"].(string)
+	authRequired, _ := req.Arguments["authRequired"].(bool)
+	responseStructure, _ := req.Arguments["responseStructure"].(string)
+
+	switch req.Name {
+	case "plan-scenario":
+		result = GetPromptResult{
+			Description: "Plan a Gherkio test scenario structure",
+			Messages:    s.buildPlanScenarioPrompt(endpoint, authRequired, existingTests),
+		}
+	case "discover-endpoint":
+		result = GetPromptResult{
+			Description: "Discover endpoint details for Gherkio test authoring",
+			Messages:    s.buildDiscoverEndpointPrompt(endpoint, method),
+		}
+	case "specify-assertions":
+		result = GetPromptResult{
+			Description: "Guide assertion depth and coverage decisions",
+			Messages:    s.buildSpecifyAssertionsPrompt(endpoint, method, responseStructure),
+		}
+	default:
+		s.writeError(id, InvalidParams, fmt.Sprintf("Unknown prompt '%s'", req.Name), nil)
+		return
+	}
+
 	s.writeResponse(id, result, nil)
 }
 

@@ -339,6 +339,15 @@ func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *re
 		targetSection = "steps"
 	}
 
+	// Use session file for incremental runs (step/line/section/until)
+	var sessionFile string
+	if targetStepIdx >= 0 || targetSection != "" || untilSlice != "" {
+		sessionFile = filepath.Join(projectDir, ".gherkio", "session.yaml")
+	} else {
+		// Full run: clean stale session data
+		os.Remove(filepath.Join(projectDir, ".gherkio", "session.yaml"))
+	}
+
 	cfg := runner.RunConfig{
 		TestPath:       testPath,
 		EnvName:        env,
@@ -353,6 +362,7 @@ func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *re
 		DryRun:         dryRun,
 		Snapshot:       snapshotCfg,
 		Until:          untilSlice,
+		SessionFile:    sessionFile,
 	}
 
 	result, err := runner.Run(cfg)
