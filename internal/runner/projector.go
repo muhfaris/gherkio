@@ -401,7 +401,7 @@ func resolveTypePreserving(val interface{}, localVars map[string]interface{}) (i
 	if varName != "" {
 		if !strings.Contains(varName, "(") && !strings.Contains(varName, ":") {
 			if res, ok := resolveNestedVar(varName, localVars); ok {
-				return res, nil
+				return normalizeJSONNumber(res), nil
 			}
 			// Missing target property handling: return nil (JSON null) if parent alias exists
 			parts := strings.Split(varName, ".")
@@ -415,6 +415,25 @@ func resolveTypePreserving(val interface{}, localVars map[string]interface{}) (i
 	}
 
 	return interpolateString(strVal, localVars)
+}
+
+// normalizeJSONNumber converts json.Number to a native Go numeric type.
+// json.Number is a string underneath and doesn't implement json.Marshaler,
+// so json.Marshal would serialize it as a quoted string (">"55691"") instead
+// of a JSON number (55691). This function converts it to int64 or float64
+// so the downstream JSON encoder produces the correct numeric representation.
+func normalizeJSONNumber(v interface{}) interface{} {
+	switch n := v.(type) {
+	case json.Number:
+		if i, err := n.Int64(); err == nil {
+			return i
+		}
+		if f, err := n.Float64(); err == nil {
+			return f
+		}
+		return string(n) // fallback
+	}
+	return v
 }
 
 // getRemainingPath strips the alias prefix from a key path.

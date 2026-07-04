@@ -40,6 +40,31 @@ The `body.` prefix targets the response body payload (expected to be JSON). Gher
 *   **Array Indexing**: Use brackets to access specific list items (e.g., `body.items[0].id`).
 *   **Case Sensitivity**: JSON keys are strictly case-sensitive. `body.userId` is different from `body.userid`.
 
+#### Supported Matchers
+
+| Assertion Value | Type | Example | Behavior |
+|-----------------|------|---------|----------|
+| Literal value | Equality | `body.role: admin` | Exact string match |
+| `exists` | Existence | `body.email: exists` | Field must be present (any value) |
+| `not exists` | Absence | `body.error: not exists` | Field must be absent |
+| `uuid` | Format | `body.id: uuid` | Valid UUID v4 format |
+| `email` | Format | `body.email: email` | Valid email format |
+| `datetime` | Format | `body.createdAt: datetime` | Valid RFC3339 / ISO8601 datetime |
+| `uri` | Format | `body.avatar: uri` | Valid URI format (e.g. https://...) |
+| `string` | Type | `body.name: string` | Value is a string |
+| `number` | Type | `body.price: number` | Value is numeric (int, float) |
+| `boolean` | Type | `body.active: boolean` | Value is boolean |
+| `array` | Type | `body.tags: array` | Value is an array |
+| `object` | Type | `body.meta: object` | Value is an object/map |
+| `null` | Type | `body.deletedAt: null` | Value is null |
+| `true` / `false` | Literal | `body.active: true` | Value is boolean true/false |
+| `contains <s>` | Substring | `body.message: contains error` | String contains substring |
+| `startsWith <s>` | Prefix | `body.id: startsWith usr_` | String starts with prefix |
+| `endsWith <s>` | Suffix | `body.email: endsWith @example.com` | String ends with suffix |
+| `regex <p>` | Pattern | `body.code: regex ^[A-Z]{3}\d{4}$` | String matches regex |
+| `schema: <name>` | Schema | `schema: users/profile` | Full body validated against schema |
+| `schema: not <name>` | Negated schema | `schema: not errors/validation` | Body must NOT match error schema |
+
 #### Negative Assertions with `not exists`
 You can assert that a field is **absent** from the response body using `not exists`. This is useful for verifying that optional fields are omitted on purpose, or that error/cleanup fields are not present:
 
@@ -210,7 +235,17 @@ Asserts the exact length of a list returned in the response.
 Asserts that **every single element** in a list satisfies a specific condition.
 
 *   **Equality Check**: `all(body.items.status): active` — Asserts that every item in the `items` list has a `status` equal to `"active"`.
-*   **Matcher Assertion**: `all(body.items.price): number` — Asserts that every item in the `items` list has a `price` field that is a number.
+*   **Matcher Assertion**: `all(body.items.price): number` — Asserts that the `price` field in every element is a number.
+*   **Negative Assertion**: `all(body.items.errors): not exists` — Asserts that the `errors` field is absent from every element.
+
+| Condition | Example | Description |
+|-----------|---------|-------------|
+| Literal value | `all(body.items.role): admin` | Every element's field equals the value |
+| Type matcher | `all(body.items.price): number` | Every element's field matches a type matcher |
+| Format matcher | `all(body.items.email): email` | Every element's field matches a format matcher |
+| Existence | `all(body.items.id): exists` | Every element has the field |
+| **Absence** | `all(body.items.errors): not exists` | **No element has the field** |
+| Collection matcher | `all(body.items.count): gte 1` | Every array element satisfies a count condition |
 
 ---
 

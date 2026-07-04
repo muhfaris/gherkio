@@ -887,9 +887,146 @@ func TestInterpolateRequest_BodyConditionalIf(t *testing.T) {
 		if !ok {
 			t.Fatalf("Expected map body, got %T", got.Body)
 		}
-		if bodyMap["value"] != "fallback_for_empty" {
-			t.Errorf("Expected 'fallback_for_empty' (else), got %v", bodyMap["value"])
-		}
+	if bodyMap["value"] != "fallback_for_empty" {
+		t.Errorf("Expected 'fallback_for_empty' (else), got %v", bodyMap["value"])
+	}
 	})
+}
+
+func TestNormalizeJSONNumber(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    interface{}
+		expected interface{}
+	}{
+		{
+			name:     "json.Number integer",
+			input:    json.Number("55691"),
+			expected: int64(55691),
+		},
+		{
+			name:     "json.Number float",
+			input:    json.Number("3.14"),
+			expected: float64(3.14),
+		},
+		{
+			name:     "json.Number large integer",
+			input:    json.Number("72036854775808"),
+			expected: int64(72036854775808),
+		},
+		{
+			name:     "string passes through",
+			input:    "hello",
+			expected: "hello",
+		},
+		{
+			name:     "int passes through",
+			input:    42,
+			expected: 42,
+		},
+		{
+			name:     "float64 passes through",
+			input:    float64(1.5),
+			expected: float64(1.5),
+		},
+		{
+			name:     "nil passes through",
+			input:    nil,
+			expected: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := normalizeJSONNumber(tt.input)
+			if !reflect.DeepEqual(got, tt.expected) {
+				t.Errorf("normalizeJSONNumber(%v) = %v (%T), want %v (%T)",
+					tt.input, got, got, tt.expected, tt.expected)
+			}
+		})
+	}
+}
+
+func TestResolveTypePreserving_JSONNumber(t *testing.T) {
+	// Verify that $var referencing a json.Number returns a native numeric type,
+	// not a json.Number (which would serialize as a quoted string in JSON).
+	vars := map[string]interface{}{
+		"sizeFile": json.Number("55691"),
+		"price":    json.Number("19.99"),
+		"name":     "hello",
+	}
+
+	got, err := resolveTypePreserving("$sizeFile", vars)
+	if err != nil {
+		t.Fatalf("resolveTypePreserving($sizeFile) failed: %v", err)
+	}
+	if v, ok := got.(int64); !ok || v != 55691 {
+		t.Errorf("expected int64(55691), got %v (%T)", got, got)
+	}
+
+	got, err = resolveTypePreserving("$price", vars)
+	if err != nil {
+		t.Fatalf("resolveTypePreserving($price) failed: %v", err)
+	}
+	if v, ok := got.(float64); !ok || v != 19.99 {
+		t.Errorf("expected float64(19.99), got %v (%T)", got, got)
+	}
+
+	// Strings should pass through unchanged
+	got, err = resolveTypePreserving("$name", vars)
+	if err != nil {
+		t.Fatalf("resolveTypePreserving($name) failed: %v", err)
+	}
+	if v, ok := got.(string); !ok || v != "hello" {
+		t.Errorf("expected string(hello), got %v (%T)", got, got)
+	}
+}
+
+func TestJSONNumberRoundTrip_InterpolateRequest(t *testing.T) {
+	// Full integration: json.Number saved from response → interpolated into body
+	// → json.Marshal should produce a number, not a quoted string.
+	vars := map[string]interface{}{
+		"sizeFile": normalizeJSONNumber(json.Number("55691")),
+		"name":     "test",
+	}
+
+	req := model.Request{
+		Method: "POST",
+		URL:    "http://example.com/api",
+		Body: map[string]interface{}{
+			"size": "$sizeFile",
+			"name": "$name",
+		},
+	}
+
+	interpolated, err := InterpolateRequest(req, vars)
+	if err != nil {
+		t.Fatalf("InterpolateRequest failed: %v", err)
+	}
+
+	bodyJSON, err := json.Marshal(interpolated.Body)
+	if err != nil {
+		t.Fatalf("json.Marshal failed: %v", err)
+	}
+
+	// The JSON should contain the number without quotes
+	var result map[string]interface{}
+	if err := json.Unmarshal(bodyJSON, &result); err != nil {
+		t.Fatalf("json.Unmarshal failed: %v", err)
+	}
+
+	// Verify size is a number in the parsed result (json.Unmarshal w/o UseNumber → float64)
+	sizeVal, ok := result["size"].(float64)
+	if !ok {
+		t.Errorf("expected size to be float64 (numeric), got %T: %v", result["size"], result["size"])
+	}
+	if sizeVal != 55691 {
+		t.Errorf("expected size=55691, got %v", sizeVal)
+	}
+
+	// Verify name is still a string
+	if nameVal, ok := result["name"].(string); !ok || nameVal != "test" {
+		t.Errorf("expected name='test', got %v (%T)", result["name"], result["name"])
+	}
 }
 

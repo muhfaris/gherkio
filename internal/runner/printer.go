@@ -259,6 +259,9 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 						fmt.Printf("%s  %s: %s\n", statusIndent, k, v)
 					}
 				}
+				if step.Request.MultipartSummary != "" {
+					fmt.Printf("%sMultipart:\n%s\n", statusIndent, indentBlock(step.Request.MultipartSummary, statusIndent))
+				}
 				if step.Request.Body != "" {
 					fmt.Printf("%sBody: %s\n", statusIndent, indentBlock(FormatRequestBody(step.Request.Body, maskFields), statusIndent))
 				}
@@ -457,16 +460,28 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 				fmt.Printf("%s└─ saved: %s\n", statusIndent, strings.Join(parts, ", "))
 			}
 
-			// Show request and response on failure in summary mode
-			if !stepPassed && step.Response != nil {
-				fmt.Println()
-				if step.Request != nil {
-					if step.Request.Body != "" {
-						fmt.Printf("%sRequest Body:\n%s\n\n", statusIndent, indentBlock(FormatRequestBody(step.Request.Body, maskFields), statusIndent))
+		// Show request and response on failure in summary mode
+		if !stepPassed {
+			fmt.Println()
+			if step.Request != nil {
+				if len(step.Request.Headers) > 0 {
+					fmt.Printf("%sRequest Headers:\n", statusIndent)
+					for k, v := range step.Request.Headers {
+						if isSensitiveField(k, maskFields) {
+							fmt.Printf("%s  %s: ***masked***\n", statusIndent, k)
+						} else {
+							fmt.Printf("%s  %s: %s\n", statusIndent, k, v)
+						}
 					}
 				}
+				if step.Request.Body != "" {
+					fmt.Printf("%sRequest Body:\n%s\n\n", statusIndent, indentBlock(FormatRequestBody(step.Request.Body, maskFields), statusIndent))
+				}
+			}
+			if step.Response != nil {
 				fmt.Printf("%sResponse:\n%sStatus: %d\n\n%sBody:\n%s\n", statusIndent, statusIndent, step.Response.Status, statusIndent, indentBlock(FormatRequestBody(step.Response.Body, maskFields), statusIndent))
 			}
+		}
 
 			if step.Error != "" {
 				fmt.Printf("%s   ✗ Error: %s\n", indent, step.Error)
