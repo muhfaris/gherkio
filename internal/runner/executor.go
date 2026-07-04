@@ -53,11 +53,12 @@ type RetryEntry struct {
 
 // RequestInfo captures the executed request details.
 type RequestInfo struct {
-	Method  string            `json:"method"`
-	URL     string            `json:"url"`
-	Query   map[string]string `json:"query,omitempty"`
-	Headers map[string]string `json:"headers"`
-	Body    string            `json:"body,omitempty"`
+	Method           string            `json:"method"`
+	URL              string            `json:"url"`
+	Query            map[string]string `json:"query,omitempty"`
+	Headers          map[string]string `json:"headers"`
+	Body             string            `json:"body,omitempty"`
+	MultipartSummary string            `json:"multipart_summary,omitempty"`
 }
 
 // ResponseInfo captures the response details.
@@ -318,11 +319,19 @@ func resolveMultipartFilePath(filePath, projectDir string) (string, error) {
 		}
 	}
 
-	// Try fixtures directory fallback
+	// Try fixtures directory fallback at project root
 	if projectDir != "" {
 		fixturesPath := filepath.Join(projectDir, "fixtures", filepath.Base(filePath))
 		if _, err := os.Stat(fixturesPath); err == nil {
 			return fixturesPath, nil
+		}
+	}
+
+	// Try .gherkio/fixtures/ fallback (fixtures inside the project workspace)
+	if projectDir != "" {
+		gherkioFixturesPath := filepath.Join(projectDir, ".gherkio", "fixtures", filepath.Base(filePath))
+		if _, err := os.Stat(gherkioFixturesPath); err == nil {
+			return gherkioFixturesPath, nil
 		}
 	}
 
@@ -332,7 +341,7 @@ func resolveMultipartFilePath(filePath, projectDir string) (string, error) {
 		return absPath, nil
 	}
 
-	return "", fmt.Errorf("file not found: %s (checked: absolute, project root, fixtures/)", filePath)
+	return "", fmt.Errorf("file not found: %s (checked: absolute, project root, fixtures/, .gherkio/fixtures/", filePath)
 }
 
 // detectContentType returns the MIME type for a file based on its extension.
@@ -684,6 +693,10 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 		var failedReason string
 		passed := true
 
+		if expectedStr == "not exists" {
+			expectedDesc = "not exists"
+		}
+
 		for i, elem := range arrVal {
 			var valToCheck interface{} = elem
 			if fieldName != "" {
@@ -694,11 +707,22 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 					formattedActuals = append(formattedActuals, fmt.Sprintf("%v", elem))
 					break
 				}
-				val, valFound := mapVal[fieldName]
+			val, valFound := mapVal[fieldName]
 				if !valFound {
+					// not exists — field absent means all elements satisfy "not exists"
+					if expectedStr == "not exists" {
+						continue
+					}
 					passed = false
 					failedReason = fmt.Sprintf("failed at index %d (field %q missing)", i, fieldName)
 					formattedActuals = append(formattedActuals, "(missing)")
+					break
+				}
+				// not exists — field found is a fail
+				if expectedStr == "not exists" {
+					passed = false
+					failedReason = fmt.Sprintf("failed at index %d (field %q should not exist, got %v)", i, fieldName, val)
+					formattedActuals = append(formattedActuals, fmt.Sprintf("%v", val))
 					break
 				}
 				valToCheck = val

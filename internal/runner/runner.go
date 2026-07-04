@@ -355,19 +355,22 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 
 		url := resolveURL(env, interpolatedRequest)
 
-		stepResult.Request = &RequestInfo{
-			Method:  interpolatedRequest.Method,
-			URL:     url,
-			Query:   interpolatedRequest.Query,
-			Headers: interpolatedRequest.Headers,
+	stepResult.Request = &RequestInfo{
+		Method:  interpolatedRequest.Method,
+		URL:     url,
+		Query:   interpolatedRequest.Query,
+		Headers: interpolatedRequest.Headers,
+	}
+	if interpolatedRequest.Body != nil {
+		if bodyJSON, err := json.Marshal(interpolatedRequest.Body); err == nil {
+			stepResult.Request.Body = string(bodyJSON)
+		} else {
+			stepResult.Request.Body = fmt.Sprintf("%v", interpolatedRequest.Body)
 		}
-		if interpolatedRequest.Body != nil {
-			if bodyJSON, err := json.Marshal(interpolatedRequest.Body); err == nil {
-				stepResult.Request.Body = string(bodyJSON)
-			} else {
-				stepResult.Request.Body = fmt.Sprintf("%v", interpolatedRequest.Body)
-			}
-		}
+	}
+	if interpolatedRequest.Multipart != nil {
+		stepResult.Request.MultipartSummary = buildMultipartSummary(interpolatedRequest.Multipart)
+	}
 
 		// Run domain sandboxing validation
 		if err := ValidateURL(url, sandbox); err != nil {
@@ -465,6 +468,9 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 					} else {
 						stepResult.Request.Body = fmt.Sprintf("%v", interpolatedRequest.Body)
 					}
+				}
+				if interpolatedRequest.Multipart != nil {
+					stepResult.Request.MultipartSummary = buildMultipartSummary(interpolatedRequest.Multipart)
 				}
 			}
 
@@ -1085,11 +1091,13 @@ func loadSessionVars(path string) (map[string]interface{}, error) {
 }
 
 // saveSessionVars persists vars to a session file, excluding built-in generator keys.
+// Also normalizes json.Number values to native types so they survive the YAML round-trip
+// without being rehydrated as strings on the next step run.
 func saveSessionVars(path string, vars map[string]interface{}) error {
 	filtered := make(map[string]interface{})
 	for k, v := range vars {
 		if !isBuiltinKey(k) {
-			filtered[k] = v
+			filtered[k] = normalizeJSONNumber(v)
 		}
 	}
 	if len(filtered) == 0 {
@@ -1114,4 +1122,42 @@ func isBuiltinKey(key string) bool {
 		return true
 	}
 	return false
+}
+
+// buildMultipartSummary creates a human-readable summary of a multipart request config.
+func buildMultipartSummary(mp *model.MultipartConfig) string {
+	if mp == nil {
+		return ""
+	}
+	var b strings.Builder
+	if len(mp.Fields) > 0 {
+		b.WriteString("Fields:\n")
+		for k, v := range mp.Fields {
+			fmt.Fprintf(&b, "  %s: %q\n", k, v)
+		}
+	}
+	if len(mp.Files) > 0 {
+		if b.Len() > 0 {
+			b.WriteString("Files:\n")
+		} else {
+			b.WriteString("Files:\n")
+		}
+		for k, item := range mp.Files {
+			b.WriteString(fmt.Sprintf("  %s → %s", k, item.Path))
+			if item.ContentType != "" || item.Filename != "" {
+				extra := " ("
+				parts := []string{}
+				if item.ContentType != "" {
+					parts = append(parts, item.ContentType)
+				}
+				if item.Filename != "" {
+					parts = append(parts, fmt.Sprintf("%q", item.Filename))
+				}
+				extra += strings.Join(parts, ", ") + ")"
+				b.WriteString(extra)
+			}
+			b.WriteString("\n")
+		}
+	}
+	return strings.TrimRight(b.String(), "\n")
 }

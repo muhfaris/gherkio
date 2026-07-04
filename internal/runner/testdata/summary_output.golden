@@ -9,6 +9,8 @@
    ✗ body.username = emily
        └─ got: emilys
 
+   Request Headers:
+     Content-Type: application/json
    Request Body:
    {
      "expiresInMins": 30,
