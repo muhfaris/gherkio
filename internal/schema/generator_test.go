@@ -321,3 +321,143 @@ func TestGenerateSchemaType_BackwardCompatibility(t *testing.T) {
 		t.Error("GenerateJSONSchema and GenerateSchemaType(SchemaTypeTest) should produce identical output")
 	}
 }
+
+func TestStepHasIfProperty(t *testing.T) {
+	b, err := GenerateSchemaType(SchemaTypeTest)
+	if err != nil {
+		t.Fatalf("Failed to generate test schema: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(b, &result); err != nil {
+		t.Fatalf("Failed to parse JSON: %v", err)
+	}
+
+	defs, ok := result["$defs"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected $defs in test schema")
+	}
+
+	stepDef, ok := defs["Step"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected Step definition in $defs")
+	}
+
+	properties, ok := stepDef["properties"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected properties in Step definition")
+	}
+
+	ifProp, ok := properties["if"].(map[string]interface{})
+	if !ok {
+		t.Error("Expected 'if' property in Step definition")
+	} else {
+		desc, _ := ifProp["description"].(string)
+		if !strings.Contains(desc, "Conditional guard condition") {
+			t.Errorf("Expected 'if' description to contain guard condition details, got: %q", desc)
+		}
+	}
+}
+
+func TestStepHasSetProperty(t *testing.T) {
+	b, err := GenerateSchemaType(SchemaTypeTest)
+	if err != nil {
+		t.Fatalf("Failed to generate test schema: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(b, &result); err != nil {
+		t.Fatalf("Failed to parse JSON: %v", err)
+	}
+
+	defs, ok := result["$defs"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected $defs in test schema")
+	}
+
+	stepDef, ok := defs["Step"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected Step definition in $defs")
+	}
+
+	properties, ok := stepDef["properties"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected properties in Step definition")
+	}
+
+	setProp, ok := properties["set"].(map[string]interface{})
+	if !ok {
+		t.Error("Expected 'set' property in Step definition")
+	} else {
+		desc, _ := setProp["description"].(string)
+		if !strings.Contains(desc, "Set or override variables inline") {
+			t.Errorf("Expected 'set' description to contain inline variable assignment details, got: %q", desc)
+		}
+	}
+}
+
+func TestStepHasRequestPropertyWithSubOptions(t *testing.T) {
+	b, err := GenerateSchemaType(SchemaTypeTest)
+	if err != nil {
+		t.Fatalf("Failed to generate test schema: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(b, &result); err != nil {
+		t.Fatalf("Failed to parse JSON: %v", err)
+	}
+
+	defs, ok := result["$defs"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected $defs in test schema")
+	}
+
+	stepDef, ok := defs["Step"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected Step definition in $defs")
+	}
+
+	properties, ok := stepDef["properties"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected properties in Step definition")
+	}
+
+	reqProp, ok := properties["request"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected 'request' property in Step definition")
+	}
+
+	desc, _ := reqProp["description"].(string)
+	if !strings.Contains(desc, "Available options:") || !strings.Contains(desc, "service") || !strings.Contains(desc, "method") || !strings.Contains(desc, "url") {
+		t.Errorf("Expected 'request' description to contain available options details, got: %q", desc)
+	}
+}
+
+func TestStepDescriptionContainsOptions(t *testing.T) {
+	b, err := GenerateSchemaType(SchemaTypeTest)
+	if err != nil {
+		t.Fatalf("Failed to generate test schema: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(b, &result); err != nil {
+		t.Fatalf("Failed to parse JSON: %v", err)
+	}
+
+	defs, ok := result["$defs"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected $defs in test schema")
+	}
+
+	stepDef, ok := defs["Step"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected Step definition in $defs")
+	}
+
+	desc, _ := stepDef["description"].(string)
+	if !strings.Contains(desc, "Available options:") || !strings.Contains(desc, "name") || !strings.Contains(desc, "request") || !strings.Contains(desc, "set") {
+		t.Errorf("Expected Step description to contain available options list, got: %q", desc)
+	}
+}
+
+

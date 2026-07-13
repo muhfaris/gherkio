@@ -1,5 +1,7 @@
 package report
 
+import "github.com/muhfaris/gherkio/internal/runner"
+
 // ReportData represents the top-level data structure passed to the HTML template.
 // For single-scenario runs, Steps is populated and Scenarios is nil.
 // For multi-scenario runs, Scenarios is populated and Steps is nil.
@@ -12,8 +14,10 @@ type ReportData struct {
 	TotalSteps    int
 	PassCount     int
 	FailCount     int
+	SkipCount     int
 	PassPercent   float64
 	FailPercent   float64
+	SkipPercent   float64
 	Steps         []ReportStep   // populated for single-scenario runs
 	Scenarios     []ScenarioData // populated for multi-scenario runs
 }
@@ -28,8 +32,10 @@ type ScenarioData struct {
 	TotalSteps    int
 	PassCount     int
 	FailCount     int
+	SkipCount     int
 	PassPercent   float64
 	FailPercent   float64
+	SkipPercent   float64
 	Steps         []ReportStep
 }
 
@@ -51,12 +57,14 @@ type ReportStep struct {
 	RequestBody  string
 	ResponseBody string
 	Passed       bool
+	Skipped      bool
 	Assertions   []ReportAssertion
 	Error        string
 	Warnings     []string `json:"warnings,omitempty"`
 	RetryCount   int
 	RetryHistory []RetryEntry
 	Role         string `json:"role,omitempty"` // "setup", "steps", "teardown"
+	Original     runner.StepResult
 }
 
 // RetryEntry mirrors runner.RetryEntry for the report scope.

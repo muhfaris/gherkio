@@ -240,6 +240,56 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 			vars[key] = val
 		}
 
+		if step.If != "" {
+			condPass, err := EvaluateCondition(step.If, vars)
+			if err != nil {
+				stepResult.Error = fmt.Sprintf("Condition evaluation failed: %v", err)
+				stepResults = append(stepResults, stepResult)
+				allPassed = false
+				totalFail++
+				if failFast {
+					break
+				}
+				continue
+			}
+			if !condPass {
+				stepResult.Skipped = true
+				stepResult.Duration = time.Since(stepStart)
+				stepResults = append(stepResults, stepResult)
+				continue
+			}
+		}
+
+		// Handle 'set' step
+		if step.Set != nil {
+			saved := make(map[string]interface{})
+			hasError := false
+			for name, rawVal := range step.Set {
+				interpolated, err := interpolateString(rawVal, vars)
+				if err != nil {
+					stepResult.Error = fmt.Sprintf("Failed to interpolate set variable '%s': %v", name, err)
+					stepResults = append(stepResults, stepResult)
+					allPassed = false
+					totalFail++
+					hasError = true
+					break
+				}
+				vars[name] = interpolated
+				saved[name] = interpolated
+			}
+			if hasError {
+				if failFast {
+					break
+				}
+				continue
+			}
+			stepResult.SavedVars = saved
+			stepResult.Duration = time.Since(stepStart)
+			stepResults = append(stepResults, stepResult)
+			totalPass++
+			continue
+		}
+
 		// Handle 'use' step recursively
 		if step.Use != "" {
 			if step.Retry != nil {

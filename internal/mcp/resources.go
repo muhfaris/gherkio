@@ -122,9 +122,11 @@ Use setup, steps, and teardown blocks strategically:
 
 ### Step Block
 - **name**: (String, Optional) Human-readable label for the step. Shown in test output instead of the default "METHOD /url".
-|- **use**: (String, Conditional) Path to compose/execute another scenario. Mutually exclusive with request.
-|- **with**: (Map of string:string, Optional) Variable overrides injected into a 'use:' step. Values are interpolated against current context before injection. The used scenario sees these as local variables; original values are restored after the 'use:' completes. Only valid with 'use:'. Example: 'with: { PARENT_CLAIM_ISSUE_ID: $STATUS_APPROVED_ID }'
-|- **request**: (Request object, Conditional) HTTP Request config. Mutually exclusive with use.
+- **if**: (String, Optional) Conditional guard condition (e.g. '$VAR == true', '$PRICE > 100'). If evaluated to false, the step is skipped.
+- **use**: (String, Conditional) Path to compose/execute another scenario. Mutually exclusive with request and set.
+- **with**: (Map of string:string, Optional) Variable overrides injected into a 'use:' step. Values are interpolated against current context before injection. The used scenario sees these as local variables; original values are restored after the 'use:' completes. Only valid with 'use:'. Example: 'with: { PARENT_CLAIM_ISSUE_ID: $STATUS_APPROVED_ID }'
+- **request**: (Request object, Conditional) HTTP Request config. Mutually exclusive with use and set.
+- **set**: (Map of string:string, Conditional) Inline variable assignment / override map. Mutually exclusive with request and use.
 - **expect**: (Expect object, Optional) Response assertions.
 - **save**: (Map of name:path, Optional) Extract dynamic values to context variables. Paths support variable interpolation (e.g. 'body.data[$randomInt(0,9)].id') and **bracket notation** for array indexing (e.g. 'body.users[0].id').
 - **timing**: (TimingConfig, Optional) Execution latency check.

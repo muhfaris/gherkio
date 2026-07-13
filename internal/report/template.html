@@ -20,6 +20,9 @@
         --fail-bg: #fcebeb;
         --fail-text: #791f1f;
         --fail-border: #e24b4a;
+        --skip-bg: #ecebf7;
+        --skip-text: #3c329b;
+        --skip-border: #796be2;
         --badge-bg: #f1efe8;
         --badge-text: #444441;
         --warn-bg: #faeeda;
@@ -47,6 +50,9 @@
           --fail-bg: #501313;
           --fail-text: #f7c1c1;
           --fail-border: #a32d2d;
+          --skip-bg: #1c1549;
+          --skip-text: #b6adfa;
+          --skip-border: #564aa3;
           --badge-bg: #2c2c2a;
           --badge-text: #d3d1c7;
           --warn-bg: #412402;
@@ -156,6 +162,9 @@
       .bar-fail {
         background: var(--fail-border);
       }
+      .bar-skip {
+        background: var(--skip-border);
+      }
       .summary-stats {
         display: flex;
         gap: 16px;
@@ -179,6 +188,9 @@
       .stat-dot.fail {
         background: var(--fail-border);
       }
+      .stat-dot.skip {
+        background: var(--skip-border);
+      }
       .stat-dot.total {
         background: var(--text-tertiary);
       }
@@ -197,6 +209,9 @@
       }
       .step.step-fail {
         border-color: var(--fail-border);
+      }
+      .step.step-skip {
+        border-color: var(--skip-border);
       }
       .step-header {
         display: flex;
@@ -671,6 +686,7 @@
         <div class="summary-bar">
           <div class="bar-pass" style="width: {{.PassPercent}}%"></div>
           <div class="bar-fail" style="width: {{.FailPercent}}%"></div>
+          <div class="bar-skip" style="width: {{.SkipPercent}}%"></div>
         </div>
         <div class="summary-stats">
           <span class="stat"
@@ -679,6 +695,11 @@
           <span class="stat"
             ><span class="stat-dot fail"></span> {{.FailCount}} failed</span
           >
+          {{if gt .SkipCount 0}}
+          <span class="stat"
+            ><span class="stat-dot skip"></span> {{.SkipCount}} skipped</span
+          >
+          {{end}}
           <span class="stat"
             ><span class="stat-dot total"></span> {{.TotalSteps}} total</span
           >
@@ -719,6 +740,9 @@
               <span class="meta-item"><strong>Steps:</strong> {{$scenario.TotalSteps}}</span>
               <span class="meta-item"><strong>Passed:</strong> {{$scenario.PassCount}}</span>
               <span class="meta-item"><strong>Failed:</strong> {{$scenario.FailCount}}</span>
+              {{if gt $scenario.SkipCount 0}}
+              <span class="meta-item"><strong>Skipped:</strong> {{$scenario.SkipCount}}</span>
+              {{end}}
               {{if $scenario.Account}}
               <span class="meta-item"><strong>Account:</strong> {{$scenario.Account}}</span>
               {{end}}
@@ -728,13 +752,13 @@
           <div class="steps" id="steps-{{$sIdx}}">
             {{range $i, $step := $scenario.Steps}}
         <div
-          class="step {{if not $step.Passed}}step-fail{{end}}"
+          class="step {{if $step.Skipped}}step-skip{{else if not $step.Passed}}step-fail{{end}}"
           id="step-s{{$sIdx}}-{{$i}}"
         >
           <!-- Step header -->
           <div class="step-header" onclick="toggleStep('step-s{{$sIdx}}-{{$i}}')">
             <span class="step-status"
-              >{{if $step.Passed}}✅{{else}}❌{{end}}</span
+              >{{if $step.Skipped}}⏭️{{else if $step.Passed}}✅{{else}}❌{{end}}</span
             >
             <span class="step-num">#{{add $i 1}}</span>
             {{if $step.Name}}<span class="step-name">{{$step.Name}}</span>{{end}}
@@ -781,6 +805,13 @@
 
           <!-- Step body -->
           <div class="step-body">
+            {{if $step.Skipped}}
+            <!-- Step Skipped Info -->
+            <div style="background: var(--skip-bg); border: 0.5px solid var(--skip-border); border-radius: var(--radius); padding: 12px; margin-bottom: 12px;">
+              <div style="font-weight: 600; font-size: 13px; color: var(--skip-text); margin-bottom: 4px;">⏭️ Skipped</div>
+              <div style="font-family: var(--mono); font-size: 13px; color: var(--skip-text);">Guard condition evaluated to false: <code>{{$step.Original.Original.If}}</code></div>
+            </div>
+            {{else}}
             <!-- Response info -->
             <div class="response-info">
               <span style="font-size: 13px; color: var(--text-secondary)">
@@ -937,6 +968,7 @@
               </div>
             </div>
             {{end}}
+            {{end}}
           </div>
         </div>
         {{end}}
@@ -948,13 +980,13 @@
       <div class="steps" id="steps">
         {{range $i, $step := .Steps}}
         <div
-          class="step {{if not $step.Passed}}step-fail{{end}}"
+          class="step {{if $step.Skipped}}step-skip{{else if not $step.Passed}}step-fail{{end}}"
           id="step-{{$i}}"
         >
           <!-- Step header -->
           <div class="step-header" onclick="toggleStep('step-{{$i}}')">
             <span class="step-status"
-              >{{if $step.Passed}}✅{{else}}❌{{end}}</span
+              >{{if $step.Skipped}}⏭️{{else if $step.Passed}}✅{{else}}❌{{end}}</span
             >
             <span class="step-num">#{{add $i 1}}</span>
             {{if $step.Name}}<span class="step-name">{{$step.Name}}</span>{{end}}
@@ -1001,6 +1033,13 @@
 
           <!-- Step body -->
           <div class="step-body">
+            {{if $step.Skipped}}
+            <!-- Step Skipped Info -->
+            <div style="background: var(--skip-bg); border: 0.5px solid var(--skip-border); border-radius: var(--radius); padding: 12px; margin-bottom: 12px;">
+              <div style="font-weight: 600; font-size: 13px; color: var(--skip-text); margin-bottom: 4px;">⏭️ Skipped</div>
+              <div style="font-family: var(--mono); font-size: 13px; color: var(--skip-text);">Guard condition evaluated to false: <code>{{$step.Original.Original.If}}</code></div>
+            </div>
+            {{else}}
             <!-- Response info -->
             <div class="response-info">
               <span style="font-size: 13px; color: var(--text-secondary)">
@@ -1166,6 +1205,7 @@
                 </div>
               </div>
             </div>
+            {{end}}
             {{end}}
           </div>
         </div>

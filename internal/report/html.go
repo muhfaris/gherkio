@@ -20,6 +20,7 @@ var reportTemplateStr string
 func MapResultsToSuiteReportData(results []*runner.RunResult, env string, maskFields []string, forceCurlMasking bool) ReportData {
 	suiteTotalPass := 0
 	suiteTotalFail := 0
+	suiteTotalSkip := 0
 	suiteTotalSteps := 0
 	var suiteDuration time.Duration
 	var scenarios []ScenarioData
@@ -37,15 +38,18 @@ func MapResultsToSuiteReportData(results []*runner.RunResult, env string, maskFi
 			TotalSteps:    scData.TotalSteps,
 			PassCount:     scData.PassCount,
 			FailCount:     scData.FailCount,
+			SkipCount:     scData.SkipCount,
 			Steps:         scData.Steps,
 		}
 		if scData.TotalSteps > 0 {
 			scenario.PassPercent = float64(scData.PassCount) / float64(scData.TotalSteps) * 100
 			scenario.FailPercent = float64(scData.FailCount) / float64(scData.TotalSteps) * 100
+			scenario.SkipPercent = float64(scData.SkipCount) / float64(scData.TotalSteps) * 100
 		}
 
 		suiteTotalPass += scData.PassCount
 		suiteTotalFail += scData.FailCount
+		suiteTotalSkip += scData.SkipCount
 		suiteTotalSteps += scData.TotalSteps
 		suiteDuration += result.Duration
 
@@ -54,9 +58,11 @@ func MapResultsToSuiteReportData(results []*runner.RunResult, env string, maskFi
 
 	passPercent := 0.0
 	failPercent := 0.0
+	skipPercent := 0.0
 	if suiteTotalSteps > 0 {
 		passPercent = float64(suiteTotalPass) / float64(suiteTotalSteps) * 100
 		failPercent = float64(suiteTotalFail) / float64(suiteTotalSteps) * 100
+		skipPercent = float64(suiteTotalSkip) / float64(suiteTotalSteps) * 100
 	}
 
 	return ReportData{
@@ -67,8 +73,10 @@ func MapResultsToSuiteReportData(results []*runner.RunResult, env string, maskFi
 		TotalSteps:    suiteTotalSteps,
 		PassCount:     suiteTotalPass,
 		FailCount:     suiteTotalFail,
+		SkipCount:     suiteTotalSkip,
 		PassPercent:   passPercent,
 		FailPercent:   failPercent,
+		SkipPercent:   skipPercent,
 		Scenarios:     scenarios,
 	}
 }
@@ -77,6 +85,7 @@ func MapResultsToSuiteReportData(results []*runner.RunResult, env string, maskFi
 func MapResultToReportData(result *runner.RunResult, env string, maskFields []string, forceCurlMasking bool) ReportData {
 	totalPass := 0
 	totalFail := 0
+	totalSkip := 0
 
 	var reportSteps []ReportStep
 	stepIndex := 1
@@ -89,7 +98,7 @@ func MapResultToReportData(result *runner.RunResult, env string, maskFields []st
 		var reqID, curlCmd, reqBody, resBody, statusText string
 		var statusCode int
 		var timingFailed bool
-		stepPassed := step.Error == ""
+		stepPassed := step.Error == "" && !step.Skipped
 
 		if step.Request != nil {
 
@@ -144,7 +153,9 @@ func MapResultToReportData(result *runner.RunResult, env string, maskFields []st
 			})
 		}
 
-		if stepPassed {
+		if step.Skipped {
+			totalSkip++
+		} else if stepPassed {
 			totalPass++
 		} else {
 			totalFail++
@@ -193,6 +204,7 @@ func MapResultToReportData(result *runner.RunResult, env string, maskFields []st
 			RequestBody:  reqBody,
 			ResponseBody: resBody,
 			Passed:       stepPassed,
+			Skipped:      step.Skipped,
 			Assertions:   assertions,
 			Error:        step.Error,
 			Warnings:     step.Warnings,
@@ -200,16 +212,19 @@ func MapResultToReportData(result *runner.RunResult, env string, maskFields []st
 			RetryHistory: retryHistory,
 			SavedVars:    step.SavedVars,
 			Role:         step.Role,
+			Original:     step,
 		})
 		stepIndex++
 	}
 
-	totalSteps := totalPass + totalFail
+	totalSteps := totalPass + totalFail + totalSkip
 	passPercent := 0.0
 	failPercent := 0.0
+	skipPercent := 0.0
 	if totalSteps > 0 {
 		passPercent = float64(totalPass) / float64(totalSteps) * 100
 		failPercent = float64(totalFail) / float64(totalSteps) * 100
+		skipPercent = float64(totalSkip) / float64(totalSteps) * 100
 	}
 
 	return ReportData{
@@ -221,8 +236,10 @@ func MapResultToReportData(result *runner.RunResult, env string, maskFields []st
 		TotalSteps:    totalSteps,
 		PassCount:     totalPass,
 		FailCount:     totalFail,
+		SkipCount:     totalSkip,
 		PassPercent:   passPercent,
 		FailPercent:   failPercent,
+		SkipPercent:   skipPercent,
 		Steps:         reportSteps,
 	}
 }

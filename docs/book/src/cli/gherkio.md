@@ -16,6 +16,7 @@ validation schemas, and generating reports.
 ### SEE ALSO
 
 * [gherkio convert](convert.md)	 - Convert cURL to Gherkio YAML or Gherkio YAML to cURL
+* [gherkio env](env.md)	 - Manage Gherkio environments
 * [gherkio init](init.md)	 - Initialize a new Gherkio project structure
 * [gherkio mcp](mcp.md)	 - Start Gherkio Model Context Protocol (MCP) server over stdio
 * [gherkio run](run.md)	 - Execute a test scenario
