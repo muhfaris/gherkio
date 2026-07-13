@@ -66,6 +66,9 @@ func GenerateAllSchemas() ([]byte, error) {
 	// Add Request enhancements
 	patchRequestSchema(testSchema)
 
+	// Add Retry enhancements
+	patchRetrySchema(testSchema)
+
 	// Add Steps properties enhancements to test schema
 	patchStepsProperties(testSchema)
 
@@ -114,6 +117,7 @@ func GenerateSchemaType(schemaType SchemaType) ([]byte, error) {
 		patchStepOneOf(schema)
 		patchProjectionSchema(schema)
 		patchRequestSchema(schema)
+		patchRetrySchema(schema)
 		patchStepsProperties(schema)
 		return json.MarshalIndent(schema, "", "  ")
 	case SchemaTypeConfig:
@@ -327,4 +331,25 @@ func patchStepsProperties(schema *jsonschema.Schema) {
 		}
 	}
 }
+
+// patchRetrySchema updates the descriptions for RetryConfig options in the JSON schema.
+func patchRetrySchema(schema *jsonschema.Schema) {
+	retryDesc := "Retry configuration for transient step failures.\n\n" +
+		"Available options:\n" +
+		"- **attempts**: (Integer, Required) Number of retry attempts.\n" +
+		"- **interval**: (Integer, Optional) Interval in milliseconds between retries.\n" +
+		"- **backoff**: (String, Optional) Backoff strategy (linear or exponential).\n" +
+		"- **maxDuration**: (String, Optional) Maximum duration for the retry loop (e.g. '5s', '1m').\n" +
+		"- **onStatus**: (Array of Integers, Optional) List of status codes that trigger a retry."
+
+	if stepSchema, ok := schema.Definitions["Step"]; ok {
+		if retryProp, ok := stepSchema.Properties.Get("retry"); ok {
+			retryProp.Description = retryDesc
+		}
+	}
+	if retrySchema, ok := schema.Definitions["RetryConfig"]; ok {
+		retrySchema.Description = retryDesc
+	}
+}
+
 

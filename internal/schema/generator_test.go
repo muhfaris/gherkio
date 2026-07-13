@@ -498,4 +498,50 @@ func TestStepsPropertiesContainOptions(t *testing.T) {
 	}
 }
 
+func TestRetryDescriptionContainsOptions(t *testing.T) {
+	b, err := GenerateSchemaType(SchemaTypeTest)
+	if err != nil {
+		t.Fatalf("Failed to generate test schema: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(b, &result); err != nil {
+		t.Fatalf("Failed to parse JSON: %v", err)
+	}
+
+	defs, ok := result["$defs"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected $defs in test schema")
+	}
+
+	// 1. Check inside Step's retry property description
+	stepDef, ok := defs["Step"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected Step definition in $defs")
+	}
+	stepProps, ok := stepDef["properties"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected properties in Step definition")
+	}
+	retryProp, ok := stepProps["retry"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected retry property in Step definition")
+	}
+	desc, _ := retryProp["description"].(string)
+	if !strings.Contains(desc, "Available options:") || !strings.Contains(desc, "attempts") || !strings.Contains(desc, "maxDuration") {
+		t.Errorf("Expected Step retry property description to contain options, got: %q", desc)
+	}
+
+	// 2. Check inside RetryConfig definition description
+	retryDef, ok := defs["RetryConfig"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected RetryConfig definition in $defs")
+	}
+	desc2, _ := retryDef["description"].(string)
+	if !strings.Contains(desc2, "Available options:") || !strings.Contains(desc2, "attempts") || !strings.Contains(desc2, "maxDuration") {
+		t.Errorf("Expected RetryConfig description to contain options, got: %q", desc2)
+	}
+}
+
+
 
