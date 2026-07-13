@@ -460,4 +460,42 @@ func TestStepDescriptionContainsOptions(t *testing.T) {
 	}
 }
 
+func TestStepsPropertiesContainOptions(t *testing.T) {
+	b, err := GenerateSchemaType(SchemaTypeTest)
+	if err != nil {
+		t.Fatalf("Failed to generate test schema: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(b, &result); err != nil {
+		t.Fatalf("Failed to parse JSON: %v", err)
+	}
+
+	defs, ok := result["$defs"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected $defs in test schema")
+	}
+
+	testFileDef, ok := defs["TestFile"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected TestFile definition in $defs")
+	}
+
+	properties, ok := testFileDef["properties"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected properties in TestFile definition")
+	}
+
+	for _, propName := range []string{"setup", "steps", "teardown"} {
+		prop, ok := properties[propName].(map[string]interface{})
+		if !ok {
+			t.Fatalf("Expected property %q in TestFile schema", propName)
+		}
+		desc, _ := prop["description"].(string)
+		if !strings.Contains(desc, "Each step supports the following options:") || !strings.Contains(desc, "request") || !strings.Contains(desc, "set") {
+			t.Errorf("Expected %q description to contain step options, got: %q", propName, desc)
+		}
+	}
+}
+
 

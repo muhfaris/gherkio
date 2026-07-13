@@ -66,6 +66,9 @@ func GenerateAllSchemas() ([]byte, error) {
 	// Add Request enhancements
 	patchRequestSchema(testSchema)
 
+	// Add Steps properties enhancements to test schema
+	patchStepsProperties(testSchema)
+
 	// Combine all definitions ($defs) into a single flat map
 	allDefs := make(map[string]interface{})
 
@@ -111,6 +114,7 @@ func GenerateSchemaType(schemaType SchemaType) ([]byte, error) {
 		patchStepOneOf(schema)
 		patchProjectionSchema(schema)
 		patchRequestSchema(schema)
+		patchStepsProperties(schema)
 		return json.MarshalIndent(schema, "", "  ")
 	case SchemaTypeConfig:
 		schema := r.Reflect(&model.Config{})
@@ -287,3 +291,40 @@ func patchRequestSchema(schema *jsonschema.Schema) {
 		reqSchema.Description = requestDesc
 	}
 }
+
+// patchStepsProperties updates the descriptions of setup, steps, and teardown arrays.
+func patchStepsProperties(schema *jsonschema.Schema) {
+	stepsDesc := "Each step supports the following options:\n" +
+		"- **name**: (String, Optional) Human-readable label for the step.\n" +
+		"- **if**: (String, Optional) Conditional guard expression (e.g. '$status == 200').\n" +
+		"- **request**: (Object, Conditional) HTTP Request config. Mutually exclusive with 'use' and 'set'.\n" +
+		"- **use**: (String, Conditional) Path to compose/execute another scenario. Mutually exclusive with 'request' and 'set'.\n" +
+		"- **set**: (Map, Conditional) Inline variable assignment / override map. Mutually exclusive with 'request' and 'use'.\n" +
+		"- **expect**: (Object, Optional) Response assertions.\n" +
+		"- **save**: (Map, Optional) Extract dynamic values to context variables.\n" +
+		"- **timing**: (Object, Optional) Execution latency check.\n" +
+		"- **retry**: (Object, Optional) Retry configuration for transient failures."
+
+	var testFileSchema *jsonschema.Schema
+	if schema.Definitions != nil {
+		if s, ok := schema.Definitions["TestFile"]; ok {
+			testFileSchema = s
+		}
+	}
+	if testFileSchema == nil {
+		testFileSchema = schema
+	}
+
+	if testFileSchema != nil && testFileSchema.Properties != nil {
+		if setupProp, ok := testFileSchema.Properties.Get("setup"); ok {
+			setupProp.Description = "Pre-condition steps executed before main steps.\n\n" + stepsDesc
+		}
+		if stepsProp, ok := testFileSchema.Properties.Get("steps"); ok {
+			stepsProp.Description = "Main steps to execute for this scenario.\n\n" + stepsDesc
+		}
+		if teardownProp, ok := testFileSchema.Properties.Get("teardown"); ok {
+			teardownProp.Description = "Post-condition steps that always execute, even on failure.\n\n" + stepsDesc
+		}
+	}
+}
+
