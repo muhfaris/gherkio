@@ -129,3 +129,114 @@ func TestParseUntil(t *testing.T) {
 		})
 	}
 }
+
+func TestExecuteSteps_Set(t *testing.T) {
+	steps := []model.Step{
+		{
+			Set: map[string]string{
+				"FOO": "bar",
+				"BAZ": "qux",
+			},
+		},
+		{
+			Set: map[string]string{
+				"INTERPOLATED": "$FOO-value",
+			},
+		},
+	}
+
+	vars := make(map[string]interface{})
+	results, pass, fail, ok := executeSteps(
+		steps,
+		nil, // env
+		vars,
+		"",  // projectDir
+		"",  // currentDir
+		0,   // depth
+		"steps",
+		false, // dryRun
+		false, // failFast
+		nil,   // sandbox
+		SnapshotConfig{},
+		"scenario",
+		"testfile.yaml",
+	)
+
+	if !ok {
+		t.Error("Expected execution to succeed")
+	}
+	if pass != 2 {
+		t.Errorf("Expected 2 passing steps, got %d", pass)
+	}
+	if fail != 0 {
+		t.Errorf("Expected 0 failing steps, got %d", fail)
+	}
+	if len(results) != 2 {
+		t.Fatalf("Expected 2 results, got %d", len(results))
+	}
+
+	// Verify variables in the map
+	if vars["FOO"] != "bar" {
+		t.Errorf("Expected FOO=bar, got %v", vars["FOO"])
+	}
+	if vars["BAZ"] != "qux" {
+		t.Errorf("Expected BAZ=qux, got %v", vars["BAZ"])
+	}
+	if vars["INTERPOLATED"] != "bar-value" {
+		t.Errorf("Expected INTERPOLATED=bar-value, got %v", vars["INTERPOLATED"])
+	}
+
+	// Verify SavedVars in step results
+	s1 := results[0]
+	if s1.SavedVars["FOO"] != "bar" || s1.SavedVars["BAZ"] != "qux" {
+		t.Errorf("Unexpected SavedVars in step 1: %v", s1.SavedVars)
+	}
+
+	s2 := results[1]
+	if s2.SavedVars["INTERPOLATED"] != "bar-value" {
+		t.Errorf("Unexpected SavedVars in step 2: %v", s2.SavedVars)
+	}
+}
+
+func TestExecuteSteps_Set_Error(t *testing.T) {
+	steps := []model.Step{
+		{
+			Set: map[string]string{
+				"BAD": "$MISSING_VAR",
+			},
+		},
+	}
+
+	vars := make(map[string]interface{})
+	results, pass, fail, ok := executeSteps(
+		steps,
+		nil, // env
+		vars,
+		"",  // projectDir
+		"",  // currentDir
+		0,   // depth
+		"steps",
+		false, // dryRun
+		false, // failFast
+		nil,   // sandbox
+		SnapshotConfig{},
+		"scenario",
+		"testfile.yaml",
+	)
+
+	if ok {
+		t.Error("Expected execution to fail")
+	}
+	if pass != 0 {
+		t.Errorf("Expected 0 passing steps, got %d", pass)
+	}
+	if fail != 1 {
+		t.Errorf("Expected 1 failing steps, got %d", fail)
+	}
+	if len(results) != 1 {
+		t.Fatalf("Expected 1 result, got %d", len(results))
+	}
+	if results[0].Error == "" {
+		t.Error("Expected error message in step result, got empty")
+	}
+}

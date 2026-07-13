@@ -32,8 +32,10 @@ Each step in a scenario sequence supports the following top-level keys:
 | Property Key | Type | Required | Description | Example |
 | :--- | :--- | :--- | :--- | :--- |
 | `name` | `string` | No | Human-readable label for the step. Shown in test output and HTML report instead of `METHOD /url`. | `name: Create new order` |
-| `request` | `object` | Conditional | HTTP request payload block. **Mutually exclusive with `use`**. | (See Request Properties below) |
-| `use` | `string` | Conditional | Scenario composition. Imports and executes another scenario YAML file inline. | `use: shared/login.yaml` |
+| `if` | `string` | No | Conditional guard clause. Step is skipped if the expression evaluates to false. | `if: $responseCode == 200` |
+| `request` | `object` | Conditional | HTTP request payload block. **Mutually exclusive with `use` and `set`**. | (See Request Properties below) |
+| `use` | `string` | Conditional | Scenario composition. Imports and executes another scenario YAML file inline. **Mutually exclusive with `request` and `set`**. | `use: shared/login.yaml` |
+| `set` | `map[string]string`| Conditional | Inline variable assignment. Explicitly assigns or overrides variables. **Mutually exclusive with `request` and `use`**. | `set: { QUEUE_ID: "01KT4EBA37Y" }` |
 | `with` | `map[string]string`| No | Variable overrides injected into a `use:` step. Values interpolated before injection; original values restored after completion. | `with: { PARENT_CLAIM_ISSUE_ID: $STATUS_APPROVED_ID }` |
 | `expect` | `object` | No | Assertions mapping target dot-notation paths to expected formats or matchers. | `expect: { status: 200 }` |
 | `save` | `map[string]string`| No | Context extraction map. Binds response parameters to dynamic variables. | `save: { token: body.accessToken }` |
@@ -57,6 +59,63 @@ The `request` block defines the HTTP action Gherkio will execute. It supports th
 | `transform` | `object` | No | Declarative collection projections: filter, slice, and reshape arrays from saved variables into the request payload. | (See Requests chapter) |
 | `multipart` | `object` | No | Multipart form-data wrapper used for sending form fields and binary file uploads. | (See Requests chapter) |
 | `timeout` | `string` | No | HTTP socket timeout limit (parsed via standard Go duration strings like `5s`, `500ms`, `1m`). | `timeout: 10s` |
+
+---
+
+## 🔀 Conditional Execution (`if`)
+
+Steps can be conditionally executed using the `if` guard property. If the expression evaluates to false, the step is skipped entirely (its HTTP request is not sent, assertions are ignored, and any variable extraction is bypassed). Skipped steps are tracked as `skipped` in test metrics, CLI logs, and HTML reports.
+
+### Syntax and Comparison Operators
+The `if` property expects a string expression consisting of variables, comparison operators, and literal values (strings, numbers, or booleans).
+
+Supported operators:
+*   `==` (Equal to)
+*   `!=` (Not equal to)
+*   `>` (Greater than)
+*   `>=` (Greater than or equal to)
+*   `<` (Less than)
+*   `<=` (Less than or equal to)
+
+### Examples
+
+#### Basic Variable Comparison
+```yaml
+steps:
+  - name: Generate Admin Invoice
+    if: $USER_ROLE == admin
+    request:
+      method: POST
+      url: /v1/invoices/admin
+      body:
+        amount: 150.00
+    expect:
+      status: 201
+```
+
+#### Numeric Comparison
+```yaml
+steps:
+  - name: Get Invoice Details
+    if: $INVOICE_AMOUNT >= 1000
+    request:
+      method: GET
+      url: /v1/audit/large-invoice/$INVOICE_ID
+    expect:
+      status: 200
+```
+
+#### Truthiness Check (Check if variable exists and is not false/empty)
+```yaml
+steps:
+  - name: Process Refund
+    if: $REFUND_ENABLED
+    request:
+      method: POST
+      url: /v1/refunds
+      body:
+        transaction_id: $TX_ID
+```
 
 ---
 
@@ -117,3 +176,40 @@ steps:
 
 1.  **Monotonic Variables**: Any variable saved (via `save`) inside the composed YAML file is automatically merged and bubbles up to the parent execution context.
 2.  **Context Inheritance**: Composed scenarios inherit all variables defined prior to their execution (e.g. host environments, active credential credentials).
+
+---
+
+## ⚙️ Declarative Variable Assignment (`set`)
+
+Gherkio steps can explicitly assign, update, or override variables in the runtime context using the `set` tag. This is particularly useful for overriding defaults during local testing/debugging, managing sequential state, or addressing variable name collisions without executing a full HTTP request or nested scenario.
+
+### Syntax and Usage
+
+The `set` block accepts a map of variable keys to their string values. Values support variable interpolation.
+
+```yaml
+steps:
+  # 1. Manually set/override a variable
+  - name: Define custom queue ID
+    set:
+      QUEUE_ID: "01KT4EBA37Y"
+
+  # 2. Reference the variable in subsequent steps
+  - name: Get Queue info
+    request:
+      method: GET
+      url: /v1/queues/$QUEUE_ID
+    expect:
+      status: 200
+
+  # 3. Re-assign or interpolate variables
+  - name: Rotate queue ID
+    set:
+      PREVIOUS_QUEUE_ID: "$QUEUE_ID"
+      QUEUE_ID: "02HT5FCA38Z"
+```
+
+### Key Behaviors
+- **Mutual Exclusion**: A step containing `set` must not contain a `request` or `use` key.
+- **Interpolation**: Variables referenced in `set` values (e.g. `$QUEUE_ID`) are interpolated immediately at execution time using the active variable store.
+- **CLI Output**: In test logs, a `set` step is formatted to show which variables are being set (e.g., `set variables: QUEUE_ID`).

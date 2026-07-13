@@ -37,6 +37,7 @@ type StepResult struct {
 	Warnings     []string                     `json:"warnings,omitempty"`
 	Duration     time.Duration          `json:"duration"`
 	Error        string                 `json:"error,omitempty"`
+	Skipped      bool                   `json:"skipped,omitempty"`
 	RetryCount   int                    `json:"retryCount,omitempty"`
 	RetryHistory []RetryEntry           `json:"retryHistory,omitempty"`
 	Role         string                 `json:"role,omitempty"` // "setup", "steps", "teardown"

@@ -63,6 +63,9 @@ func GenerateAllSchemas() ([]byte, error) {
 	// Add ProjectionConfig enhancements
 	patchProjectionSchema(testSchema)
 
+	// Add Request enhancements
+	patchRequestSchema(testSchema)
+
 	// Combine all definitions ($defs) into a single flat map
 	allDefs := make(map[string]interface{})
 
@@ -107,6 +110,7 @@ func GenerateSchemaType(schemaType SchemaType) ([]byte, error) {
 		patchExpectSchema(schema)
 		patchStepOneOf(schema)
 		patchProjectionSchema(schema)
+		patchRequestSchema(schema)
 		return json.MarshalIndent(schema, "", "  ")
 	case SchemaTypeConfig:
 		schema := r.Reflect(&model.Config{})
@@ -225,13 +229,25 @@ func patchProjectionSchema(schema *jsonschema.Schema) {
 	}
 }
 
-// patchStepOneOf adds oneOf constraint to Step to ensure request OR use is provided, not both.
+// patchStepOneOf adds oneOf constraint to Step to ensure request OR use OR set is provided, not both.
 func patchStepOneOf(schema *jsonschema.Schema) {
 	if stepSchema, ok := schema.Definitions["Step"]; ok {
-		// Make all step fields optional except request OR use
+		// Make all step fields optional except request OR use OR set
 		stepSchema.Required = []string{}
 
-		// Add oneOf constraint for request/use mutual exclusion
+		stepSchema.Description = "A single test execution step.\n\n" +
+			"Available options:\n" +
+			"- **name**: (String, Optional) Human-readable label for the step.\n" +
+			"- **if**: (String, Optional) Conditional guard expression (e.g. '$status == 200').\n" +
+			"- **request**: (Object, Conditional) HTTP Request config. Mutually exclusive with 'use' and 'set'.\n" +
+			"- **use**: (String, Conditional) Path to compose/execute another scenario. Mutually exclusive with 'request' and 'set'.\n" +
+			"- **set**: (Map, Conditional) Inline variable assignment / override map. Mutually exclusive with 'request' and 'use'.\n" +
+			"- **expect**: (Object, Optional) Response assertions.\n" +
+			"- **save**: (Map, Optional) Extract dynamic values to context variables.\n" +
+			"- **timing**: (Object, Optional) Execution latency check.\n" +
+			"- **retry**: (Object, Optional) Retry configuration for transient failures."
+
+		// Add oneOf constraint for request/use/set mutual exclusion
 		stepSchema.OneOf = []*jsonschema.Schema{
 			{
 				Required:    []string{"request"},
@@ -241,6 +257,33 @@ func patchStepOneOf(schema *jsonschema.Schema) {
 				Required:    []string{"use"},
 				Description: "Step composing another scenario",
 			},
+			{
+				Required:    []string{"set"},
+				Description: "Step setting or overriding variables inline",
+			},
 		}
+	}
+}
+
+// patchRequestSchema updates the descriptions for Request options in the JSON schema.
+func patchRequestSchema(schema *jsonschema.Schema) {
+	requestDesc := "HTTP request definition.\n\n" +
+		"Available options:\n" +
+		"- **service**: (String, Optional) Name of the service defined in environment.\n" +
+		"- **method**: (String, Required) HTTP method (GET, POST, PUT, DELETE, PATCH, etc.).\n" +
+		"- **url**: (String, Required) Request URL path or absolute URL. Supports variable interpolation ($var, ${var:default}, $uuid, $ulid, etc.).\n" +
+		"- **query**: (Map, Optional) Query parameters to append to the URL.\n" +
+		"- **headers**: (Map, Optional) Custom HTTP request headers.\n" +
+		"- **body**: (Object/String, Optional) HTTP request body. Supports variable interpolation and type casting.\n" +
+		"- **multipart**: (Object, Optional) Multipart form-data configuration for file uploads.\n" +
+		"- **transform**: (Object, Optional) Declarative projections reshaped into request payload."
+
+	if stepSchema, ok := schema.Definitions["Step"]; ok {
+		if reqProp, ok := stepSchema.Properties.Get("request"); ok {
+			reqProp.Description = requestDesc
+		}
+	}
+	if reqSchema, ok := schema.Definitions["Request"]; ok {
+		reqSchema.Description = requestDesc
 	}
 }

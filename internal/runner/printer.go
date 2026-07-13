@@ -197,9 +197,38 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 			stepLabel = step.Name
 		} else if step.Request != nil {
 			stepLabel = fmt.Sprintf("%s %s", step.Request.Method, step.Request.URL)
+		} else if len(step.Original.Set) > 0 {
+			var keys []string
+			for k := range step.Original.Set {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			stepLabel = fmt.Sprintf("set variables: %s", strings.Join(keys, ", "))
+		} else if step.Skipped {
+			if step.Original.Request.URL != "" {
+				stepLabel = fmt.Sprintf("%s %s", step.Original.Request.Method, step.Original.Request.URL)
+			} else if step.Original.Use != "" {
+				stepLabel = fmt.Sprintf("use: %s", step.Original.Use)
+			} else if len(step.Original.Set) > 0 {
+				var keys []string
+				for k := range step.Original.Set {
+					keys = append(keys, k)
+				}
+				sort.Strings(keys)
+				stepLabel = fmt.Sprintf("set variables: %s", strings.Join(keys, ", "))
+			} else {
+				stepLabel = "Unknown Step"
+			}
 		} else {
 			if step.Original.Request.URL != "" {
 				stepLabel = fmt.Sprintf("%s %s (failed before execution)", step.Original.Request.Method, step.Original.Request.URL)
+			} else if len(step.Original.Set) > 0 {
+				var keys []string
+				for k := range step.Original.Set {
+					keys = append(keys, k)
+				}
+				sort.Strings(keys)
+				stepLabel = fmt.Sprintf("set variables: %s (failed to interpolate)", strings.Join(keys, ", "))
 			} else {
 				stepLabel = "Unknown Step"
 			}
@@ -213,7 +242,9 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 		}
 
 		fmt.Printf("%s%s\n", prefix, stepLabel)
-		if stepPassed {
+		if step.Skipped {
+			fmt.Printf("%s⏭ skipped (guard: %s)\n", statusIndent, step.Original.If)
+		} else if stepPassed {
 			fmt.Printf("%s✓ success (%s)\n", statusIndent, FormatDuration(step.Duration))
 		} else {
 			fmt.Printf("%s✗ failed (%s)\n", statusIndent, FormatDuration(step.Duration))
@@ -246,7 +277,7 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 			}
 		}
 
-		if verbose {
+		if verbose && !step.Skipped {
 			// ── Verbose: full request/response payloads ──
 			fmt.Println()
 
@@ -377,7 +408,7 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 					}
 				}
 			}
-		} else {
+		} else if !step.Skipped {
 			// ── Summary: compact assertions, no payloads ──
 			if len(step.Assertions) > 0 {
 				for _, a := range step.Assertions {
@@ -640,9 +671,23 @@ func PrintStepResult(result *RunResult, verbose bool, maskFields []string) {
 			stepLabel = step.Name
 		} else if step.Request != nil {
 			stepLabel = fmt.Sprintf("%s %s", step.Request.Method, step.Request.URL)
+		} else if len(step.Original.Set) > 0 {
+			var keys []string
+			for k := range step.Original.Set {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			stepLabel = fmt.Sprintf("set variables: %s", strings.Join(keys, ", "))
 		} else {
 			if step.Original.Request.URL != "" {
 				stepLabel = fmt.Sprintf("%s %s (failed before execution)", step.Original.Request.Method, step.Original.Request.URL)
+			} else if len(step.Original.Set) > 0 {
+				var keys []string
+				for k := range step.Original.Set {
+					keys = append(keys, k)
+				}
+				sort.Strings(keys)
+				stepLabel = fmt.Sprintf("set variables: %s (failed to interpolate)", strings.Join(keys, ", "))
 			} else {
 				stepLabel = "Unknown Step"
 			}
