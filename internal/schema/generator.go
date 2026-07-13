@@ -69,6 +69,9 @@ func GenerateAllSchemas() ([]byte, error) {
 	// Add Retry enhancements
 	patchRetrySchema(testSchema)
 
+	// Add Timing enhancements
+	patchTimingSchema(testSchema)
+
 	// Add Steps properties enhancements to test schema
 	patchStepsProperties(testSchema)
 
@@ -118,6 +121,7 @@ func GenerateSchemaType(schemaType SchemaType) ([]byte, error) {
 		patchProjectionSchema(schema)
 		patchRequestSchema(schema)
 		patchRetrySchema(schema)
+		patchTimingSchema(schema)
 		patchStepsProperties(schema)
 		return json.MarshalIndent(schema, "", "  ")
 	case SchemaTypeConfig:
@@ -151,6 +155,26 @@ func patchExpectSchema(schema *jsonschema.Schema) {
 		matcherEnums := make([]interface{}, len(matchers))
 		for i, m := range matchers {
 			matcherEnums[i] = m
+		}
+
+		expectDesc := "Assertions for the step response.\n\n" +
+			"Available options:\n" +
+			"- **status**: (Integer, Optional) Expected HTTP status code (e.g. 200).\n" +
+			"- **schema**: (String, Optional) Validate response body against a predefined JSON schema name.\n" +
+			"- **body.<path>**: Assert against json body fields (e.g. 'body.id: exists', 'body.status: equal success').\n" +
+			"- **headers.<header>**: Assert against response headers (e.g. 'headers.content-type: contains json').\n" +
+			"- **jwt.<claim>**: Assert against decoded JWT claims (e.g. 'jwt.role: equal admin').\n" +
+			"- **count(<path>)**: Assert exact length of an array field (e.g. 'count(body.items): 5').\n" +
+			"- **all(<path>)**: Assert every element in an array matches a matcher (e.g. 'all(body.items.status): equal active').\n\n" +
+			"Available Gherkio matchers:\n" +
+			"- " + strings.Join(matchers, ", ")
+
+		expectSchema.Description = expectDesc
+
+		if stepSchema, ok := schema.Definitions["Step"]; ok {
+			if expectProp, ok := stepSchema.Properties.Get("expect"); ok {
+				expectProp.Description = expectDesc
+			}
 		}
 
 		matcherSchema := &jsonschema.Schema{
@@ -351,5 +375,22 @@ func patchRetrySchema(schema *jsonschema.Schema) {
 		retrySchema.Description = retryDesc
 	}
 }
+
+// patchTimingSchema updates the descriptions for TimingConfig options in the JSON schema.
+func patchTimingSchema(schema *jsonschema.Schema) {
+	timingDesc := "Timing expectations for the step.\n\n" +
+		"Available options:\n" +
+		"- **max**: (String, Required) Maximum duration the step is allowed to take (e.g. '500ms', '1s')."
+
+	if stepSchema, ok := schema.Definitions["Step"]; ok {
+		if timingProp, ok := stepSchema.Properties.Get("timing"); ok {
+			timingProp.Description = timingDesc
+		}
+	}
+	if timingSchema, ok := schema.Definitions["TimingConfig"]; ok {
+		timingSchema.Description = timingDesc
+	}
+}
+
 
 

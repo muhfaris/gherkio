@@ -543,5 +543,70 @@ func TestRetryDescriptionContainsOptions(t *testing.T) {
 	}
 }
 
+func TestTimingAndExpectDescriptionsContainOptions(t *testing.T) {
+	b, err := GenerateSchemaType(SchemaTypeTest)
+	if err != nil {
+		t.Fatalf("Failed to generate test schema: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(b, &result); err != nil {
+		t.Fatalf("Failed to parse JSON: %v", err)
+	}
+
+	defs, ok := result["$defs"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected $defs in test schema")
+	}
+
+	stepDef, ok := defs["Step"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected Step definition in $defs")
+	}
+	stepProps, ok := stepDef["properties"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected properties in Step definition")
+	}
+
+	// 1. Verify Timing
+	timingProp, ok := stepProps["timing"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected timing property in Step definition")
+	}
+	timingDesc, _ := timingProp["description"].(string)
+	if !strings.Contains(timingDesc, "Available options:") || !strings.Contains(timingDesc, "max") {
+		t.Errorf("Expected Step timing property description to contain options, got: %q", timingDesc)
+	}
+
+	timingDef, ok := defs["TimingConfig"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected TimingConfig definition in $defs")
+	}
+	timingDesc2, _ := timingDef["description"].(string)
+	if !strings.Contains(timingDesc2, "Available options:") || !strings.Contains(timingDesc2, "max") {
+		t.Errorf("Expected TimingConfig description to contain options, got: %q", timingDesc2)
+	}
+
+	// 2. Verify Expect
+	expectProp, ok := stepProps["expect"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected expect property in Step definition")
+	}
+	expectDesc, _ := expectProp["description"].(string)
+	if !strings.Contains(expectDesc, "Available options:") || !strings.Contains(expectDesc, "status") || !strings.Contains(expectDesc, "body.<path>") || !strings.Contains(expectDesc, "exists") {
+		t.Errorf("Expected Step expect property description to contain options and matchers, got: %q", expectDesc)
+	}
+
+	expectDef, ok := defs["Expect"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected Expect definition in $defs")
+	}
+	expectDesc2, _ := expectDef["description"].(string)
+	if !strings.Contains(expectDesc2, "Available options:") || !strings.Contains(expectDesc2, "status") || !strings.Contains(expectDesc2, "body.<path>") || !strings.Contains(expectDesc2, "exists") {
+		t.Errorf("Expected Expect description to contain options and matchers, got: %q", expectDesc2)
+	}
+}
+
+
 
 
