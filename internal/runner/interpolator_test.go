@@ -186,3 +186,30 @@ func TestInterpolateString_EmbeddedGeneratorInBrackets(t *testing.T) {
 		t.Errorf("expected one of %v, got %q", expectedEmails, result)
 	}
 }
+
+func TestInterpolateString_SingleQuotes(t *testing.T) {
+	vars := map[string]interface{}{
+		"TEAM_NAME": "Avengers",
+	}
+
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"team '$TEAM_NAME' is inactive", "team 'Avengers' is inactive"},
+		{"team '${TEAM_NAME}' is inactive", "team 'Avengers' is inactive"},
+		{"'team '$TEAM_NAME' is inactive'", "'team 'Avengers' is inactive'"},
+	}
+
+	for _, tt := range tests {
+		got, err := interpolateString(tt.input, vars)
+		if err != nil {
+			t.Errorf("interpolateString(%q): unexpected error: %v", tt.input, err)
+			continue
+		}
+		if got != tt.expected {
+			t.Errorf("interpolateString(%q) = %q, want %q", tt.input, got, tt.expected)
+		}
+	}
+}
+

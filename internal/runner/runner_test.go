@@ -150,9 +150,9 @@ func TestExecuteSteps_Set(t *testing.T) {
 		steps,
 		nil, // env
 		vars,
-		"",  // projectDir
-		"",  // currentDir
-		0,   // depth
+		"", // projectDir
+		"", // currentDir
+		0,  // depth
 		"steps",
 		false, // dryRun
 		false, // failFast
@@ -212,9 +212,9 @@ func TestExecuteSteps_Set_Error(t *testing.T) {
 		steps,
 		nil, // env
 		vars,
-		"",  // projectDir
-		"",  // currentDir
-		0,   // depth
+		"", // projectDir
+		"", // currentDir
+		0,  // depth
 		"steps",
 		false, // dryRun
 		false, // failFast

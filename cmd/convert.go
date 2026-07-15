@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/muhfaris/gherkio/internal/converter"
@@ -199,6 +200,15 @@ func runReverseConvert(testPath string, projectDir string, env string, accountNa
 		targetSteps = testFile.Steps
 	}
 
+	// Load session variables if they exist
+	sessionVars := make(map[string]interface{})
+	if projectDir != "" {
+		sessionPath := filepath.Join(projectDir, ".gherkio", "session.yaml")
+		if loaded, err := runner.LoadSessionVars(sessionPath); err == nil && loaded != nil {
+			sessionVars = loaded
+		}
+	}
+
 	var curls []string
 	for _, step := range targetSteps {
 		// Inject fresh built-in generator variables per step so each cURL command
@@ -208,6 +218,9 @@ func runReverseConvert(testPath string, projectDir string, env string, accountNa
 			stepVars[key] = val
 		}
 		for k, v := range credentialVars {
+			stepVars[k] = v
+		}
+		for k, v := range sessionVars {
 			stepVars[k] = v
 		}
 		for key, val := range runner.BuiltinVars() {

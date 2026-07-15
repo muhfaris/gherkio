@@ -125,7 +125,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 
 	// Load session vars from file (CLI file-based persistence across processes)
 	if cfg.SessionFile != "" {
-		loaded, err := loadSessionVars(cfg.SessionFile)
+		loaded, err := LoadSessionVars(cfg.SessionFile)
 		if err == nil && loaded != nil {
 			for key, val := range loaded {
 				vars[key] = val
@@ -789,7 +789,9 @@ func loadEnvironment(projectDir, envName string) (*model.Environment, error) {
 func resolveURL(env *model.Environment, req model.Request) string {
 	baseURL := env.BaseURL
 
-	if req.Service != "" && env.Services != nil {
+	if strings.HasPrefix(req.URL, "http://") || strings.HasPrefix(req.URL, "https://") {
+		baseURL = ""
+	} else if req.Service != "" && env.Services != nil {
 		if svc, ok := env.Services[req.Service]; ok {
 			baseURL = svc.BaseURL
 		}
@@ -903,7 +905,7 @@ func RunSingleStep(cfg RunConfig, env *model.Environment, testFile *model.TestFi
 
 	// Load session vars from file (CLI file-based persistence across processes)
 	if cfg.SessionFile != "" {
-		loaded, err := loadSessionVars(cfg.SessionFile)
+		loaded, err := LoadSessionVars(cfg.SessionFile)
 		if err == nil && loaded != nil {
 			for key, val := range loaded {
 				vars[key] = val
@@ -1123,9 +1125,9 @@ func parseUntil(untilStr string, testFile *model.TestFile) (string, int, error) 
 }
 
 
-// loadSessionVars reads a session file and returns the stored variables.
+// LoadSessionVars reads a session file and returns the stored variables.
 // Returns nil without error if the file doesn't exist.
-func loadSessionVars(path string) (map[string]interface{}, error) {
+func LoadSessionVars(path string) (map[string]interface{}, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
