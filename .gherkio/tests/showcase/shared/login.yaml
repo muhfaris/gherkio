@@ -1,0 +1,20 @@
+scenario: Shared Showcase Login
+description: Authenticates a user and saves the accessToken.
+
+steps:
+  - name: Login via Mock API
+    request:
+      method: POST
+      url: /auth/login
+      body:
+        username: "${username:default_user}"
+        role: "${role:admin}"
+    expect:
+      status: 200
+      body.accessToken: exists
+      schema: showcase/login-response
+      # JWT claim assertions (native decoding verification)
+      jwt.id: exists
+      jwt.email: email
+    save:
+      authToken: body.accessToken

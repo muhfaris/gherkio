@@ -190,3 +190,92 @@ func TestRenderJSON(t *testing.T) {
 		t.Errorf("expected JSON to contain ScenarioName")
 	}
 }
+
+func TestRenderHTML_ComposedTraceability(t *testing.T) {
+	result := &runner.RunResult{
+		Scenario:  "Test Composed Scenario",
+		TotalPass: 1,
+		TotalFail: 0,
+		Passed:    true,
+		Duration:  time.Millisecond * 500,
+		Steps: []runner.StepResult{
+			{
+				IsUseStart: true,
+				UseFile:    "nested_auth.yaml",
+				Depth:      1,
+				SavedVars: map[string]interface{}{
+					"nestedVar": "nestedValue",
+				},
+				Role: "steps",
+			},
+			{
+				Original: model.Step{
+					Request: model.Request{
+						Method: "GET",
+						URL:    "/api/users",
+					},
+				},
+				Request: &runner.RequestInfo{
+					Method: "GET",
+					URL:    "/api/users",
+				},
+				Response: &runner.ResponseInfo{
+					Status: 200,
+				},
+				Depth:    1,
+				Duration: time.Millisecond * 300,
+				Assertions: []runner.AssertionResult{
+					{
+						Path:     "status",
+						Expected: "200",
+						Actual:   "200",
+						Passed:   true,
+					},
+				},
+				Role: "steps",
+			},
+			{
+				IsUseEnd: true,
+				UseFile:  "nested_auth.yaml",
+				Depth:    1,
+				Role:     "steps",
+			},
+		},
+	}
+
+	cfg := ReportConfig{
+		Format:        "html",
+		MaskSensitive: true,
+	}
+
+	html, err := RenderHTML(result, cfg, "test")
+	if err != nil {
+		t.Fatalf("RenderHTML failed: %v", err)
+	}
+
+	// Verify that IsUseStart is rendered as a grouping header with Composed Scenario and UseFile
+	if !strings.Contains(html, "Composed Scenario:") {
+		t.Errorf("expected HTML to contain Composed Scenario header")
+	}
+	if !strings.Contains(html, "nested_auth.yaml") {
+		t.Errorf("expected HTML to contain UseFile 'nested_auth.yaml'")
+	}
+
+	// Verify that SavedVars snapshot is rendered
+	if !strings.Contains(html, "nestedVar") {
+		t.Errorf("expected HTML to contain saved variable key 'nestedVar'")
+	}
+	if !strings.Contains(html, "nestedValue") {
+		t.Errorf("expected HTML to contain saved variable value 'nestedValue'")
+	}
+
+	// Verify that IsUseEnd is rendered
+	if !strings.Contains(html, "step-compose-end") {
+		t.Errorf("expected HTML to contain step-compose-end class")
+	}
+
+	// Verify depth indentation is rendered (margin-left style with calc)
+	if !strings.Contains(html, "margin-left: calc(1 * 20px)") {
+		t.Errorf("expected HTML to contain calc margin-left styling for depth 1")
+	}
+}

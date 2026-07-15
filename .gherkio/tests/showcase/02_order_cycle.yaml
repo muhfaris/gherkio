@@ -1,0 +1,104 @@
+scenario: E2E Showcase Order Cycle
+description: Complete purchase lifecycle utilizing setup, teardown, multi-level nesting, variable bubble-up, retries, and JSONPath assertions.
+
+setup:
+  # 1. Nest the product creation helper (which nests login inside it!)
+  - name: Setup Catalog Item
+    use: shared/create_item.yaml
+    with:
+      productTitle: "Showcase Mechanical Keyboard"
+      productPrice: "149.99"
+
+steps:
+  # 2. Authenticate the buyer
+  - name: Login Shopper
+    use: shared/login.yaml
+    with:
+      username: "buyer_bob"
+      role: "buyer"
+
+  # 3. Create the initial order using productId from the setup block
+  - name: Place Order
+    request:
+      method: POST
+      url: /orders
+      timeout: 5s
+      headers:
+        Authorization: "Bearer ${authToken}"
+      body:
+        productId: "$string(productId)"
+        quantity: 1
+        note: "Urgent shipment"
+    timing:
+      max: 1s
+    expect:
+      status: 201
+      headers.Content-Type: contains json
+      body.status: "processing"
+      body.itemsCount: 1
+      body.note: request.body.note
+      body.error: not exists
+      schema: not showcase/error-response
+    save:
+      orderId: body.id
+
+  # 4. Check status until "completed" using a comprehensive retry loop, and save the list of items
+  - name: Wait for Order Processing
+    request:
+      method: GET
+      url: "/orders/${orderId}"
+      query:
+        fields: "all"
+        version: "v2"
+      headers:
+        Authorization: "Bearer ${authToken}"
+    retry:
+      attempts: 3
+      interval: 100
+      onStatus: [200, 500]
+      maxDuration: 10s
+    expect:
+      status: 200
+      
+      # JSONPath assertions
+      $.status: "completed"
+      $.amount: 150.00
+      $.items: array
+      $.items[*].name: contains Keycap Set
+
+      # Pattern Matchers (No duplicate keys!)
+      $.id: regex ^order-\d+$
+
+      # Native Collection Matchers
+      count(body.items): 2
+      count(body.items).gte: 1
+      count(body.items).lte: 5
+      all(body.items.name): string
+      all(body.items.price): number
+    save:
+      savedItems: body.items
+
+  # 5. Place a second order using transformation/projection of the savedItems from step 4
+  - name: Reorder Transformed Items
+    request:
+      method: POST
+      url: /orders
+      headers:
+        Authorization: "Bearer ${authToken}"
+      body:
+        productId: "reorder"
+      transform:
+        orderItems:
+          from: "$savedItems"
+          as: "item"
+          select:
+            name: "$if(item.name, item.name, 'Fallback Item')"
+            price: "$if(item.price, $float(item.price), 0.0)"
+    expect:
+      status: 201
+      body.itemsCount: 1
+
+teardown:
+  # 6. Clean up catalog item using productId from the setup block
+  - name: Teardown Catalog Item
+    use: shared/delete_item.yaml

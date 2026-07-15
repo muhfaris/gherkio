@@ -25,3 +25,6 @@ jobs:
 
       - name: Vet
         run: go vet ./...
+
+      - name: Run Gherkio Showcase Suite
+        run: ./gherkio run --env mocked

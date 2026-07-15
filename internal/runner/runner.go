@@ -148,48 +148,88 @@ func Run(cfg RunConfig) (*RunResult, error) {
 	}
 
 	currentDir := filepath.Dir(cfg.TestPath)
+	iterations := 1
+	if len(testFile.Examples) > 0 {
+		iterations = len(testFile.Examples)
+	}
+
 	var allSteps []StepResult
-	setupFailed := false
+	setupFailedOverall := false
+	mainStepsPassedOverall := true
 
-	// Execute setup steps first
-	if len(testFile.Setup) > 0 {
-		setupSteps, setupPass, setupFail, setupPassed := executeSteps(testFile.Setup, env, vars, cfg.ProjectDir, currentDir, 0, "setup", cfg.DryRun, cfg.FailFast, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
-		for i := range setupSteps {
-			setupSteps[i].ScenarioName = testFile.Scenario
-			setupSteps[i].TestFile = cfg.TestPath
+	for iter := 0; iter < iterations; iter++ {
+		iterVars := make(map[string]interface{})
+		for k, v := range vars {
+			iterVars[k] = v
 		}
-		allSteps = append(allSteps, setupSteps...)
-		result.TotalPass += setupPass
-		result.TotalFail += setupFail
-		if !setupPassed {
-			setupFailed = true
-		}
-	}
 
-	// Execute main steps (skip if setup failed)
-	if !setupFailed {
-		mainSteps, mainPass, mainFail, mainPassed := executeSteps(testFile.Steps, env, vars, cfg.ProjectDir, currentDir, 0, "steps", cfg.DryRun, cfg.FailFast, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
-		for i := range mainSteps {
-			mainSteps[i].ScenarioName = testFile.Scenario
-			mainSteps[i].TestFile = cfg.TestPath
+		if len(testFile.Examples) > 0 {
+			example := testFile.Examples[iter]
+			for k, v := range example {
+				iterVars[k] = v
+			}
 		}
-		allSteps = append(allSteps, mainSteps...)
-		result.TotalPass += mainPass
-		result.TotalFail += mainFail
-		if !mainPassed {
-			result.Passed = false
-		}
-	}
 
-	// Execute teardown steps (always, even if setup or steps failed)
-	// Teardown failures are recorded but don't affect overall pass/fail
-	if len(testFile.Teardown) > 0 {
-		teardownSteps, _, _, _ := executeSteps(testFile.Teardown, env, vars, cfg.ProjectDir, currentDir, 0, "teardown", cfg.DryRun, cfg.FailFast, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
-		for i := range teardownSteps {
-			teardownSteps[i].ScenarioName = testFile.Scenario
-			teardownSteps[i].TestFile = cfg.TestPath
+		setupFailed := false
+
+		// Execute setup steps first
+		if len(testFile.Setup) > 0 {
+			setupSteps, setupPass, setupFail, setupPassed := executeSteps(testFile.Setup, env, iterVars, cfg.ProjectDir, currentDir, 0, "setup", cfg.DryRun, cfg.FailFast, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
+			for i := range setupSteps {
+				setupSteps[i].ScenarioName = testFile.Scenario
+				setupSteps[i].TestFile = cfg.TestPath
+				setupSteps[i].Iteration = iter + 1
+			}
+			allSteps = append(allSteps, setupSteps...)
+			result.TotalPass += setupPass
+			result.TotalFail += setupFail
+			if !setupPassed {
+				setupFailed = true
+				setupFailedOverall = true
+			}
 		}
-		allSteps = append(allSteps, teardownSteps...)
+
+		// Execute main steps (skip if setup failed)
+		if !setupFailed {
+			mainSteps, mainPass, mainFail, mainPassed := executeSteps(testFile.Steps, env, iterVars, cfg.ProjectDir, currentDir, 0, "steps", cfg.DryRun, cfg.FailFast, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
+			for i := range mainSteps {
+				mainSteps[i].ScenarioName = testFile.Scenario
+				mainSteps[i].TestFile = cfg.TestPath
+				mainSteps[i].Iteration = iter + 1
+			}
+			allSteps = append(allSteps, mainSteps...)
+			result.TotalPass += mainPass
+			result.TotalFail += mainFail
+			if !mainPassed {
+				mainStepsPassedOverall = false
+			}
+		}
+
+		// Execute teardown steps (always, even if setup or steps failed)
+		if len(testFile.Teardown) > 0 {
+			teardownSteps, _, _, _ := executeSteps(testFile.Teardown, env, iterVars, cfg.ProjectDir, currentDir, 0, "teardown", cfg.DryRun, cfg.FailFast, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
+			for i := range teardownSteps {
+				teardownSteps[i].ScenarioName = testFile.Scenario
+				teardownSteps[i].TestFile = cfg.TestPath
+				teardownSteps[i].Iteration = iter + 1
+			}
+			allSteps = append(allSteps, teardownSteps...)
+		}
+
+		// Sync back session vars
+		if cfg.SessionVars != nil {
+			for key, val := range iterVars {
+				isExampleVar := false
+				if len(testFile.Examples) > 0 {
+					if _, exists := testFile.Examples[iter][key]; exists {
+						isExampleVar = true
+					}
+				}
+				if !isExampleVar {
+					vars[key] = val
+				}
+			}
+		}
 	}
 
 	result.Steps = allSteps
@@ -197,8 +237,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 	result.Duration = time.Since(start)
 
 	// Determine overall pass/fail (teardown failures don't affect this)
-	// If we haven't set Passed to false yet, check main steps pass/fail
-	if result.TotalFail == 0 && setupFailed == false {
+	if result.TotalFail == 0 && setupFailedOverall == false && mainStepsPassedOverall == true {
 		result.Passed = true
 	}
 
@@ -303,6 +342,8 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 				Depth:      depth,
 				IsUseStart: true,
 				UseFile:    step.Use,
+				Role:       role,
+				SavedVars:  snapshotVars(vars, nil),
 			}
 			stepResults = append(stepResults, useStartStep)
 			if depth > 10 {
@@ -533,7 +574,48 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 			fmt.Fprintf(os.Stderr, "→ [%s] %s %s...\n", attemptLabel, interpolatedRequest.Method, url)
 
 			attemptStart := time.Now()
-			resp, err = executeRequest(interpolatedRequest.Method, url, interpolatedRequest.Headers, interpolatedRequest.Body, interpolatedRequest.Multipart, interpolatedRequest.Timeout, projectDir)
+			var mocked bool
+			if env != nil && len(env.Mocks) > 0 {
+				for _, mockRule := range env.Mocks {
+					if matchMock(interpolatedRequest.Method, url, mockRule) {
+						resp = &ResponseInfo{
+							Status:  mockRule.Response.Status,
+							Headers: mockRule.Response.Headers,
+						}
+						if resp.Headers == nil {
+							resp.Headers = make(map[string]string)
+						}
+						var interpolatedBody interface{}
+						if mockRule.Response.Body != nil {
+							interpolatedBody = interpolateMockBody(mockRule.Response.Body, interpolatedRequest.Body, interpolatedRequest.Headers)
+							switch bVal := interpolatedBody.(type) {
+							case string:
+								resp.Body = bVal
+							default:
+								if bodyBytes, marshalErr := json.Marshal(bVal); marshalErr == nil {
+									resp.Body = string(bodyBytes)
+								} else {
+									resp.Body = fmt.Sprintf("%v", bVal)
+								}
+							}
+						}
+						if resp.Body != "" {
+							var parsedBody interface{}
+							if json.Unmarshal([]byte(resp.Body), &parsedBody) == nil {
+								resp.Parsed = parsedBody
+							}
+						}
+						err = nil
+						mocked = true
+						fmt.Fprintf(os.Stderr, "✔ [%s] [MOCK] Intercepted %s %s\n", attemptLabel, interpolatedRequest.Method, url)
+						break
+					}
+				}
+			}
+
+			if !mocked {
+				resp, err = executeRequest(interpolatedRequest.Method, url, interpolatedRequest.Headers, interpolatedRequest.Body, interpolatedRequest.Multipart, interpolatedRequest.Timeout, projectDir)
+			}
 
 			entry := RetryEntry{
 				Attempt:  i,

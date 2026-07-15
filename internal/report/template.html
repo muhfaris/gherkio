@@ -751,9 +751,44 @@
           <!-- Scenario steps -->
           <div class="steps" id="steps-{{$sIdx}}">
             {{range $i, $step := $scenario.Steps}}
+            {{if $step.Original.IsUseStart}}
+            <div class="step-compose-start" style="margin-left: calc({{$step.Original.Depth}} * 20px); padding: 12px 16px; background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); margin-top: 12px; margin-bottom: 8px;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 16px;">📦</span>
+                  <strong style="font-size: 14px; color: var(--text);">Composed Scenario: <span style="font-family: var(--mono); color: var(--info-text);">{{$step.Original.UseFile}}</span></strong>
+                  {{if $step.Name}}<span style="font-size: 12px; color: var(--text-secondary); font-style: italic;">({{$step.Name}})</span>{{end}}
+                </div>
+                {{if $step.Original.Original.With}}
+                <span class="badge" style="font-size: 11px; background: var(--info-bg); color: var(--info-text);">with {{len $step.Original.Original.With}} variables</span>
+                {{end}}
+              </div>
+              {{if $step.SavedVars}}
+              <!-- Composed Variables State Snapshot -->
+              <div class="section open" id="compose-vars-s{{$sIdx}}-{{$i}}" style="margin-top: 10px;">
+                <div class="section-title" onclick="toggleSection('compose-vars-s{{$sIdx}}-{{$i}}')" style="font-size: 11px; text-transform: uppercase; color: var(--text-tertiary);">
+                  <span class="section-chevron">▶</span> Scope Variables Snapshot
+                </div>
+                <div class="section-content" style="margin-top: 4px;">
+                  <div class="saved-vars" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px;">
+                    {{range $k, $v := $step.SavedVars}}
+                    <div class="saved-var-item" style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-tertiary); padding: 4px 8px; border-radius: var(--radius); font-size: 11px; border: 0.5px solid var(--border);">
+                      <span class="saved-var-key" style="font-family: var(--mono); font-weight: 600; color: var(--text-secondary);">{{$k}}</span>
+                      <span class="saved-var-val" style="font-family: var(--mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px;" title="{{$v}}">{{$v}}</span>
+                    </div>
+                    {{end}}
+                  </div>
+                </div>
+              </div>
+              {{end}}
+            </div>
+            {{else if $step.Original.IsUseEnd}}
+            <div class="step-compose-end" style="margin-left: calc({{$step.Original.Depth}} * 20px); border-bottom: 2px dashed var(--border); margin: 8px 0 16px 0; height: 1px;"></div>
+            {{else}}
         <div
           class="step {{if $step.Skipped}}step-skip{{else if not $step.Passed}}step-fail{{end}}"
           id="step-s{{$sIdx}}-{{$i}}"
+          style="margin-left: calc({{$step.Original.Depth}} * 20px);"
         >
           <!-- Step header -->
           <div class="step-header" onclick="toggleStep('step-s{{$sIdx}}-{{$i}}')">
@@ -972,6 +1007,7 @@
           </div>
         </div>
         {{end}}
+        {{end}}
           </div>
         </div>
         {{end}}
@@ -979,9 +1015,44 @@
       <!-- ── Steps (single scenario) ── -->
       <div class="steps" id="steps">
         {{range $i, $step := .Steps}}
+        {{if $step.Original.IsUseStart}}
+        <div class="step-compose-start" style="margin-left: calc({{$step.Original.Depth}} * 20px); padding: 12px 16px; background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); margin-top: 12px; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 16px;">📦</span>
+              <strong style="font-size: 14px; color: var(--text);">Composed Scenario: <span style="font-family: var(--mono); color: var(--info-text);">{{$step.Original.UseFile}}</span></strong>
+              {{if $step.Name}}<span style="font-size: 12px; color: var(--text-secondary); font-style: italic;">({{$step.Name}})</span>{{end}}
+            </div>
+            {{if $step.Original.Original.With}}
+            <span class="badge" style="font-size: 11px; background: var(--info-bg); color: var(--info-text);">with {{len $step.Original.Original.With}} variables</span>
+            {{end}}
+          </div>
+          {{if $step.SavedVars}}
+          <!-- Composed Variables State Snapshot -->
+          <div class="section open" id="compose-vars-{{$i}}" style="margin-top: 10px;">
+            <div class="section-title" onclick="toggleSection('compose-vars-{{$i}}')" style="font-size: 11px; text-transform: uppercase; color: var(--text-tertiary);">
+              <span class="section-chevron">▶</span> Scope Variables Snapshot
+            </div>
+            <div class="section-content" style="margin-top: 4px;">
+              <div class="saved-vars" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px;">
+                {{range $k, $v := $step.SavedVars}}
+                <div class="saved-var-item" style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-tertiary); padding: 4px 8px; border-radius: var(--radius); font-size: 11px; border: 0.5px solid var(--border);">
+                  <span class="saved-var-key" style="font-family: var(--mono); font-weight: 600; color: var(--text-secondary);">{{$k}}</span>
+                  <span class="saved-var-val" style="font-family: var(--mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px;" title="{{$v}}">{{$v}}</span>
+                </div>
+                {{end}}
+              </div>
+            </div>
+          </div>
+          {{end}}
+        </div>
+        {{else if $step.Original.IsUseEnd}}
+        <div class="step-compose-end" style="margin-left: calc({{$step.Original.Depth}} * 20px); border-bottom: 2px dashed var(--border); margin: 8px 0 16px 0; height: 1px;"></div>
+        {{else}}
         <div
           class="step {{if $step.Skipped}}step-skip{{else if not $step.Passed}}step-fail{{end}}"
           id="step-{{$i}}"
+          style="margin-left: calc({{$step.Original.Depth}} * 20px);"
         >
           <!-- Step header -->
           <div class="step-header" onclick="toggleStep('step-{{$i}}')">
@@ -1209,6 +1280,7 @@
             {{end}}
           </div>
         </div>
+        {{end}}
         {{end}}
       </div>
       {{end}}

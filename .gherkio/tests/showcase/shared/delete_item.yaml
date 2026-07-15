@@ -1,0 +1,18 @@
+scenario: Delete Catalog Product Helper
+description: Cleans up a product from the catalog by ID.
+
+steps:
+  - name: Run Login Helper for Cleanup
+    use: login.yaml
+    with:
+      username: "cleanup_agent"
+      role: "admin"
+
+  - name: Delete Product
+    request:
+      method: DELETE
+      url: "/products/${productId:42}"
+      headers:
+        Authorization: "Bearer ${authToken}"
+    expect:
+      status: 204

@@ -188,3 +188,14 @@ steps:
 - `with:` is **only valid on `use:` steps**. It cannot be combined with `request:`.
 - Values support full variable interpolation (`$var`, `${var:default}`, `$accounts.<name>.<field>`, built-in generators, etc.).
 - Overrides take precedence over any variables with the same name from the parent context, but only inside the used scenario.
+
+---
+
+## 🔍 Composed Traceability & Debugging
+
+When executing nested scenarios, tracing execution flows and context variables can become challenging. Gherkio provides native composed traceability inside its HTML run reports:
+
+1. **Visual Grouping**: Composed scenarios are rendered as distinct, visually encapsulated boxes containing their inner steps.
+2. **Nesting Indentation**: Steps inside composed scenarios are dynamically indented according to their nesting `depth`.
+3. **Variable Snapshots**: The entry point of every composed scenario captures a complete snapshot of all active context variables (both inherited and overridden via `with:`), allowing you to inspect execution states during debug.
+

@@ -1,0 +1,29 @@
+scenario: Showcase Multipart File Upload
+description: Uploads a profile avatar using multipart form-data.
+
+steps:
+  - name: Login Admin
+    use: shared/login.yaml
+    with:
+      username: "admin_avatar"
+      role: "admin"
+
+  - name: Upload Avatar
+    request:
+      method: POST
+      url: /profile/avatar
+      headers:
+        Authorization: "Bearer ${authToken}"
+      multipart:
+        fields:
+          description: "Admin avatar"
+          userId: "1001"
+        files:
+          avatar:
+            path: shared/login.yaml
+            contentType: text/yaml
+            filename: avatar.yaml
+    expect:
+      status: 200
+      body.url: exists
+      body.size: number

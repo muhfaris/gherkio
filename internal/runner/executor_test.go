@@ -1122,3 +1122,56 @@ func TestInterpolateMultipart(t *testing.T) {
 		}
 	})
 }
+
+func TestEvaluateAssertion_JSONPath(t *testing.T) {
+	resp := &ResponseInfo{
+		Status: 200,
+		Parsed: map[string]interface{}{
+			"store": map[string]interface{}{
+				"book": []interface{}{
+					map[string]interface{}{
+						"category": "reference",
+						"author":   "Nigel Rees",
+						"title":    "Sayings of the Century",
+						"price":    8.95,
+					},
+					map[string]interface{}{
+						"category": "fiction",
+						"author":   "Evelyn Waugh",
+						"title":    "Sword of Honour",
+						"price":    12.99,
+					},
+				},
+				"bicycle": map[string]interface{}{
+					"color": "red",
+					"price": 19.95,
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name     string
+		path     string
+		expected string
+		wantPass bool
+	}{
+		{"jsonpath exists", "$.store.bicycle.color", "exists", true},
+		{"jsonpath equals", "$.store.bicycle.color", "red", true},
+		{"jsonpath not exists pass", "$.store.bicycle.missing", "not exists", true},
+		{"jsonpath not exists fail", "$.store.bicycle.color", "not exists", false},
+		{"jsonpath wildcard author match", "$.store.book[*].author", "contains Evelyn Waugh", true},
+		{"jsonpath body prefix exists", "body.$.store.bicycle.color", "exists", true},
+		{"jsonpath body prefix equals", "body.$.store.bicycle.color", "red", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := evaluateAssertion(tt.path, tt.expected, resp, nil, "", nil)
+			if result.Passed != tt.wantPass {
+				t.Errorf("evaluateAssertion(%q, %q) passed = %v, want %v\n  result: %+v", tt.path, tt.expected, result.Passed, tt.wantPass, result)
+			}
+		})
+	}
+}
+

@@ -89,6 +89,28 @@ If you write an assertion for a path that does not exist in the response payload
 
 ---
 
+### 1.1 JSONPath Assertions (`$.<path>`)
+
+For complex payloads where dot-notation or array indexing are insufficient (e.g. querying elements dynamically based on filter criteria, wildcards, or deep scans), Gherkio supports standard JSONPath expressions.
+
+Any assertion path starting with `$.` will automatically be evaluated as a JSONPath expression against the response body.
+
+#### Syntax & Examples:
+
+```yaml
+expect:
+  # Verify that the ID of the first book in the list is a number
+  $.store.book[0].price: 8.95
+
+  # Verify that all books under store have a category
+  $.store.book[*].category: exists
+
+  # Extract values matching filter conditions and assert
+  $.store.book[?(@.price < 10)].title: contains "Sayings"
+```
+
+---
+
 ### 2. HTTP Headers (`headers.<key>`)
 
 The `headers.` prefix allows you to inspect HTTP response headers.
@@ -146,18 +168,23 @@ expect:
 
 ---
 
-### 5. Response Timing Assertions (`timing.duration`)
+### 5. Response Timing Assertions (`timing`)
 
-To enforce service-level agreements (SLAs) or target performance constraints, Gherkio includes a native latency-checking resolver:
+To enforce service-level agreements (SLAs) or target performance constraints, Gherkio includes a native latency-checking block. This is configured at the **step level** (outside the `expect` block):
 
-*   **Syntax**: `timing.duration: <comparison-matcher> <duration>`
-*   **Allowed Matchers**: Supports comparison matchers like `lte`, `lt`, `gte`, and `gt`.
+*   **Syntax**: `timing: { max: <duration> }`
 *   **Duration Syntax**: A numeric value followed by `ms` (milliseconds) or `s` (seconds).
+*   **Result**: It generates a `timing.duration = lte <duration>` assertion result in the test output.
 
 ```yaml
-expect:
-  status: 200
-  timing.duration: lte 500ms   # Step fails if request takes longer than 500ms
+steps:
+  - request:
+      method: GET
+      url: /v1/users
+    timing:
+      max: 500ms   # Step fails if request takes longer than 500ms
+    expect:
+      status: 200
 ```
 
 ---

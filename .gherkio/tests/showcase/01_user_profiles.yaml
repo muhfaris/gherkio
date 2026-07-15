@@ -1,0 +1,41 @@
+scenario: Showcase Data-Driven Profiles
+description: Iterates across various user roles, logs them in, and validates their profiles dynamically.
+
+examples:
+  - username: "admin_agent"
+    role: "admin"
+  - username: "merchant_agent"
+    role: "seller"
+  - username: "shopper_agent"
+    role: "buyer"
+
+steps:
+  # 1. Nest login using the example variables
+  - name: Composed login
+    use: shared/login.yaml
+
+  # 2. Fetch profile using token
+  - name: Fetch Account Profile
+    request:
+      method: GET
+      url: "/profile/${role}"
+      headers:
+        Authorization: "Bearer ${authToken}"
+    expect:
+      status: 200
+      body.username: exists
+      
+      # JSONPath assertion using dynamic role variable from examples
+      $.role: "$role"
+
+  # 3. Conditional execution example: only runs for admin
+  - name: Fetch Admin Settings
+    if: $role == admin
+    request:
+      method: GET
+      url: "/profile/admin/settings"
+      headers:
+        Authorization: "Bearer ${authToken}"
+    expect:
+      status: 200
+      body.maintenanceMode: exists
