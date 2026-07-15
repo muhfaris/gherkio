@@ -186,3 +186,53 @@ steps:
 		t.Errorf("expected steps step 0 (use), got section %s index %d", loc.Section, loc.Index)
 	}
 }
+
+func TestScanSteps_NestedLists(t *testing.T) {
+	content := `scenario: nested lists test
+steps:
+  - name: Step One
+    request:
+      method: POST
+      url: /v1/tickets
+      body:
+        members:
+          - id: 1
+          - id: 2
+    retry:
+      onStatus:
+        - 400
+        - 409
+  - name: Step Two
+    request:
+      method: GET
+      url: /v1/tickets/1
+`
+
+	tmpFile, err := os.CreateTemp("", "gherkio-nested-*.yaml")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.WriteString(content); err != nil {
+		t.Fatalf("failed to write content: %v", err)
+	}
+	tmpFile.Close()
+
+	steps, err := ScanSteps(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("unexpected error scanning steps: %v", err)
+	}
+
+	// We expect exactly 2 steps, despite the nested lists
+	if len(steps) != 2 {
+		t.Fatalf("expected 2 steps, got %d. Steps: %+v", len(steps), steps)
+	}
+
+	if steps[0].Section != "steps" || steps[0].Index != 0 {
+		t.Errorf("step 0 mismatch: %+v", steps[0])
+	}
+	if steps[1].Section != "steps" || steps[1].Index != 1 {
+		t.Errorf("step 1 mismatch: %+v", steps[1])
+	}
+}

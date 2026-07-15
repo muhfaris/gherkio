@@ -58,6 +58,7 @@ func ScanSteps(filepath string) ([]StepLocation, error) {
 	var currentSection string
 	var activeStep *StepLocation
 	var sectionStepCount map[string]int = make(map[string]int)
+	var sectionIndent map[string]string = make(map[string]string)
 
 	for idx, line := range lines {
 		lineNum := idx + 1
@@ -78,23 +79,36 @@ func ScanSteps(filepath string) ([]StepLocation, error) {
 		// Check if we are inside a valid section and find a step start
 		if currentSection != "" {
 			if stepStartRegex.MatchString(line) {
-				// Close previous active step if it exists
-				if activeStep != nil {
-					activeStep.EndLine = lineNum - 1
-					steps = append(steps, *activeStep)
+				indent, ok := sectionIndent[currentSection]
+				currentIndent := getLeadingWhitespace(line)
+				if !ok {
+					sectionIndent[currentSection] = currentIndent
+					indent = currentIndent
+					ok = true
 				}
 
-				// Start a new step
-				idx := sectionStepCount[currentSection]
-				sectionStepCount[currentSection]++
+				if currentIndent == indent {
+					// Close previous active step if it exists
+					if activeStep != nil {
+						activeStep.EndLine = lineNum - 1
+						steps = append(steps, *activeStep)
+					}
 
-				activeStep = &StepLocation{
-					Index:     idx,
-					Section:   currentSection,
-					StartLine: lineNum,
-					EndLine:   lineNum, // Default to same line, will grow
+					// Start a new step
+					idx := sectionStepCount[currentSection]
+					sectionStepCount[currentSection]++
+
+					activeStep = &StepLocation{
+						Index:     idx,
+						Section:   currentSection,
+						StartLine: lineNum,
+						EndLine:   lineNum, // Default to same line, will grow
+					}
+					continue
 				}
-			} else if activeStep != nil {
+			}
+
+			if activeStep != nil {
 				// Expand end line of active step to include non-empty lines, comments, etc.
 				// (Empty lines at the end will be pruned or left to the step)
 				if trimmed != "" {
@@ -111,4 +125,16 @@ func ScanSteps(filepath string) ([]StepLocation, error) {
 	}
 
 	return steps, nil
+}
+
+func getLeadingWhitespace(line string) string {
+	var ws strings.Builder
+	for _, ch := range line {
+		if ch == ' ' || ch == '\t' {
+			ws.WriteRune(ch)
+		} else {
+			break
+		}
+	}
+	return ws.String()
 }
