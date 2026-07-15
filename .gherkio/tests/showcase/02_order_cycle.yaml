@@ -98,7 +98,23 @@ steps:
       status: 201
       body.itemsCount: 1
 
+  # 6. Process Third-Party Payment (Stripe)
+  - name: Process Third-Party Payment
+    request:
+      service: stripe
+      method: POST
+      url: /v1/charges
+      body:
+        amount: 15000
+        currency: "usd"
+        description: "Payment for order ${orderId}"
+    expect:
+      status: 200
+      body.status: "succeeded"
+      body.id: "ch_mocked_showcase"
+      body.amount: request.body.amount
+
 teardown:
-  # 6. Clean up catalog item using productId from the setup block
+  # 7. Clean up catalog item using productId from the setup block
   - name: Teardown Catalog Item
     use: shared/delete_item.yaml
