@@ -31,8 +31,10 @@ In multi-service networks, different features (identity, checkout, inventory) ar
 baseUrl: https://staging.my-company.com
 
 services:
-  identity: https://auth-staging.my-company.net
-  checkout: https://checkout-staging.my-company.net
+  identity:
+    baseUrl: https://auth-staging.my-company.net
+  checkout:
+    baseUrl: https://checkout-staging.my-company.net
 ```
 
 When writing a step, reference the service key:

@@ -1,5 +1,9 @@
 baseUrl: http://localhost:8080
 
+services:
+  stripe:
+    baseUrl: https://api.stripe.com
+
 mocks:
   # 1. Login Intercept - Returns a valid JWT structure so claims decoding is verified
   - request:
@@ -138,3 +142,16 @@ mocks:
       body:
         url: "http://localhost:8080/uploads/avatar.yaml"
         size: 1024
+
+  # 11. Third-Party Stripe Charge Intercept
+  - request:
+      method: POST
+      url: https://api.stripe.com/v1/charges
+    response:
+      status: 200
+      headers:
+        Content-Type: application/json
+      body:
+        id: "ch_mocked_showcase"
+        status: "succeeded"
+        amount: "$request.body.amount"
