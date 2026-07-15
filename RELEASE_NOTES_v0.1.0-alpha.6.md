@@ -4,6 +4,12 @@
 
 ## Features
 
+### 🚀 Advanced Testing & Traceability Features
+- **Feature A: Data-Driven Testing (Parametrization)**: Support for scenario-level iteration via the `examples` block, allowing scenarios to run repeatedly using a set of variables.
+- **Feature B: Composed Traceability**: Visual debug groupings, dynamic nesting indentation based on step depth, and variable state snapshots in the generated HTML reports.
+- **Feature C: Outbound Service Mocking / Virtualization**: Define mock request/response pairs directly inside environment configurations to stub third-party APIs with support for variable interpolation.
+- **Feature D: JSONPath Assertions**: Standard JSONPath support (`$.`) for evaluating complex payload assertions.
+
 ### 🔄 Step Locator & Reverse Conversion Enhancements
 - **Session Variables in Reverse Conversion**: Integrated session variable loading when converting Gherkio steps back into cURL commands.
 - **Robust Step Parsing**: Improved `ScanSteps` to correctly parse nested list structures (such as lists in request bodies or retry parameters) without misidentifying step indexes.

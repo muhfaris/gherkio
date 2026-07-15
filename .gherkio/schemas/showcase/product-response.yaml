@@ -1,0 +1,17 @@
+type: object
+required:
+  - id
+  - title
+  - price
+  - category
+properties:
+  id:
+    type: integer
+  title:
+    type: string
+  price:
+    type: number
+  category:
+    type: string
+  description:
+    type: string

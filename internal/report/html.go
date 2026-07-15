@@ -92,7 +92,16 @@ func MapResultToReportData(result *runner.RunResult, env string, maskFields []st
 
 	for _, step := range result.Steps {
 		if step.IsUseStart || step.IsUseEnd {
-			continue // Skip use directives for the report step index
+			reportSteps = append(reportSteps, ReportStep{
+				Index:     0,
+				Name:      step.Name,
+				Passed:    step.Error == "",
+				Skipped:   step.Skipped,
+				SavedVars: step.SavedVars,
+				Role:      step.Role,
+				Original:  step,
+			})
+			continue
 		}
 
 		var reqID, curlCmd, reqBody, resBody, statusText string

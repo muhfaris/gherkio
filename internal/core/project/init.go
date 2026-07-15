@@ -153,6 +153,26 @@ steps:
       schema: example/user-response
 `
 
+// defaultExampleMultipartTemplate shows how to do multipart form-data uploads.
+const defaultExampleMultipartTemplate = `scenario: upload user avatar example
+
+steps:
+  - request:
+      method: POST
+      url: /users/1/avatar
+      multipart:
+        fields:
+          description: "Profile avatar"
+          userId: "1"
+        files:
+          avatar:
+            path: .gherkio/config.yaml
+            contentType: text/yaml
+            filename: avatar-config.yaml
+    expect:
+      status: 200
+`
+
 // defaultConfigTemplate is the default config.yaml template content.
 func defaultConfigTemplate(version string) string {
 	if version == "dev" || version == "" {
@@ -405,6 +425,19 @@ func Initialize(projectDir string, version string) error {
 	}
 	fmt.Fprintf(os.Stderr, "  📄  %s\n", accountsPath)
 
+	// Create multipart upload example
+	multipartExampleDir := filepath.Join(baseDir, "tests", "example", "multipart")
+	if err := os.MkdirAll(multipartExampleDir, dirPerm); err != nil {
+		return fmt.Errorf("failed to create multipart example directory: %w", err)
+	}
+	fmt.Fprintf(os.Stderr, "  📁  %s\n", multipartExampleDir)
+
+	multipartPath := filepath.Join(multipartExampleDir, "upload.yaml")
+	if err := os.WriteFile(multipartPath, []byte(defaultExampleMultipartTemplate), 0644); err != nil {
+		return fmt.Errorf("failed to write multipart example test file: %w", err)
+	}
+	fmt.Fprintf(os.Stderr, "  📄  %s\n", multipartPath)
+
 	// Create example schema files
 	schemaExampleDir := filepath.Join(baseDir, "schemas", "example")
 	if err := os.MkdirAll(schemaExampleDir, dirPerm); err != nil {
@@ -463,6 +496,9 @@ accounts:
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "  Built-in generators ($uuid, $ulid, $randomInt):")
 	fmt.Fprintln(os.Stderr, "    gherkio run example/builtins/login-with-generators.yaml")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, "  Multipart upload:")
+	fmt.Fprintln(os.Stderr, "    gherkio run example/multipart/upload.yaml")
 
 	return nil
 }

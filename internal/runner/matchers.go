@@ -234,16 +234,35 @@ func evaluateMatcher(path string, expected string, actual interface{}) (Assertio
 			return AssertionResult{}, false
 		}
 		target := parts[1]
-		actualStr := fmt.Sprintf("%v", actual)
-		passed := strings.Contains(actualStr, target)
-		reason := ""
-		if !passed {
-			reason = "substring not found at any position"
+		
+		var passed bool
+		var reason string
+		var actualRepr string
+		
+		if arr, ok := actual.([]interface{}); ok {
+			for _, item := range arr {
+				if fmt.Sprintf("%v", item) == target {
+					passed = true
+					break
+				}
+			}
+			actualRepr = fmt.Sprintf("%v", actual)
+			if !passed {
+				reason = fmt.Sprintf("element %q not found in array", target)
+			}
+		} else {
+			actualStr := fmt.Sprintf("%v", actual)
+			passed = strings.Contains(actualStr, target)
+			actualRepr = fmt.Sprintf("%q", actualStr)
+			if !passed {
+				reason = "substring not found at any position"
+			}
 		}
+		
 		return AssertionResult{
 			Path:     path,
-			Expected: fmt.Sprintf("contains substring %q", target),
-			Actual:   fmt.Sprintf("%q", actualStr),
+			Expected: fmt.Sprintf("contains %q", target),
+			Actual:   actualRepr,
 			Passed:   passed,
 			Reason:   reason,
 		}, true

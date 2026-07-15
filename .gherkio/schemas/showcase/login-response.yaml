@@ -3,6 +3,9 @@ required:
   - id
   - username
   - email
+  - role
+  - accessToken
+  - refreshToken
 properties:
   id:
     type: integer
@@ -11,11 +14,9 @@ properties:
   email:
     type: string
     format: email
-  firstName:
+  role:
     type: string
-  lastName:
+  accessToken:
     type: string
-  gender:
-    type: string
-  image:
+  refreshToken:
     type: string

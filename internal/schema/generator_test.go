@@ -99,7 +99,13 @@ func getSchemaDef(schema map[string]interface{}) map[string]interface{} {
 	if !ok {
 		return nil
 	}
-	// Return the first (and usually only) definition
+	// Try to find the root definitions first to avoid map iteration randomness
+	for _, rootName := range []string{"Config", "Environment", "Credentials", "Schema"} {
+		if def, ok := defs[rootName].(map[string]interface{}); ok {
+			return def
+		}
+	}
+	// Fallback to the first definition
 	for _, v := range defs {
 		if def, ok := v.(map[string]interface{}); ok {
 			return def

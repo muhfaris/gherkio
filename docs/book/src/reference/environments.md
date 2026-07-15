@@ -45,3 +45,41 @@ steps:
       url: /v1/token
 ```
  This allows you to migrate identical testing logic between `local` (where all services run on local ports) and `production` with zero script modifications.
+
+---
+
+## 🎭 Service Mocking / Virtualization
+
+Gherkio supports service virtualization directly within your environment file. You can define outbound mock intercepts to stub third-party API dependencies or simulate specific response conditions (e.g. failure states) without hitting real external endpoints.
+
+```yaml
+# .gherkio/environments/local.yaml
+baseUrl: http://localhost:8080
+
+mocks:
+  - request:
+      method: GET
+      url: /api/external-service/status
+    response:
+      status: 200
+      headers:
+        Content-Type: application/json
+      body:
+        status: "healthy"
+        service: "virtualized-dependency"
+```
+
+When the test runner encounters a step requesting a URL matching the defined mock request (`method` and `url`), it intercepts the request and instantly returns the configured `response` status, headers, and body.
+
+### Intercept Variable Interpolation
+Mock responses support dynamic variable interpolation using the context variables from the active test runner session, allowing you to return customized responses:
+```yaml
+mocks:
+  - request:
+      method: POST
+      url: /api/echo
+    response:
+      status: 201
+      body:
+        message: "Hello {{username}}"
+```

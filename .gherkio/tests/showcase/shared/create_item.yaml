@@ -1,0 +1,25 @@
+scenario: Create Catalog Product Helper
+description: Logs in and registers a new product in the catalog.
+
+steps:
+  - name: Run Login Helper
+    use: login.yaml
+    with:
+      username: "catalog_manager"
+      role: "admin"
+
+  - name: Post Product
+    request:
+      method: POST
+      url: /products
+      headers:
+        Authorization: "Bearer ${authToken}"
+      body:
+        title: "${productTitle:Default Showcase Product}"
+        price: "${productPrice:9.99}"
+    expect:
+      status: 201
+      body.id: exists
+      schema: showcase/product-response
+    save:
+      productId: body.id

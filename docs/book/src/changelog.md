@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.0-alpha.6] - 2026-07-15
+
+### Added
+- **Data-Driven Testing (Parametrization)**: Scenario-level execution iteration using the `examples` block.
+- **Composed Traceability**: Visually grouped composed scenario blocks, dynamic nesting indentation by depth, and local context variable snapshots in HTML reports.
+- **Outbound Service Mocking & Interception**: Direct request interception and virtualized responses defined in environment files, with full variable interpolation support.
+- **JSONPath Assertions**: Support for standard JSONPath queries (`$.`) inside response body expectation assertions.
+- **Step Locator & Reverse Conversion Enhancements**: Integrated session variables and robust parsing of nested list structures when converting steps back to cURL.
+- **Rich Schema Hover Documentation**: Enhanced autocomplete JSON schemas with detailed description strings for editor tooltips.
+- **Declarative Variable Assignment (`set:`)**: Direct inline variable assignment step style.
+- **Environment Context Command (`env context`)**: Interactive auto-selection hints command.
+
 ## [0.1.0-alpha.2] - 2026-05-29
 
 ### Added

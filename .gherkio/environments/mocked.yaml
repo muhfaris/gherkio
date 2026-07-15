@@ -1,0 +1,140 @@
+baseUrl: http://localhost:8080
+
+mocks:
+  # 1. Login Intercept - Returns a valid JWT structure so claims decoding is verified
+  - request:
+      method: POST
+      url: /auth/login
+    response:
+      status: 200
+      headers:
+        Content-Type: application/json
+      body:
+        id: 1001
+        username: "$request.body.username"
+        email: "$request.body.username@example.com"
+        role: "$request.body.role"
+        accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTAwMSwidXNlcm5hbWUiOiJzaG9wcGVyX2pvZSIsImVtYWlsIjoic2hvcHBlckBleGFtcGxlLmNvbSIsInJvbGUiOiJidXllciJ9.signature"
+        refreshToken: "mocked-refresh-token"
+
+  # 2. Product Registration
+  - request:
+      method: POST
+      url: /products
+    response:
+      status: 201
+      headers:
+        Content-Type: application/json
+      body:
+        id: 42
+        title: "$request.body.title"
+        price: 149.99
+        category: "Showcase"
+        description: "Showcase mock item"
+
+  # 3. Product Cleanup (Teardown)
+  - request:
+      method: DELETE
+      url: /products
+    response:
+      status: 204
+
+  # 4. Admin Settings Retrieval (Must be before /profile/admin to avoid subset match conflict)
+  - request:
+      method: GET
+      url: /profile/admin/settings
+    response:
+      status: 200
+      headers:
+        Content-Type: application/json
+      body:
+        maintenanceMode: false
+
+  # 5. User Profile Retrieval - Admin
+  - request:
+      method: GET
+      url: /profile/admin
+    response:
+      status: 200
+      headers:
+        Content-Type: application/json
+      body:
+        id: 1001
+        username: "admin-showcase"
+        email: "admin@example.com"
+        role: "admin"
+        permissions: ["all"]
+
+  # 6. User Profile Retrieval - Seller
+  - request:
+      method: GET
+      url: /profile/seller
+    response:
+      status: 200
+      headers:
+        Content-Type: application/json
+      body:
+        id: 1002
+        username: "seller-showcase"
+        email: "seller@example.com"
+        role: "seller"
+        permissions: ["read:products", "write:products"]
+
+  # 7. User Profile Retrieval - Buyer
+  - request:
+      method: GET
+      url: /profile/buyer
+    response:
+      status: 200
+      headers:
+        Content-Type: application/json
+      body:
+        id: 1003
+        username: "buyer-showcase"
+        email: "buyer@example.com"
+        role: "buyer"
+        permissions: ["read:products"]
+
+  # 8. Order Creation
+  - request:
+      method: POST
+      url: /orders
+    response:
+      status: 201
+      headers:
+        Content-Type: application/json
+      body:
+        id: "order-999"
+        status: "processing"
+        itemsCount: 1
+        note: "Urgent shipment"
+
+  # 9. Order Status Retrieval (for Retry & Collection Demonstration)
+  - request:
+      method: GET
+      url: /orders
+    response:
+      status: 200
+      headers:
+        Content-Type: application/json
+      body:
+        id: "order-999"
+        status: "completed"
+        amount: 150.00
+        items:
+          - name: "Keycap Set"
+            price: 50.00
+          - name: "Coiled Cable"
+            price: 100.00
+
+  # 10. Multipart Avatar Upload
+  - request:
+      method: POST
+      url: /profile/avatar
+    response:
+      status: 200
+      headers:
+        Content-Type: application/json
+      body:
+        url: "http://localhost:8080/uploads/avatar.yaml"
+        size: 1024

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/muhfaris/gherkio/internal/model"
+	"github.com/oliveagle/jsonpath"
 )
 
 // StepResult holds the result of a single step execution.
@@ -41,6 +42,7 @@ type StepResult struct {
 	RetryCount   int                    `json:"retryCount,omitempty"`
 	RetryHistory []RetryEntry           `json:"retryHistory,omitempty"`
 	Role         string                 `json:"role,omitempty"` // "setup", "steps", "teardown"
+	Iteration    int                    `json:"iteration,omitempty"`
 }
 
 // RetryEntry captures the outcome of a single retry attempt.
@@ -438,6 +440,83 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 			}
 		}
 	}
+
+	// JSONPath assertions (e.g. $.items[*].id or body.$.items[*].id)
+	isJSONPath := false
+	var jsonPathQuery string
+	if strings.HasPrefix(path, "$.") {
+		isJSONPath = true
+		jsonPathQuery = path
+	} else if strings.HasPrefix(path, "body.$.") {
+		isJSONPath = true
+		jsonPathQuery = strings.TrimPrefix(path, "body.")
+	}
+
+	if isJSONPath {
+		if resp.Parsed == nil {
+			if expectedStr == "not exists" {
+				return AssertionResult{
+					Path:     path,
+					Expected: "not exists",
+					Actual:   "(body not parsed)",
+					Passed:   true,
+				}
+			}
+			return AssertionResult{
+				Path:     path,
+				Expected: expectedStr,
+				Actual:   "(body not parsed)",
+				Passed:   expectedStr == "exists" && false,
+			}
+		}
+
+		actualVal, err := jsonpath.JsonPathLookup(resp.Parsed, jsonPathQuery)
+		if err != nil {
+			if expectedStr == "not exists" {
+				return AssertionResult{
+					Path:     path,
+					Expected: "not exists",
+					Actual:   "(not found)",
+					Passed:   true,
+				}
+			}
+			return AssertionResult{
+				Path:     path,
+				Expected: expectedStr,
+				Actual:   "(not found)",
+				Passed:   expectedStr == "exists" && false,
+				Reason:   err.Error(),
+			}
+		}
+
+		if arr, ok := actualVal.([]interface{}); ok && len(arr) == 1 {
+			actualVal = arr[0]
+		}
+
+		// not exists — field found is a fail
+		if expectedStr == "not exists" {
+			return AssertionResult{
+				Path:     path,
+				Expected: "not exists",
+				Actual:   fmt.Sprintf("%v", actualVal),
+				Passed:   false,
+			}
+		}
+
+		// Try Matchers
+		if result, used := evaluateMatcher(path, expectedStr, actualVal); used {
+			return result
+		}
+
+		actualStr := fmt.Sprintf("%v", actualVal)
+		return AssertionResult{
+			Path:     path,
+			Expected: expectedStr,
+			Actual:   actualStr,
+			Passed:   actualStr == expectedStr,
+		}
+	}
+
 	if path == "schema" {
 		expectedStr, ok := expected.(string)
 		if !ok {
