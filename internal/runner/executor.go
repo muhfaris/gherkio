@@ -722,15 +722,27 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 		// Strip body. prefix for consistency with regular assertions
 		innerPath = strings.TrimPrefix(innerPath, "body.")
 
-		// Determine base array path and the field to check
-		lastDot := strings.LastIndex(innerPath, ".")
+		// Determine base array path and the field to check — walk segments
+		// to find the first array, supporting nested field paths like "partner_status.id"
+		parts := strings.Split(innerPath, ".")
 		var arrayPath, fieldName string
-		if lastDot != -1 {
-			arrayPath = innerPath[:lastDot]
-			fieldName = innerPath[lastDot+1:]
-		} else {
+		for i := len(parts); i >= 0; i-- {
+			candidate := strings.Join(parts[:i], ".")
+			if candidate == "" {
+				continue
+			}
+			val, found := resolvePath(resp.Parsed, candidate)
+			if found {
+				if _, ok := val.([]interface{}); ok {
+					arrayPath = candidate
+					fieldName = strings.Join(parts[i:], ".")
+					break
+				}
+			}
+		}
+		if arrayPath == "" {
 			arrayPath = innerPath
-			fieldName = "" // Check array elements directly
+			fieldName = ""
 		}
 
 		actualArrVal, found := resolvePath(resp.Parsed, arrayPath)
@@ -787,7 +799,7 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 					formattedActuals = append(formattedActuals, fmt.Sprintf("%v", elem))
 					break
 				}
-			val, valFound := mapVal[fieldName]
+			val, valFound := resolveNestedField(mapVal, fieldName)
 				if !valFound {
 					// not exists — field absent means all elements satisfy "not exists"
 					if expectedStr == "not exists" {
@@ -855,6 +867,160 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 			} else {
 				expectedDesc = fmt.Sprintf("all elements equal %q", expectedStr)
 			}
+		}
+
+		return AssertionResult{
+			Path:     path,
+			Expected: expectedDesc,
+			Actual:   "[" + strings.Join(formattedActuals, ", ") + "]",
+			Passed:   passed,
+			Reason:   failedReason,
+		}
+	}
+
+	// Collection Matchers: any(path)
+	if strings.HasPrefix(path, "any(") && strings.HasSuffix(path, ")") {
+		innerPath := path[4 : len(path)-1]
+		// Strip body. prefix for consistency with regular assertions
+		innerPath = strings.TrimPrefix(innerPath, "body.")
+
+		// Determine base array path and the field to check — walk segments
+		// to find the first array, supporting nested field paths like "partner_status.id"
+		parts := strings.Split(innerPath, ".")
+		var arrayPath, fieldName string
+		for i := len(parts); i >= 0; i-- {
+			candidate := strings.Join(parts[:i], ".")
+			if candidate == "" {
+				continue
+			}
+			val, found := resolvePath(resp.Parsed, candidate)
+			if found {
+				if _, ok := val.([]interface{}); ok {
+					arrayPath = candidate
+					fieldName = strings.Join(parts[i:], ".")
+					break
+				}
+			}
+		}
+		if arrayPath == "" {
+			arrayPath = innerPath
+			fieldName = ""
+		}
+
+		actualArrVal, found := resolvePath(resp.Parsed, arrayPath)
+		if !found {
+			return AssertionResult{
+				Path:     path,
+				Expected: fmt.Sprintf("any element matches %q", expectedStr),
+				Actual:   "(not found)",
+				Passed:   false,
+			}
+		}
+
+		arrVal, ok := actualArrVal.([]interface{})
+		if !ok {
+			return AssertionResult{
+				Path:     path,
+				Expected: fmt.Sprintf("any element matches %q", expectedStr),
+				Actual:   fmt.Sprintf("%v", actualArrVal),
+				Passed:   false,
+				Reason:   "value is not an array",
+			}
+		}
+
+		if len(arrVal) == 0 {
+			return AssertionResult{
+				Path:     path,
+				Expected: fmt.Sprintf("any element matches %q", expectedStr),
+				Actual:   "[]",
+				Passed:   false,
+				Reason:   "empty array — no element to match",
+			}
+		}
+
+		var formattedActuals []string
+		var expectedDesc string
+	passed := false // any() starts false — at least one must match
+
+		if expectedStr == "not exists" {
+			expectedDesc = "not exists"
+		}
+
+		for _, elem := range arrVal {
+			var valToCheck interface{} = elem
+			if fieldName != "" {
+				mapVal, isMap := elem.(map[string]interface{})
+				if !isMap {
+					formattedActuals = append(formattedActuals, fmt.Sprintf("%v", elem))
+					continue
+				}
+			val, valFound := resolveNestedField(mapVal, fieldName)
+				if !valFound {
+					// not exists — field absent on any element satisfies "not exists"
+					if expectedStr == "not exists" {
+						passed = true
+						formattedActuals = append(formattedActuals, "(missing)")
+						break
+					}
+					formattedActuals = append(formattedActuals, "(missing)")
+					continue
+				}
+				// not exists — field found means this element doesn't satisfy, keep looking
+				if expectedStr == "not exists" {
+					formattedActuals = append(formattedActuals, fmt.Sprintf("%v", val))
+					continue
+				}
+				valToCheck = val
+			}
+
+			// Try Matcher first
+			res, used := evaluateMatcher("", expectedStr, valToCheck)
+			if used {
+				expectedDesc = res.Expected
+				if res.Passed {
+					passed = true
+					formattedActuals = append(formattedActuals, formatActual(valToCheck))
+					break
+				}
+			} else {
+				// Fallback to Equality
+				expectedDesc = fmt.Sprintf("any element equals %q", expectedStr)
+				actualStr := fmt.Sprintf("%v", valToCheck)
+				if actualStr == expectedStr {
+					passed = true
+					formattedActuals = append(formattedActuals, actualStr)
+					break
+				}
+			}
+			formattedActuals = append(formattedActuals, formatActual(valToCheck))
+		}
+
+		// Populate remaining formattedActuals for display
+		for j := len(formattedActuals); j < len(arrVal); j++ {
+			elem := arrVal[j]
+			if fieldName != "" {
+				if mapVal, isMap := elem.(map[string]interface{}); isMap {
+					if val, valFound := resolveNestedField(mapVal, fieldName); valFound {
+						formattedActuals = append(formattedActuals, formatActual(val))
+						continue
+					}
+				}
+			}
+			formattedActuals = append(formattedActuals, formatActual(elem))
+		}
+
+		if expectedDesc == "" {
+			dummyResult, used := evaluateMatcher("", expectedStr, nil)
+			if used {
+				expectedDesc = dummyResult.Expected
+			} else {
+				expectedDesc = fmt.Sprintf("any element equals %q", expectedStr)
+			}
+		}
+
+		failedReason := ""
+		if !passed {
+			failedReason = "no element matched"
 		}
 
 		return AssertionResult{
@@ -1171,6 +1337,27 @@ func resolvePath(data interface{}, path string) (interface{}, bool) {
 		}
 	}
 
+	return current, true
+}
+
+// resolveNestedField resolves a dot-separated field path within a map (e.g. "partner_status.id").
+func resolveNestedField(data map[string]interface{}, path string) (interface{}, bool) {
+	if path == "" {
+		return data, true
+	}
+	parts := strings.Split(path, ".")
+	current := interface{}(data)
+	for _, part := range parts {
+		m, ok := current.(map[string]interface{})
+		if !ok {
+			return nil, false
+		}
+		val, found := m[part]
+		if !found {
+			return nil, false
+		}
+		current = val
+	}
 	return current, true
 }
 

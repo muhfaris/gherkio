@@ -17,7 +17,7 @@ func InterpolateRequest(req model.Request, vars map[string]interface{}) (model.R
 		Method:  req.Method,
 		URL:     req.URL,
 		Headers: make(map[string]string),
-		Query:   make(map[string]string),
+		Query:   make(map[string]any),
 		Timeout: req.Timeout,
 	}
 
@@ -39,14 +39,32 @@ func InterpolateRequest(req model.Request, vars map[string]interface{}) (model.R
 	}
 	interpolated.Headers = interpolatedHeaders
 
-	// Interpolate Query
+	// Interpolate Query — values can be strings or []interface{} (array)
+	interpolatedQuery := make(map[string]any)
 	for k, v := range req.Query {
-		interpolatedValue, err := interpolateString(v, vars)
-		if err != nil {
-			return model.Request{}, fmt.Errorf("failed to interpolate query '%s': %w", k, err)
+		switch val := v.(type) {
+		case string:
+			interpolatedValue, err := interpolateString(val, vars)
+			if err != nil {
+				return model.Request{}, fmt.Errorf("failed to interpolate query '%s': %w", k, err)
+			}
+			interpolatedQuery[k] = interpolatedValue
+		case []interface{}:
+			interpolatedArr := make([]interface{}, len(val))
+			for i, item := range val {
+				itemStr := fmt.Sprintf("%v", item)
+				interpolatedValue, err := interpolateString(itemStr, vars)
+				if err != nil {
+					return model.Request{}, fmt.Errorf("failed to interpolate query '%s[%d]': %w", k, i, err)
+				}
+				interpolatedArr[i] = interpolatedValue
+			}
+			interpolatedQuery[k] = interpolatedArr
+		default:
+			interpolatedQuery[k] = val
 		}
-		interpolated.Query[k] = interpolatedValue
 	}
+	interpolated.Query = interpolatedQuery
 
 	// Interpolate Body
 	interpolatedBody, err := interpolateBody(req.Body, vars)

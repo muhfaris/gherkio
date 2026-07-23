@@ -119,6 +119,27 @@ func TestEvaluateMatcher_StringMatchers(t *testing.T) {
 		{"regex not matching", "regex ^[A-Z]{3}$", "abcd", false, true},
 		{"regex invalid pattern", "regex [invalid", "anything", false, true},
 		{"regex no arg", "regex", "anything", false, false},
+
+		// oneOf
+		{"oneOf matching first", "oneOf x, y, z", "x", true, true},
+		{"oneOf matching second", "oneOf x, y, z", "y", true, true},
+		{"oneOf not matching", "oneOf x, y, z", "a", false, true},
+		{"oneOf matching with spaces", "oneOf   x  ,   y  ", "y", true, true},
+		{"oneOf matching numeric", "oneOf 1, 2, 3", 2, true, true},
+		{"oneOf no arg", "oneOf", "anything", false, false},
+		{"oneOf trailing comma", "oneOf x, y, z,", "x", true, true},
+		{"oneOf trailing comma not matching", "oneOf x, y, z,", "a", false, true},
+		{"oneOf multi-word with trailing comma", "oneOf Bulky Delete Premature Ticket,", "Bulky Delete Premature Ticket", true, true},
+
+		// in
+		{"in matching first", "in x, y, z", "x", true, true},
+		{"in matching second", "in x, y, z", "y", true, true},
+		{"in not matching", "in x, y, z", "a", false, true},
+		{"in matching with spaces", "in   x  ,   y  ", "y", true, true},
+		{"in matching numeric", "in 1, 2, 3", 2, true, true},
+		{"in no arg", "in", "anything", false, false},
+		{"in trailing comma", "in x, y, z,", "x", true, true},
+		{"in trailing comma not matching", "in x, y, z,", "a", false, true},
 	}
 
 	for _, tt := range tests {
@@ -191,10 +212,14 @@ func TestIsMatcherKeyword(t *testing.T) {
 		{"startsWith prefix", true},
 		{"endsWith suffix", true},
 		{"regex pattern", true},
+		{"oneOf options", true},
+		{"in options", true},
 		{"contains", false},   // missing argument
 		{"startsWith", false}, // missing argument
 		{"endsWith", false},   // missing argument
 		{"regex", false},      // missing argument
+		{"oneOf", false},      // missing argument
+		{"in", false},         // missing argument
 		{"unknown", false},
 		{"", false},
 		{"foo bar", false},

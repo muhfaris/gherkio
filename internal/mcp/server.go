@@ -24,10 +24,11 @@ import (
 
 // Server implements a native Model Context Protocol (MCP) server over stdio.
 type Server struct {
-	projectDir  string
-	sessionVars map[string]interface{} // Persistent across run_test calls within the same session
+	projectDir   string
+	sessionVars  map[string]interface{} // Persistent across run_test calls within the same session
 	lastTestPath string                 // Last test file path run (for session reset detection)
 	lastEnv      string                 // Last environment used (for session reset detection)
+	lastAccount  string                 // Last account used (for session reset detection)
 }
 
 // NewServer creates a new instance of the MCP server.
@@ -885,10 +886,7 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 
 	// Session management: persists variables across run_test calls.
 	// Clears only when the test file or environment changes.
-	if s.sessionVars == nil {
-			s.sessionVars = make(map[string]interface{})
-		}
-		if fullPath != s.lastTestPath || envName != s.lastEnv {
+	if s.sessionVars == nil || fullPath != s.lastTestPath || envName != s.lastEnv || accountName != s.lastAccount {
 			s.sessionVars = make(map[string]interface{})
 		}
 
@@ -917,8 +915,9 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 		}
 
 		// Track session state for auto-reset on next call
-		s.lastTestPath = fullPath
-		s.lastEnv = envName
+	s.lastTestPath = fullPath
+	s.lastEnv = envName
+	s.lastAccount = accountName
 
 		// Write HTML/JSON report if configured in the config file
 		if appCfg != nil && appCfg.Reports.Format != "" {

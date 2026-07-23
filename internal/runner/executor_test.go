@@ -467,7 +467,11 @@ func TestEvaluateAssertion_CollectionAll(t *testing.T) {
 				map[string]interface{}{"status": "inactive"},
 				map[string]interface{}{"status": "active"},
 			},
-			"emptylist": []interface{}{},
+		"emptylist": []interface{}{},
+		"nested": []interface{}{
+			map[string]interface{}{"partner_status": map[string]interface{}{"id": "01KY672M7Q0T5TRKW63QBECQ93", "name": "Foo"}},
+			map[string]interface{}{"partner_status": map[string]interface{}{"id": "01KY672M7Q0T5TRKW63QBECQ93", "name": "Bar"}},
+		},
 		},
 	}
 
@@ -479,7 +483,9 @@ func TestEvaluateAssertion_CollectionAll(t *testing.T) {
 	}{
 		{"all pass equality", "all(items.status)", "active", true},
 		{"all fail equality", "all(mixed.status)", "active", false},
-		{"all empty passes", "all(emptylist.status)", "active", true},
+		{"all pass nested field", "all(nested.partner_status.id)", "01KY672M7Q0T5TRKW63QBECQ93", true},
+		{"all fail nested field", "all(nested.partner_status.name)", "Foo", false},
+		{"all pass empty", "all(emptylist.status)", "active", true},
 		{"all pass matcher", "all(items.price)", "number", true},
 	}
 
@@ -1121,6 +1127,56 @@ func TestInterpolateMultipart(t *testing.T) {
 			t.Error("expected multipart to be nil")
 		}
 	})
+}
+
+func TestEvaluateAssertion_CollectionAny(t *testing.T) {
+	resp := &ResponseInfo{
+		Status: 200,
+		Parsed: map[string]interface{}{
+			"items": []interface{}{
+				map[string]interface{}{"status": "active", "name": "Bulky Delete Premature Ticket"},
+				map[string]interface{}{"status": "inactive", "name": "Bulky Close Ticket"},
+				map[string]interface{}{"status": "active", "name": "Bulky Archive Ticket"},
+			},
+			"mixed": []interface{}{
+				map[string]interface{}{"status": "inactive"},
+				map[string]interface{}{"status": "inactive"},
+			},
+			"emptylist": []interface{}{},
+		"primitives": []interface{}{"apple", "banana", "cherry"},
+		"nested": []interface{}{
+			map[string]interface{}{"partner_status": map[string]interface{}{"id": "01KY672M7Q0T5TRKW63QBECQ93", "name": "Foo"}},
+			map[string]interface{}{"partner_status": map[string]interface{}{"id": "01KY6735M52VM42QK71816VTE1", "name": "Bar"}},
+		},
+		},
+	}
+
+	tests := []struct {
+		name     string
+		path     string
+		expected string
+		wantPass bool
+	}{
+		{"any pass first element", "any(items.status)", "active", true},
+		{"any pass middle element", "any(items.name)", "Bulky Close Ticket", true},
+		{"any fail no match", "any(items.status)", "pending", false},
+		{"any empty fails", "any(emptylist.status)", "active", false},
+		{"any pass primitive array", "any(primitives)", "banana", true},
+		{"any fail primitive array", "any(primitives)", "grape", false},
+		{"any pass oneOf matcher", "any(items.name)", "oneOf Bulky Delete Premature Ticket, Bulky Close Ticket", true},
+		{"any pass nested field", "any(nested.partner_status.id)", "01KY672M7Q0T5TRKW63QBECQ93", true},
+		{"any fail nested field", "any(nested.partner_status.name)", "Baz", false},
+		{"any fail oneOf matcher", "any(items.name)", "oneOf Unknown Type", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := evaluateAssertion(tt.path, tt.expected, resp, nil, "", nil)
+			if result.Passed != tt.wantPass {
+				t.Errorf("evaluateAssertion(%q, %q) passed = %v, want %v\n  result: %+v", tt.path, tt.expected, result.Passed, tt.wantPass, result)
+			}
+		})
+	}
 }
 
 func TestEvaluateAssertion_JSONPath(t *testing.T) {

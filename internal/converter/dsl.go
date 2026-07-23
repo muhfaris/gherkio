@@ -14,7 +14,7 @@ type RequestFields struct {
 	Service string            `yaml:"service,omitempty"`
 	Method  string            `yaml:"method"`
 	URL     string            `yaml:"url"`
-	Query   map[string]string `yaml:"query,omitempty"`
+	Query   map[string]any `yaml:"query,omitempty"`
 	Headers map[string]string `yaml:"headers,omitempty"`
 	Body    interface{}       `yaml:"body,omitempty"`
 	Timeout string            `yaml:"timeout,omitempty"`

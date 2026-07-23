@@ -1,0 +1,55 @@
+scenario: Showcase Array Queries & Collection Matchers
+description: |
+  Demonstrates two features:
+  1. Array query parameters — passing multiple values for the same key (e.g. ?select=title&select=price)
+  2. Collection matchers any() and all() — asserting array elements in responses
+
+steps:
+  # ── Step 1: Fetch products with array query — repeated 'select' keys ──
+  - name: List products with array query params
+    request:
+      method: GET
+      url: /products
+      query:
+        limit: "5"
+        select:
+          - title
+          - price
+          - category
+    expect:
+      status: 200
+      body.products: array
+      count(body.products).lte: 5
+      all(body.products.title): exists
+      all(body.products.price): number
+
+  # ── Step 2: Search products — use any() to check at least one result ──
+  - name: Search and assert with any()
+    request:
+      method: GET
+      url: /products/search
+      query:
+        q: phone
+        limit: "3"
+    expect:
+      status: 200
+      body.products: array
+      count(body.products).gte: 1
+      any(body.products.title): contains Phone
+
+  # ── Step 3: Array query with repeated keys + collection assertion ──
+  - name: Repeated select keys with all() and any()
+    request:
+      method: GET
+      url: /products
+      query:
+        limit: "3"
+        select:
+          - title
+          - price
+          - rating
+    expect:
+      status: 200
+      count(body.products).gte: 1
+      all(body.products.rating): number
+      any(body.products.price): gt 10

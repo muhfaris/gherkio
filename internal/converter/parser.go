@@ -12,7 +12,7 @@ type ParsedRequest struct {
 	Name    string
 	Method  string
 	URL     string
-	Query   map[string]string
+	Query   map[string]any
 	Headers map[string]string
 	Body    interface{}
 	Timeout string

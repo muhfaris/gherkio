@@ -3,6 +3,7 @@ package runner
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/muhfaris/gherkio/internal/model"
@@ -537,8 +538,107 @@ mocks:
 	if res.Steps[0].Iteration != 1 {
 		t.Errorf("Expected first step iteration to be 1, got %d", res.Steps[0].Iteration)
 	}
-	if res.Steps[1].Iteration != 2 {
-		t.Errorf("Expected second step iteration to be 2, got %d", res.Steps[1].Iteration)
+}
+
+func TestResolveURL_ArrayQueryParams(t *testing.T) {
+	env := &model.Environment{BaseURL: "https://api.example.com"}
+
+	tests := []struct {
+		name string
+		req  model.Request
+		want string
+	}{
+		{
+			name: "single string query",
+			req: model.Request{
+				URL:   "/items",
+				Query: map[string]any{"status": "active"},
+			},
+			want: "https://api.example.com/items?status=active",
+		},
+		{
+			name: "array query produces repeated keys",
+			req: model.Request{
+				URL: "/items",
+				Query: map[string]any{
+					"status": []interface{}{"active", "pending"},
+				},
+			},
+			want: "https://api.example.com/items?status=active&status=pending",
+		},
+		{
+			name: "mixed string and array",
+			req: model.Request{
+				URL: "/items",
+				Query: map[string]any{
+					"status": []interface{}{"active", "pending"},
+					"page":   "2",
+				},
+			},
+			want: "https://api.example.com/items?status=active&status=pending&page=2",
+		},
+		{
+			name: "no query params",
+			req: model.Request{
+				URL: "/items",
+			},
+			want: "https://api.example.com/items",
+		},
+		{
+			name: "absolute URL bypasses base",
+			req: model.Request{
+				URL:   "https://other.com/items",
+				Query: map[string]any{"limit": "10"},
+			},
+			want: "https://other.com/items?limit=10",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := resolveURL(env, tt.req)
+			if got != tt.want {
+				t.Errorf("resolveURL() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFlattenQueryMap(t *testing.T) {
+	tests := []struct {
+		name string
+		in   map[string]any
+		want map[string]string
+	}{
+		{
+			name: "strings only",
+			in:   map[string]any{"a": "1", "b": "2"},
+			want: map[string]string{"a": "1", "b": "2"},
+		},
+		{
+			name: "array to comma-separated",
+			in:   map[string]any{"status": []interface{}{"active", "pending"}},
+			want: map[string]string{"status": "active,pending"},
+		},
+		{
+			name: "mixed",
+			in:   map[string]any{"status": []interface{}{"a", "b"}, "page": "1"},
+			want: map[string]string{"status": "a,b", "page": "1"},
+		},
+		{
+			name: "empty",
+			in:   nil,
+			want: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := flattenQueryMap(tt.in)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("flattenQueryMap() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 

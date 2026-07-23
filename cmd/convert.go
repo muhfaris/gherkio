@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/muhfaris/gherkio/internal/converter"
@@ -203,7 +202,7 @@ func runReverseConvert(testPath string, projectDir string, env string, accountNa
 	// Load session variables if they exist
 	sessionVars := make(map[string]interface{})
 	if projectDir != "" {
-		sessionPath := filepath.Join(projectDir, ".gherkio", "session.yaml")
+		sessionPath := runner.SessionFilePath(projectDir, env, accountName)
 		if loaded, err := runner.LoadSessionVars(sessionPath); err == nil && loaded != nil {
 			sessionVars = loaded
 		}

@@ -119,21 +119,30 @@ func ConvertStepToCurl(req model.Request, projectDir string, envName string, var
 		interpolatedURL = baseURL + interpolatedURL
 	}
 
-	// Append query params if present
+	// Append query params if present — values can be strings or arrays
 	if len(req.Query) > 0 {
 		sep := "?"
 		if strings.Contains(interpolatedURL, "?") {
 			sep = "&"
 		}
-		first := true
 		for k, v := range req.Query {
 			escapedKey := url.QueryEscape(k)
-			escapedVal := url.QueryEscape(LenientInterpolateString(v, vars))
-			if first {
+			switch val := v.(type) {
+			case string:
+				escapedVal := url.QueryEscape(LenientInterpolateString(val, vars))
 				interpolatedURL += sep + escapedKey + "=" + escapedVal
-				first = false
-			} else {
-				interpolatedURL += "&" + escapedKey + "=" + escapedVal
+				sep = "&"
+			case []interface{}:
+				for _, item := range val {
+					itemStr := fmt.Sprintf("%v", item)
+					escapedVal := url.QueryEscape(LenientInterpolateString(itemStr, vars))
+					interpolatedURL += sep + escapedKey + "=" + escapedVal
+					sep = "&"
+				}
+			default:
+				escapedVal := url.QueryEscape(LenientInterpolateString(fmt.Sprintf("%v", val), vars))
+				interpolatedURL += sep + escapedKey + "=" + escapedVal
+				sep = "&"
 			}
 		}
 	}
