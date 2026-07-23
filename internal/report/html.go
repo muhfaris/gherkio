@@ -172,19 +172,25 @@ func MapResultToReportData(result *runner.RunResult, env string, maskFields []st
 
 		method := ""
 		url := ""
-		var query map[string]string
-		var headers map[string]string
-		if step.Request != nil {
-			method = step.Request.Method
-			url = step.Request.URL
-			query = step.Request.Query
-			headers = step.Request.Headers
-		} else if step.Original.Request.URL != "" {
-			method = step.Original.Request.Method
-			url = step.Original.Request.URL
-			query = step.Original.Request.Query
-			headers = step.Original.Request.Headers
+	var query map[string]any
+	var headers map[string]string
+	if step.Request != nil {
+		method = step.Request.Method
+		url = step.Request.URL
+		// Convert map[string]string to map[string]any for consistent typing
+		if step.Request.Query != nil {
+			query = make(map[string]any, len(step.Request.Query))
+			for k, v := range step.Request.Query {
+				query[k] = v
+			}
 		}
+		headers = step.Request.Headers
+	} else if step.Original.Request.URL != "" {
+		method = step.Original.Request.Method
+		url = step.Original.Request.URL
+		query = step.Original.Request.Query
+		headers = step.Original.Request.Headers
+	}
 
 		var retryHistory []RetryEntry
 		for _, entry := range step.RetryHistory {

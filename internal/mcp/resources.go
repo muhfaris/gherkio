@@ -236,6 +236,7 @@ This works in both **expect** and **save** paths. The index must be a non-negati
 - 'empty' — String, array, or object is empty
 - 'contains <substring>', 'startsWith <prefix>', 'endsWith <suffix>' — String matchers
 - 'regex <pattern>' — Regex match
+- 'oneOf <options>', 'in <options>' — Value membership checks
 - 'gt <N>', 'gte <N>', 'lt <N>', 'lte <N>' — Numeric comparisons
 - 'ipv4', 'ipv6', 'base64', 'mac' — Format validators
 
@@ -246,7 +247,13 @@ This works in both **expect** and **save** paths. The index must be a non-negati
 - 'count(<path>).lte: <N>' — Array has <= N items
 - 'count(<path>).lt: <N>' — Array has < N items
 - 'all(<path>): <matcher>' — Every element matches (e.g. 'all(body.items.status): active')
+  Combine with membership matchers: 'all(body.roles): oneOf admin, user, moderator'
 - 'all(<path>.<field>): <matcher>' — Every element's field matches (e.g. 'all(body.items.id): uuid')
+  Combine with membership matchers: 'all(body.items.status): in active, pending'
+- 'any(<path>): <matcher>' — At least one element matches (e.g. 'any(body.items.status): active')
+  Combine with membership matchers: 'any(body.items.status): oneOf active, pending'
+- 'any(<path>.<field>): <matcher>' — At least one element's field matches (e.g. 'any(body.items.id): uuid')
+  Combine with membership matchers: 'any(body.items.name): oneOf admin, user'
 
 **Examples:**
 
@@ -257,6 +264,7 @@ This works in both **expect** and **save** paths. The index must be a non-negati
       body.items: array
       body.email: email
       body.role: admin          # literal equality
+      body.status: oneOf active, pending # value membership
       body.count: gt 10         # numeric > 10
       body.name: contains John
       body.items[0].id: exists  # first item in array has an id
@@ -265,6 +273,7 @@ This works in both **expect** and **save** paths. The index must be a non-negati
       body.tags: empty          # array, string, or object is empty
       count(body.items): 5      # exactly 5 items
       count(body.items).gte: 1  # at least 1 item (has data)
+      all(body.items.status): oneOf active, pending  # every element's status in set
       schema: user-profile
       schema: not error-payload
 `

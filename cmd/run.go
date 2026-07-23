@@ -339,14 +339,9 @@ func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *re
 		targetSection = "steps"
 	}
 
-	// Use session file for incremental runs (step/line/section/until)
-	var sessionFile string
-	if targetStepIdx >= 0 || targetSection != "" || untilSlice != "" {
-		sessionFile = filepath.Join(projectDir, ".gherkio", "session.yaml")
-	} else {
-		// Full run: clean stale session data
-		os.Remove(filepath.Join(projectDir, ".gherkio", "session.yaml"))
-	}
+	// Always use session file for cross-run variable persistence.
+	// Full runs save all accumulated variables; step-level runs load AND save.
+	sessionFile := runner.SessionFilePath(projectDir, env, accName)
 
 	cfg := runner.RunConfig{
 		TestPath:       testPath,
@@ -476,6 +471,7 @@ func runSingleTestMultiAccount(testPath, projectDir, env string, verbose bool, r
 			DryRun:         dryRun,
 			Snapshot:       snapshotCfg,
 			Until:          untilSlice,
+			SessionFile:    runner.SessionFilePath(projectDir, env, accountName),
 		}
 
 		result, err := runner.Run(cfg)
@@ -619,6 +615,7 @@ func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *repor
 			DryRun:         dryRun,
 			Snapshot:       snapshotCfg,
 			Until:          untilSlice,
+			SessionFile:    runner.SessionFilePath(projectDir, env, accName),
 		}
 
 		result, err := runner.Run(cfg)
@@ -734,6 +731,7 @@ func runAllInDirMultiAccount(testDir, projectDir, env string, verbose bool, repo
 				DryRun:         dryRun,
 				Snapshot:       snapshotCfg,
 				Until:          untilSlice,
+				SessionFile:    runner.SessionFilePath(projectDir, env, accountName),
 			}
 
 			result, err := runner.Run(cfg)
@@ -952,6 +950,7 @@ func runAllInDirParallel(testDir, projectDir, env string, verbose bool, reportCf
 				DryRun:         dryRun,
 				Snapshot:       snapshotCfg,
 				Until:          untilSlice,
+				SessionFile:    runner.SessionFilePath(projectDir, env, accName),
 			}
 
 			result, err := runner.Run(cfg)

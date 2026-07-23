@@ -151,7 +151,10 @@ func (s *Server) buildSpecifyAssertionsPrompt(endpoint, method, responseStructur
 ## COLLECTION ASSERTIONS (for array responses)
   - 'count(body.<array>): <N>' — exact count
   - 'count(body.<array>).gte: 1' — has data
-  - 'all(body.<array>.<field>): <matcher>' — every element matches`
+  - 'all(body.<array>.<field>): <matcher>' — every element matches
+    Use with oneOf/in for membership checks (e.g. 'all(body.items.status): oneOf active, pending')
+  - 'any(body.<array>.<field>): <matcher>' — at least one element matches
+    Use with oneOf/in for membership checks (e.g. 'any(body.items.name): oneOf admin')`
 
 	extraInfo := ""
 	if responseStructure != "" {

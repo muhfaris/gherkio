@@ -327,6 +327,42 @@ func evaluateMatcher(path string, expected string, actual interface{}) (Assertio
 			Reason:   reason,
 		}, true
 
+	case "oneOf", "in":
+		if len(parts) < 2 {
+			return AssertionResult{}, false
+		}
+		rawOptions := parts[1]
+		options := strings.Split(rawOptions, ",")
+		var trimmedOptions []string
+		for _, opt := range options {
+			trimmed := strings.TrimSpace(opt)
+			if trimmed != "" {
+				trimmedOptions = append(trimmedOptions, trimmed)
+			}
+		}
+
+		actualStr := fmt.Sprintf("%v", actual)
+		passed := false
+		for _, opt := range trimmedOptions {
+			if actualStr == opt {
+				passed = true
+				break
+			}
+		}
+
+		reason := ""
+		if !passed {
+			reason = fmt.Sprintf("value %q not found in options %v", actualStr, trimmedOptions)
+		}
+
+		return AssertionResult{
+			Path:     path,
+			Expected: fmt.Sprintf("%s %s", keyword, strings.Join(trimmedOptions, ", ")),
+			Actual:   fmt.Sprintf("%q", actualStr),
+			Passed:   passed,
+			Reason:   reason,
+		}, true
+
 	case "gt", "gte", "lt", "lte":
 		if len(parts) < 2 {
 			return AssertionResult{}, false
@@ -558,7 +594,7 @@ func GetAvailableMatchers() []string {
 		"uuid", "email", "datetime", "uri",
 		"string", "number", "boolean", "array", "object", "null",
 		"true", "false",
-		"contains", "startsWith", "endsWith", "regex",
+		"contains", "startsWith", "endsWith", "regex", "oneOf", "in",
 		"gt", "gte", "lt", "lte",
 		"empty",
 		"ipv4", "ipv6",

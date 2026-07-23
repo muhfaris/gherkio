@@ -1,0 +1,8 @@
+authToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTAwMSwidXNlcm5hbWUiOiJzaG9wcGVyX2pvZSIsImVtYWlsIjoic2hvcHBlckBleGFtcGxlLmNvbSIsInJvbGUiOiJidXllciJ9.signature
+orderId: order-999
+productId: 42
+savedItems:
+    - name: Keycap Set
+      price: 50
+    - name: Coiled Cable
+      price: 100

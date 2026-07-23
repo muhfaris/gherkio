@@ -216,17 +216,18 @@ func Run(cfg RunConfig) (*RunResult, error) {
 			allSteps = append(allSteps, teardownSteps...)
 		}
 
-		// Sync back session vars
-		if cfg.SessionVars != nil {
-			for key, val := range iterVars {
-				isExampleVar := false
-				if len(testFile.Examples) > 0 {
-					if _, exists := testFile.Examples[iter][key]; exists {
-						isExampleVar = true
-					}
+		// Sync step-saved variables back into vars (for session persistence and SessionVars)
+		for key, val := range iterVars {
+			isExampleVar := false
+			if len(testFile.Examples) > 0 {
+				if _, exists := testFile.Examples[iter][key]; exists {
+					isExampleVar = true
 				}
-				if !isExampleVar {
-					vars[key] = val
+			}
+			if !isExampleVar {
+				vars[key] = val
+				if cfg.SessionVars != nil {
+					cfg.SessionVars[key] = val
 				}
 			}
 		}
@@ -449,7 +450,7 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 	stepResult.Request = &RequestInfo{
 		Method:  interpolatedRequest.Method,
 		URL:     url,
-		Query:   interpolatedRequest.Query,
+		Query:   flattenQueryMap(interpolatedRequest.Query),
 		Headers: interpolatedRequest.Headers,
 	}
 	if interpolatedRequest.Body != nil {
@@ -550,10 +551,10 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 				stepResult.Request = &RequestInfo{
 					Method:  interpolatedRequest.Method,
 					URL:     url,
-					Query:   interpolatedRequest.Query,
-					Headers: interpolatedRequest.Headers,
-				}
-				if interpolatedRequest.Body != nil {
+				Query:   flattenQueryMap(interpolatedRequest.Query),
+				Headers: interpolatedRequest.Headers,
+			}
+			if interpolatedRequest.Body != nil {
 					if bodyJSON, err := json.Marshal(interpolatedRequest.Body); err == nil {
 						stepResult.Request.Body = string(bodyJSON)
 					} else {
@@ -866,8 +867,33 @@ func loadEnvironment(projectDir, envName string) (*model.Environment, error) {
 	return &env, nil
 }
 
+// flattenQueryMap converts a map[string]any query map to map[string]string by joining array values with commas.
+// Used for display/reporting where repeated keys can't be represented.
+func flattenQueryMap(q map[string]any) map[string]string {
+	if len(q) == 0 {
+		return nil
+	}
+	result := make(map[string]string, len(q))
+	for k, v := range q {
+		switch val := v.(type) {
+		case string:
+			result[k] = val
+		case []interface{}:
+			parts := make([]string, len(val))
+			for i, item := range val {
+				parts[i] = fmt.Sprintf("%v", item)
+			}
+			result[k] = strings.Join(parts, ",")
+		default:
+			result[k] = fmt.Sprintf("%v", val)
+		}
+	}
+	return result
+}
+
 // resolveURL builds the full URL using environment baseUrl or service-specific baseUrl.
 // If req.Query is non-empty, its key-value pairs are appended as URL query parameters.
+// Values can be strings (single key=val) or []interface{} (repeated keys, e.g. ?status=a&status=b).
 func resolveURL(env *model.Environment, req model.Request) string {
 	baseURL := env.BaseURL
 
@@ -886,15 +912,20 @@ func resolveURL(env *model.Environment, req model.Request) string {
 		if strings.Contains(finalURL, "?") {
 			sep = "&"
 		}
-		first := true
 		for k, v := range req.Query {
 			escapedKey := url.QueryEscape(k)
-			escapedVal := url.QueryEscape(v)
-			if first {
-				finalURL += sep + escapedKey + "=" + escapedVal
-				first = false
-			} else {
-				finalURL += "&" + escapedKey + "=" + escapedVal
+			switch val := v.(type) {
+			case string:
+				finalURL += sep + escapedKey + "=" + url.QueryEscape(val)
+				sep = "&"
+			case []interface{}:
+				for _, item := range val {
+					finalURL += sep + escapedKey + "=" + url.QueryEscape(fmt.Sprintf("%v", item))
+					sep = "&"
+				}
+			default:
+				finalURL += sep + escapedKey + "=" + url.QueryEscape(fmt.Sprintf("%v", val))
+				sep = "&"
 			}
 		}
 	}
@@ -1204,6 +1235,19 @@ func parseUntil(untilStr string, testFile *model.TestFile) (string, int, error) 
 	}
 
 	return section, index, nil
+}
+
+
+// SessionFilePath constructs a namespaced session file path so different env/account
+// combinations don't leak variables into each other.
+//   - With account: session-<env>-<account>.yaml   (e.g. session-staging-alpha.yaml)
+//   - Without account: session-<env>.yaml           (e.g. session-local.yaml)
+func SessionFilePath(projectDir, env, account string) string {
+	name := "session-" + env
+	if account != "" {
+		name += "-" + account
+	}
+	return filepath.Join(projectDir, ".gherkio", name+".yaml")
 }
 
 

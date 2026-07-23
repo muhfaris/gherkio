@@ -29,7 +29,7 @@ func GetStepRoles() []string {
 // as bare keywords in GetAvailableMatchers() for schema autocomplete,
 // but their full form requires an argument to be valid.
 func GetArgMatchers() []string {
-	return []string{"contains", "startsWith", "endsWith", "regex", "gt", "gte", "lt", "lte"}
+	return []string{"contains", "startsWith", "endsWith", "regex", "oneOf", "in", "gt", "gte", "lt", "lte"}
 }
 
 // MatcherInfo holds metadata about a single assertion matcher.
@@ -68,6 +68,8 @@ func GetMatchersInfo() []MatcherInfo {
 		"startsWith": "String starts with prefix",
 		"endsWith":   "String ends with suffix",
 		"regex":      "String matches regex pattern",
+		"oneOf":      "Value matches any of the comma-separated options",
+		"in":         "Value matches any of the comma-separated options",
 		"gt":         "Value is greater than (numeric)",
 		"gte":        "Value is greater than or equal to (numeric)",
 		"lt":         "Value is less than (numeric)",

@@ -20,11 +20,13 @@ Gherkio includes a powerful, built-in library of **25+ assertion matchers**. The
 | `null` | `body.archivedAt: null` | Strictly a JSON `null`. |
 | `true` | `body.completed: true` | Strictly boolean `true`. |
 | `false` | `body.pending: false` | Strictly boolean `false`. |
-| **String Operations** | | |
+| **String & Membership Operations** | | |
 | `contains <value>` | `body.msg: contains Success` | A string containing the exact `<value>`. |
 | `startsWith <val>` | `body.sku: startsWith LAP-` | A string starting with prefix `<val>`. |
 | `endsWith <val>` | `body.email: endsWith .com` | A string ending with suffix `<val>`. |
 | `regex <pattern>` | `body.code: regex ^[A-Z]{3}$`| A string matching the Go regular expression. |
+| `oneOf <opts>` | `body.role: oneOf admin, editor` | Value matches any of the comma-separated options. |
+| `in <opts>` | `body.status: in active, pending` | Alias for `oneOf`. Value matches any option. |
 | **Numeric Bounds** | | |
 | `gt <value>` | `body.rating: gt 4` | Greater than `<value>`. |
 | `gte <value>` | `body.price: gte 9.99` | Greater than or equal to `<value>`. |
@@ -84,13 +86,15 @@ expect:
 
 ---
 
-### 3. String Operations (Argument-based)
-Performs text assertions on target string fields.
+### 3. String & Membership Operations (Argument-based)
+Performs text and list membership assertions on target fields.
 
 *   **`contains <value>`**: Checks if the target string contains the substring `<value>` (case-sensitive).
 *   **`startsWith <value>`**: Checks if the target string begins with the prefix `<value>`.
 *   **`endsWith <value>`**: Checks if the target string ends with the suffix `<value>`.
 *   **`regex <pattern>`**: Matches the string against a standard Go regular expression.
+*   **`oneOf <opts>`**: Checks if the value matches any of the comma-separated options.
+*   **`in <opts>`**: Alias for `oneOf`. Checks if the value matches any of the comma-separated options.
 
 ```yaml
 expect:
@@ -98,6 +102,8 @@ expect:
   body.sku: startsWith KBD-
   body.supportEmail: endsWith @example.com
   body.productCode: regex ^[A-Z]{3}-\d{4}$
+  body.role: oneOf admin, editor, moderator
+  body.status: in active, pending
 ```
 
 ---

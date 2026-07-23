@@ -62,6 +62,8 @@ The `body.` prefix targets the response body payload (expected to be JSON). Gher
 | `startsWith <s>` | Prefix | `body.id: startsWith usr_` | String starts with prefix |
 | `endsWith <s>` | Suffix | `body.email: endsWith @example.com` | String ends with suffix |
 | `regex <p>` | Pattern | `body.code: regex ^[A-Z]{3}\d{4}$` | String matches regex |
+| `oneOf <opts>` | Membership | `body.role: oneOf admin, editor` | Value matches any option |
+| `in <opts>` | Membership | `body.status: in active, pending` | Alias for `oneOf` |
 | `schema: <name>` | Schema | `schema: users/profile` | Full body validated against schema |
 | `schema: not <name>` | Negated schema | `schema: not errors/validation` | Body must NOT match error schema |
 
