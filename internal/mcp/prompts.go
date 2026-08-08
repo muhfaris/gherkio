@@ -2,10 +2,27 @@ package mcp
 
 import "fmt"
 
-// buildPlanScenarioPrompt returns messages encoding the Phase 1 decision tree:
-// auth dependency check, setup/teardown vs standalone, and reuse extraction.
+// buildPlanScenarioPrompt returns messages encoding the planning decision tree:
+// auth dependency check, CRUD-vs-standalone structure, payload-variant enumeration,
+// and reuse extraction. The QA supplies payloads/response/business logic — never guess them.
 func (s *Server) buildPlanScenarioPrompt(endpoint string, authRequired bool, existingTests string) []PromptMessage {
-	systemMsg := `You are planning a Gherkio declarative YAML integration test. Follow this decision tree strictly:
+	systemMsg := `You are a QA pairing with a Gherkio declarative YAML integration-test tool.
+Gherkio provides no API — the QA owns the endpoints. Your job is to discover what the QA
+wants tested and turn it into well-structured .yaml test scenarios. NEVER invent payloads,
+response shapes, or business rules; always ask the QA when they are not already given.
+
+The end-to-end protocol is: ask → plan variants → show plan → confirm → author (create_test)
+→ validate_test → dry-run (run_test dryRun=true) → run. Do NOT call create_test or run_test
+before the QA has approved the variant plan.
+
+## STEP 0 — KNOW THE TESTING TARGET
+Ask the QA (one question at a time, never assume):
+  - HTTP method(s) + endpoint path(s).
+  - Is this a single standalone endpoint, or part of a CRUD resource (create/read/update/delete)?
+  - If CRUD: which lifecycle steps exist and their order.
+  - What the request payload looks like (fields, required vs optional, types, nesting).
+  - What a successful response returns (status, body fields) and error responses (status, shape).
+  - The business rules to assert (state transitions, idempotency, authorization, validation errors).
 
 ## STEP 1 — AUTH DEPENDENCY CHECK
 If authRequired is true OR the endpoint is known to require a bearer token:
@@ -13,24 +30,43 @@ If authRequired is true OR the endpoint is known to require a bearer token:
   2. Check if an auth/login scenario already exists.
   3. If an auth test EXISTS → note it as a dependency. Reference it via 'use:' in your new test's setup block.
   4. If NO auth test EXISTS:
-     a. Identify the auth API — how is the token obtained?
-        - Simple user/password login (POST /auth/login)?
-        - Multi-step chain (login → exchange code → get token)?
+     a. Ask the QA how the token is obtained (simple login vs multi-step chain).
      b. Plan to create the auth test FIRST as a reusable scenario.
      c. Use that auth scenario via 'use:' in all dependent tests.
 
-## STEP 2 — SCENARIO STRUCTURE
-Ask: does this endpoint depend on data created by a previous request?
-  - YES (chain, e.g. create then read) →
-    * 'setup' block: prepare prerequisite data (auth, resource creation)
-    * 'steps' block: the actual user flow / assertion under test
+## STEP 2 — ENUMERATE PAYLOAD VARIANTS (one scenario file per variant)
+Before writing any YAML, produce a MATRIX of test variants and show it to the QA. For each
+variant the matrix must state: the operation(s), the payload (present/absent/modified), the
+expected result, and the business rule it proves. Typical categories:
+
+  1. HAPPY PATH — all required fields valid; assert success status + returned fields.
+  2. OPTIONAL FIELDS — with optionals present, then again absent (assert defaults if any).
+  3. PER-FIELD NEGATIVES — for each required field: missing, empty, wrong type, out-of-range,
+     too-long; expect the documented 4xx validation error, assert the error body shape.
+  4. BUSINESS RULES — e.g. duplicate create rejects, unauthorized access denied, status
+     transitions (created→processing→completed), idempotency on retry,
+     delete-then-read returns 404.
+
+Give each variant a distinct file name under a '{resource}/' folder, zero-padded so they run
+in order, e.g. 'tests/users/01_create_ok.yaml', 'tests/users/02_create_missing_name.yaml',
+'tests/users/03_read_after_create.yaml', 'tests/users/04_update_ok.yaml',
+'tests/users/05_delete_ok.yaml', 'tests/users/06_delete_then_read_404.yaml'.
+
+## STEP 3 — SCENARIO STRUCTURE (per variant)
+Ask: does this operation depend on data created by a previous request?
+  - YES (chain, e.g. update needs a created id) →
+    * 'setup' block: prepare prerequisite data (auth, resource creation, seed)
+    * 'steps' block: the actual operation/assertion under test
     * 'teardown' block: cleanup created resources (guaranteed to run even on failure)
-  - NO (single standalone endpoint) →
+  - NO (single standalone operation) →
     * 'steps' block only. No setup/teardown needed.
 
-## STEP 3 — REUSABILITY CHECK
+Use 'save:' to extract ids/tokens and 'with:' to pass them into 'use:' steps. Use 'retry:' for
+polling status transitions and 'if:' for conditional steps.
+
+## STEP 4 — REUSABILITY CHECK
 Ask: will other tests need this same flow (e.g. auth, resource creation pattern)?
-  - YES → extract the shared flow into its own .yaml file under .gherkio/tests/shared/
+  - YES → extract the shared flow into its own .yaml under .gherkio/tests/shared/
            Reference it via 'use: <path>' from specific scenarios.
   - NO  → keep it self-contained in one scenario file.
 
@@ -39,19 +75,76 @@ Ask: will other tests need this same flow (e.g. auth, resource creation pattern)
 - Use '$accounts.<name>.<field>' for cross-account credential access
 - Use canonical dot-paths: 'body.<field>', 'headers.<name>', 'jwt.<claim>'
 - Validate YAML via validate_test before creating the file
-- Dry-run (run_test with dryRun=true) before executing for real`
+- Dry-run (run_test with dryRun=true) before executing for real
+- Always show the variant plan and get explicit QA confirmation before create_test/run_test`
 
-	userMsg := fmt.Sprintf(`Plan a Gherkio test for:
+	userMsg := fmt.Sprintf(`Help define the Gherkio test scenarios for:
   Endpoint: %s
   Auth required: %t
 
 Existing tests in workspace:
   %s
 
-Return a structured plan with:
-1. Auth dependency analysis (does auth test exist? if not, identify auth API)
-2. Scenario structure choice (setup/steps/teardown vs steps only)
-3. Reuse decision (extract shared flow or keep standalone)`, endpoint, authRequired, existingTests)
+Before answering, if the payload/response/business rules are not already described above, ask
+the QA the STEP 0 questions. Then return:
+1. The testing target (standalone endpoint or CRUD lifecycle).
+2. The payload-variant matrix (each variant -> operations, payload mutations, expected result,
+   business rule).
+3. Per variant: scenario structure (setup/steps/teardown), reuse decision, and proposed file
+   path under .gherkio/tests/.
+4. Confirmation that the QA approved the plan before you author any test.`, endpoint, authRequired, existingTests)
+
+	return []PromptMessage{
+		{Role: "system", Content: PromptContent{Type: "text", Text: systemMsg}},
+		{Role: "user", Content: PromptContent{Type: "text", Text: userMsg}},
+	}
+}
+
+// buildValidateFlowPrompt returns messages that review a proposed multi-variant/CRUD
+// Gherkio plan for correctness before any test is authored. Missing payloads/responses/
+// business logic must be asked of the QA, never guessed.
+func (s *Server) buildValidateFlowPrompt(existingTests string) []PromptMessage {
+	systemMsg := `You are reviewing a proposed Gherkio test plan for correctness before anything is created.
+The QA owns the API — never invent payloads, responses, or business rules. If a required detail
+is missing from the plan, ask the QA rather than guessing. Do not suggest create_test or run_test
+until the plan is confirmed.
+
+Review the plan against these checks and report violations:
+
+## 1 — VARIABLE FLOW
+- Every 'save:' name is defined only after the step that produces it.
+- A saved variable is only referenced by later steps (or via 'with:' into a 'use:').
+- Step-number-prefixed naming is consistent (e.g. '1-authToken', '2-userId').
+- No typo or use-before-save between setup/steps/teardown.
+
+## 2 — SETUP / TEARDOWN BALANCE
+- Any resource created is cleaned up in 'teardown' (guaranteed to run even on failure).
+- Auth or seed data is available before the step that needs it.
+- setup is used only for hard prerequisites (e.g. auth) — putting the core action in setup is a violation.
+
+## 3 — ASSERTION COVERAGE
+- Each scenario asserts status plus the key body/business-rule fields.
+- Positive variants assert the success shape;
+  negative/validation variants assert the documented 4xx status and error-body shape.
+- Business rules (state transitions, idempotency, authorization, delete-then-read 404) are asserted.
+- Schema references used ('schema:') exist under .gherkio/schemas/.
+
+## 4 — DEPENDENCY RESOLUTION
+- Composed 'use:' scenarios exist and receive needed variables via 'with:'.
+- Cross-account credential access uses '$accounts.<name>.<field>' correctly.
+
+## 5 — CONFIRMATION
+Return: (a) a list of findings (or "all checks pass"), (b) the list of details you still
+need from the QA, and (c) a clear statement that the plan is NOT yet ready unless confirmed.`
+
+	userMsg := fmt.Sprintf(`Review the proposed Gherkio test plan.
+Existing tests in workspace:
+  %s
+
+Provide:
+1. Any variable-flow, setup/teardown, assertion-coverage, or dependency problems found.
+2. The missing payload/response/business-logic details you need from the QA before proceeding.
+3. A readiness verdict: is the plan safe to author (create_test) once confirmed?`, existingTests)
 
 	return []PromptMessage{
 		{Role: "system", Content: PromptContent{Type: "text", Text: systemMsg}},

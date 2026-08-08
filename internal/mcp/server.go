@@ -69,7 +69,7 @@ func (s *Server) Start() error {
 			s.handleCallTool(req.ID, req.Params)
 		case "resources/list":
 			s.handleListResources(req.ID, req.Params)
-	case "resources/read":
+		case "resources/read":
 			s.handleReadResource(req.ID, req.Params)
 		case "prompts/list":
 			s.handleListPrompts(req.ID, req.Params)
@@ -171,7 +171,7 @@ func (s *Server) handleListTools(id interface{}, params json.RawMessage) {
 			},
 			{
 				Name:        "create_test",
-				Description: "Create a new Gherkio test scenario file in the project workspace (.gherkio/tests/). Checks validity before creation.\nBEFORE calling this tool, call prompts/get with name 'plan-scenario' to plan the test structure (auth check, setup/teardown vs standalone, reuse extraction).\nAFTER creating, call run_test with dryRun=true to validate expanded variables before real execution.",
+				Description: "Create a new Gherkio test scenario file in the project workspace (.gherkio/tests/). Checks validity before creation.\nBEFORE calling this tool, call prompts/get with 'plan-scenario' to plan the scenario (payload-variant / CRUD aware) and 'validate_flow' to review it. Payloads, responses, and business rules must come from the QA — never invent them.\nAFTER creating, call run_test with dryRun=true to validate expanded variables before real execution.",
 				InputSchema: InputSchema{
 					Type: "object",
 					Properties: map[string]interface{}{
@@ -252,7 +252,7 @@ func (s *Server) handleListTools(id interface{}, params json.RawMessage) {
 							"type":        "string",
 							"description": "Optional account name from environments credentials to use for dynamic variable injection. Not needed if the test uses $accounts.<name>.<field> syntax directly.",
 						},
-"step": map[string]interface{}{
+						"step": map[string]interface{}{
 							"type":        "integer",
 							"description": "Step index to execute in isolation (0-indexed). Defaults to -1 (run entire scenario). When 'step' is set without 'section', defaults to the 'steps' section (use 'section' to target setup/teardown steps).",
 						},
@@ -268,7 +268,7 @@ func (s *Server) handleListTools(id interface{}, params json.RawMessage) {
 							"type":        "boolean",
 							"description": "Show full request/response payloads and resolved variables. Defaults to true.",
 						},
-"until": map[string]interface{}{
+						"until": map[string]interface{}{
 							"type":        "string",
 							"description": "Execute steps until a specific target. Format: '<section>:<index>' (e.g. 'steps:2' runs steps 0,1,2; 'setup:0' runs first setup step only). Or just a raw index '2' to slice the overall steps array. Sections: setup, steps, teardown.",
 						},
@@ -793,7 +793,6 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 		path, _ := call.Arguments["path"].(string)
 		envName, _ := call.Arguments["env"].(string)
 		accountName, _ := call.Arguments["account"].(string)
-		stepVal, _ := call.Arguments["step"].(float64)
 		dryRun, _ := call.Arguments["dryRun"].(bool)
 		verbose := true
 		if v, ok := call.Arguments["verbose"].(bool); ok {
@@ -808,9 +807,14 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 		}
 
 		fullPath := s.resolvePath(path)
+
+		// Select a single step only when the 'step' argument is explicitly present
+		// (step 0 is a valid 0-indexed target). Defaults to -1 => run entire section/all.
 		stepIndex := -1
-		if stepVal != 0 {
-			stepIndex = int(stepVal)
+		if stepVal, ok := call.Arguments["step"]; ok && stepVal != nil {
+			if f, ok := stepVal.(float64); ok {
+				stepIndex = int(f)
+			}
 		}
 
 		sectionArg, _ := call.Arguments["section"].(string)
@@ -884,9 +888,9 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 			}
 		}
 
-	// Session management: persists variables across run_test calls.
-	// Clears only when the test file or environment changes.
-	if s.sessionVars == nil || fullPath != s.lastTestPath || envName != s.lastEnv || accountName != s.lastAccount {
+		// Session management: persists variables across run_test calls.
+		// Clears only when the test file or environment changes.
+		if s.sessionVars == nil || fullPath != s.lastTestPath || envName != s.lastEnv || accountName != s.lastAccount {
 			s.sessionVars = make(map[string]interface{})
 		}
 
@@ -910,14 +914,14 @@ func (s *Server) handleCallTool(id interface{}, params json.RawMessage) {
 
 		result, err := runner.Run(cfg)
 		if err != nil {
-			s.writeToolError(id, fmt.Sprintf("Execution execution failed: %v", err))
+			s.writeToolError(id, fmt.Sprintf("Execution failed: %v", err))
 			return
 		}
 
 		// Track session state for auto-reset on next call
-	s.lastTestPath = fullPath
-	s.lastEnv = envName
-	s.lastAccount = accountName
+		s.lastTestPath = fullPath
+		s.lastEnv = envName
+		s.lastAccount = accountName
 
 		// Write HTML/JSON report if configured in the config file
 		if appCfg != nil && appCfg.Reports.Format != "" {
@@ -1369,7 +1373,7 @@ func (s *Server) handleListPrompts(id interface{}, params json.RawMessage) {
 		Prompts: []Prompt{
 			{
 				Name:        "plan-scenario",
-				Description: "Plan a Gherkio test scenario structure. Encodes the full decision tree: auth dependency check, setup/teardown vs standalone, and reuse extraction.",
+				Description: "Plan Gherkio test scenarios for an endpoint. Encodes the full planning tree: auth dependency check, CRUD-vs-standalone structure, payload-variant enumeration (one file per variant), and reuse extraction. Payloads/responses/business rules come from the QA, never guessed.",
 				Arguments: []PromptArgument{
 					{Name: "endpoint", Description: "The endpoint path to test (e.g. /orders/create)", Required: true},
 					{Name: "authRequired", Description: "Whether the endpoint requires a bearer token", Required: false},
@@ -1390,6 +1394,13 @@ func (s *Server) handleListPrompts(id interface{}, params json.RawMessage) {
 					{Name: "endpoint", Description: "The endpoint path to assert on", Required: true},
 					{Name: "method", Description: "HTTP method for context", Required: false},
 					{Name: "responseStructure", Description: "Known response shape or schema description to guide assertion choices", Required: false},
+				},
+			},
+			{
+				Name:        "validate_flow",
+				Description: "Review a proposed multi-variant/CRUD Gherkio test plan for correctness (variable flow, setup/teardown balance, assertion coverage, dependency resolution) before anything is authored or run. Missing payload/response/business-logic details are asked of the QA, never guessed.",
+				Arguments: []PromptArgument{
+					{Name: "plan", Description: "The proposed scenario plan or YAML (optional). If omitted, the agent should gather the plan from the conversation.", Required: false},
 				},
 			},
 		},
@@ -1414,7 +1425,7 @@ func (s *Server) handleGetPrompt(id interface{}, params json.RawMessage) {
 			tests, err := teststore.ListTests(meta.TestsDir)
 			if err == nil {
 				var names []string
-for _, t := range tests {
+				for _, t := range tests {
 					names = append(names, t.RelativePath)
 				}
 				if len(names) > 0 {
@@ -1434,7 +1445,7 @@ for _, t := range tests {
 	switch req.Name {
 	case "plan-scenario":
 		result = GetPromptResult{
-			Description: "Plan a Gherkio test scenario structure",
+			Description: "Plan Gherkio test scenarios (payload-variant / CRUD aware)",
 			Messages:    s.buildPlanScenarioPrompt(endpoint, authRequired, existingTests),
 		}
 	case "discover-endpoint":
@@ -1446,6 +1457,11 @@ for _, t := range tests {
 		result = GetPromptResult{
 			Description: "Guide assertion depth and coverage decisions",
 			Messages:    s.buildSpecifyAssertionsPrompt(endpoint, method, responseStructure),
+		}
+	case "validate_flow":
+		result = GetPromptResult{
+			Description: "Review a proposed Gherkio test plan before authoring",
+			Messages:    s.buildValidateFlowPrompt(existingTests),
 		}
 	default:
 		s.writeError(id, InvalidParams, fmt.Sprintf("Unknown prompt '%s'", req.Name), nil)
