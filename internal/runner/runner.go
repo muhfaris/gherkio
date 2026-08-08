@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -912,9 +913,24 @@ func resolveURL(env *model.Environment, req model.Request) string {
 		if strings.Contains(finalURL, "?") {
 			sep = "&"
 		}
-		for k, v := range req.Query {
+		// Deterministic ordering: array-valued keys emitted first (alphabetical),
+		// then scalar keys (alphabetical). Go map iteration is unordered, so sort
+		// the keys explicitly to make output reproducible.
+		keys := make([]string, 0, len(req.Query))
+		for k := range req.Query {
+			keys = append(keys, k)
+		}
+		sort.Slice(keys, func(i, j int) bool {
+			_, iIsArray := req.Query[keys[i]].([]interface{})
+			_, jIsArray := req.Query[keys[j]].([]interface{})
+			if iIsArray != jIsArray {
+				return iIsArray
+			}
+			return keys[i] < keys[j]
+		})
+		for _, k := range keys {
 			escapedKey := url.QueryEscape(k)
-			switch val := v.(type) {
+			switch val := req.Query[k].(type) {
 			case string:
 				finalURL += sep + escapedKey + "=" + url.QueryEscape(val)
 				sep = "&"
