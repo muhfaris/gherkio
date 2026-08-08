@@ -10,7 +10,7 @@ You can connect Gherkio's Model Context Protocol (MCP) server to your client usi
 1.  **Binary Mode (Standard)**: Invokes the locally installed `gherkio mcp` executable.
 2.  **Zero-Install Mode (Go Run)**: Dynamically fetches and runs the server using standard Go remote module execution:
     ```bash
-    go run github.com/muhfaris/gherkio@v0.1.0-alpha.7 mcp
+    go run github.com/muhfaris/gherkio@v0.1.0-alpha.8 mcp
     ```
 
 ---
@@ -44,7 +44,7 @@ To enable Claude Desktop to invoke Gherkio's testing suite, add the server comma
   "mcpServers": {
     "gherkio": {
       "command": "go",
-      "args": ["run", "github.com/muhfaris/gherkio@v0.1.0-alpha.7", "mcp"],
+      "args": ["run", "github.com/muhfaris/gherkio@v0.1.0-alpha.8", "mcp"],
       "env": {
         "PATH": "/usr/local/bin:/opt/homebrew/bin:/usr/bin"
       }
@@ -70,7 +70,7 @@ To use Gherkio dynamically within Cursor's Composer or Chat:
 #### Option B: Zero-Install (Go Run)
 - **Name**: `gherkio`
 - **Type**: `stdio`
-- **Command**: `go run github.com/muhfaris/gherkio@v0.1.0-alpha.7 mcp`
+- **Command**: `go run github.com/muhfaris/gherkio@v0.1.0-alpha.8 mcp`
 
 Click **Save**. The status dot should immediately turn green.
 
@@ -97,7 +97,7 @@ If you use **Roo Code (Roo Cline)** or **Continue** extensions in VS Code, add G
   "mcpServers": {
     "gherkio": {
       "command": "go",
-      "args": ["run", "github.com/muhfaris/gherkio@v0.1.0-alpha.7", "mcp"]
+      "args": ["run", "github.com/muhfaris/gherkio@v0.1.0-alpha.8", "mcp"]
     }
   }
 }
@@ -126,7 +126,7 @@ To activate Gherkio's MCP capabilities within the Zed editor's built-in assistan
   "context_servers": {
     "gherkio": {
       "command": "go",
-      "args": ["run", "github.com/muhfaris/gherkio@v0.1.0-alpha.7", "mcp"]
+      "args": ["run", "github.com/muhfaris/gherkio@v0.1.0-alpha.8", "mcp"]
     }
   }
 }
