@@ -28,7 +28,7 @@ Before writing, proposing, or modifying ANY code, you MUST complete these steps:
 - **Language**: Go 1.25.0
 - **Module**: `github.com/muhfaris/gherkio`
 - **Author**: Faris (muhfaris)
-- **Current version**: v0.1.0-alpha.7
+- **Current version**: v0.1.0-alpha.8
 
 ### What Gherkio Is
 

@@ -9,7 +9,7 @@ import (
 
 // Build information. Populated by ldflags at build time.
 var (
-Version   = "v0.1.0-alpha.7"
+	Version   = "v0.1.0-alpha.8"
 	Commit    = "none"
 	BuildDate = "unknown"
 )
@@ -39,4 +39,3 @@ func version() string {
 func GetRootCmd() *cobra.Command {
 	return rootCmd
 }
-
