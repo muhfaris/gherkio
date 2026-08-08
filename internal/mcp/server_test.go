@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -341,5 +342,163 @@ steps:
 	_ = json.Unmarshal(resp6.Result, &toolResult6)
 	if !toolResult6.IsError {
 		t.Error("expected convert_yaml_to_curl to return IsError: true for out of bounds step index")
+	}
+}
+
+func TestMCPRunTestStepZeroIsolation(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	gDir := filepath.Join(tmpDir, ".gherkio")
+	testsDir := filepath.Join(gDir, "tests")
+	envDir := filepath.Join(gDir, "environments")
+	_ = os.MkdirAll(testsDir, 0755)
+	_ = os.MkdirAll(envDir, 0755)
+	_ = os.WriteFile(filepath.Join(gDir, "config.yaml"), []byte("environments:\n  default: local\n"), 0644)
+	_ = os.WriteFile(filepath.Join(envDir, "local.yaml"), []byte("baseUrl: https://api.example.com\n"), 0644)
+
+	// Two steps so we can verify step: 0 isolates only the first (0-indexed).
+	testYaml := `scenario: User Login
+steps:
+  - request:
+      method: POST
+      url: https://api.example.com/login
+  - request:
+      method: GET
+      url: https://api.example.com/me
+`
+	_ = os.WriteFile(filepath.Join(testsDir, "login.yaml"), []byte(testYaml), 0644)
+
+	runReq := RawRequest{
+		JSONRPC: "2.0",
+		Method:  "tools/call",
+		Params:  json.RawMessage(`{"name": "run_test", "arguments": {"path": "login.yaml", "step": 0, "dryRun": true}}`),
+		ID:      1,
+	}
+	reqData, _ := json.Marshal(runReq)
+	outBytes, err := mockServerIO(reqData, tmpDir)
+	if err != nil && err != io.EOF {
+		t.Fatalf("server execution failed: %v", err)
+	}
+
+	var resp RawResponse
+	if err := json.Unmarshal(outBytes, &resp); err != nil {
+		t.Fatalf("failed to decode response: %v, raw output: %s", err, string(outBytes))
+	}
+	if resp.Error != nil {
+		t.Fatalf("run_test returned error: %+v", resp.Error)
+	}
+
+	var toolResult CallToolResult
+	if err := json.Unmarshal(resp.Result, &toolResult); err != nil {
+		t.Fatalf("failed to decode tool result: %v", err)
+	}
+	if toolResult.IsError {
+		t.Fatalf("run_test reported error content: %+v", toolResult.Content)
+	}
+	if len(toolResult.Content) == 0 {
+		t.Fatal("run_test returned no content")
+	}
+
+	// The text payload is the marshaled runner.RunResult — assert only one step ran.
+	var runResult struct {
+		Steps []json.RawMessage `json:"steps"`
+	}
+	if err := json.Unmarshal([]byte(toolResult.Content[0].Text), &runResult); err != nil {
+		t.Fatalf("failed to decode run result: %v, payload: %s", err, toolResult.Content[0].Text)
+	}
+	if len(runResult.Steps) != 1 {
+		t.Errorf("expected exactly 1 step for step: 0, got %d", len(runResult.Steps))
+	}
+}
+
+func TestMCPPlanScenarioPromptGuidesPayloadVariants(t *testing.T) {
+	promptReq := RawRequest{
+		JSONRPC: "2.0",
+		Method:  "prompts/get",
+		Params:  json.RawMessage(`{"name": "plan-scenario", "arguments": {"endpoint": "/orders"}}`),
+		ID:      1,
+	}
+	reqData, _ := json.Marshal(promptReq)
+	outBytes, err := mockServerIO(reqData, t.TempDir())
+	if err != nil && err != io.EOF {
+		t.Fatalf("server execution failed: %v", err)
+	}
+
+	var resp RawResponse
+	if err := json.Unmarshal(outBytes, &resp); err != nil {
+		t.Fatalf("failed to decode response: %v, raw output: %s", err, string(outBytes))
+	}
+	if resp.Error != nil {
+		t.Fatalf("prompts/get returned error: %+v", resp.Error)
+	}
+
+	var result GetPromptResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("failed to decode prompt result: %v", err)
+	}
+
+	// Concatenate all message text for keyword assertions.
+	var all string
+	for _, m := range result.Messages {
+		all += m.Content.Text
+	}
+
+	for _, kw := range []string{"PAYLOAD VARIANTS", "create_test", "NEVER invent", "confirm", "CRUD"} {
+		if !strings.Contains(all, kw) {
+			t.Errorf("plan-scenario prompt missing expected keyword %q", kw)
+		}
+	}
+
+	// validate_flow prompt must include review guidance keywords.
+	vfReq := RawRequest{
+		JSONRPC: "2.0",
+		Method:  "prompts/get",
+		Params:  json.RawMessage(`{"name": "validate_flow"}`),
+		ID:      3,
+	}
+	vfData, _ := json.Marshal(vfReq)
+	vfOut, err := mockServerIO(vfData, t.TempDir())
+	if err != nil && err != io.EOF {
+		t.Fatalf("server execution failed: %v", err)
+	}
+	var vfResp RawResponse
+	if err := json.Unmarshal(vfOut, &vfResp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if vfResp.Error != nil {
+		t.Fatalf("validate_flow returned error: %+v", vfResp.Error)
+	}
+	var vfResult GetPromptResult
+	if err := json.Unmarshal(vfResp.Result, &vfResult); err != nil {
+		t.Fatalf("failed to decode validate_flow result: %v", err)
+	}
+	var vfAll string
+	for _, m := range vfResult.Messages {
+		vfAll += m.Content.Text
+	}
+	for _, kw := range []string{"save", "teardown", "assertion", "create_test", "confirm"} {
+		if !strings.Contains(vfAll, kw) {
+			t.Errorf("validate_flow prompt missing expected keyword %q", kw)
+		}
+	}
+
+	// Unknown prompt must return an error.
+	badReq := RawRequest{
+		JSONRPC: "2.0",
+		Method:  "prompts/get",
+		Params:  json.RawMessage(`{"name": "does-not-exist"}`),
+		ID:      2,
+	}
+	badData, _ := json.Marshal(badReq)
+	badOut, err := mockServerIO(badData, t.TempDir())
+	if err != nil && err != io.EOF {
+		t.Fatalf("server execution failed: %v", err)
+	}
+	var badResp RawResponse
+	if err := json.Unmarshal(badOut, &badResp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if badResp.Error == nil {
+		t.Error("expected unknown prompt to return a JSON-RPC error")
 	}
 }
