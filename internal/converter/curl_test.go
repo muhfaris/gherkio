@@ -9,10 +9,11 @@ import (
 
 func TestLenientInterpolateString(t *testing.T) {
 	vars := map[string]interface{}{
-		"host":     "api.example.com",
-		"version":  "v1",
-		"userId":   123,
-		"defvalue": "actual",
+		"host":       "api.example.com",
+		"version":    "v1",
+		"userId":     123,
+		"defvalue":   "actual",
+		"1-ticketId": 456,
 	}
 
 	tests := []struct {
@@ -49,6 +50,11 @@ func TestLenientInterpolateString(t *testing.T) {
 			name:     "Lenient missing variable kept intact",
 			input:    "https://$host/$missing/users",
 			expected: "https://api.example.com/$missing/users",
+		},
+		{
+			name:     "Step-prefixed variable",
+			input:    "https://$host/tickets/${1-ticketId}",
+			expected: "https://api.example.com/tickets/456",
 		},
 	}
 

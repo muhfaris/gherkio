@@ -28,11 +28,12 @@ type RunConfig struct {
 	StepIndex      int                    // Index of step to run (0-indexed). Negative means run all steps.
 	StepSection    string                 // Section of the step ("setup", "steps", "teardown")
 	DryRun         bool                   // Preview without executing HTTP requests
-	Snapshot      SnapshotConfig          // Configuration for failure snapshots
+	RequestDelay   time.Duration          // Wait before each outbound HTTP request (zero disables the delay)
+	Snapshot       SnapshotConfig         // Configuration for failure snapshots
 	Until          string                 // Execute steps until a specific target, e.g. "steps:1" or "2"
 	FailFast       bool                   // Stop executing remaining steps when a step fails
-	SessionVars map[string]interface{} // Session-persistent variables across step runs (mutated in place, may be nil)
-	SessionFile  string                 // Path to session file for CLI persistence (empty = no file persistence)
+	SessionVars    map[string]interface{} // Session-persistent variables across step runs (mutated in place, may be nil)
+	SessionFile    string                 // Path to session file for CLI persistence (empty = no file persistence)
 }
 
 // RunResult holds the overall execution result.
@@ -175,7 +176,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 
 		// Execute setup steps first
 		if len(testFile.Setup) > 0 {
-			setupSteps, setupPass, setupFail, setupPassed := executeSteps(testFile.Setup, env, iterVars, cfg.ProjectDir, currentDir, 0, "setup", cfg.DryRun, cfg.FailFast, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
+			setupSteps, setupPass, setupFail, setupPassed := executeSteps(testFile.Setup, env, iterVars, cfg.ProjectDir, currentDir, 0, "setup", cfg.DryRun, cfg.RequestDelay, cfg.FailFast, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
 			for i := range setupSteps {
 				setupSteps[i].ScenarioName = testFile.Scenario
 				setupSteps[i].TestFile = cfg.TestPath
@@ -192,7 +193,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 
 		// Execute main steps (skip if setup failed)
 		if !setupFailed {
-			mainSteps, mainPass, mainFail, mainPassed := executeSteps(testFile.Steps, env, iterVars, cfg.ProjectDir, currentDir, 0, "steps", cfg.DryRun, cfg.FailFast, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
+			mainSteps, mainPass, mainFail, mainPassed := executeSteps(testFile.Steps, env, iterVars, cfg.ProjectDir, currentDir, 0, "steps", cfg.DryRun, cfg.RequestDelay, cfg.FailFast, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
 			for i := range mainSteps {
 				mainSteps[i].ScenarioName = testFile.Scenario
 				mainSteps[i].TestFile = cfg.TestPath
@@ -208,7 +209,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 
 		// Execute teardown steps (always, even if setup or steps failed)
 		if len(testFile.Teardown) > 0 {
-			teardownSteps, _, _, _ := executeSteps(testFile.Teardown, env, iterVars, cfg.ProjectDir, currentDir, 0, "teardown", cfg.DryRun, cfg.FailFast, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
+			teardownSteps, _, _, _ := executeSteps(testFile.Teardown, env, iterVars, cfg.ProjectDir, currentDir, 0, "teardown", cfg.DryRun, cfg.RequestDelay, cfg.FailFast, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
 			for i := range teardownSteps {
 				teardownSteps[i].ScenarioName = testFile.Scenario
 				teardownSteps[i].TestFile = cfg.TestPath
@@ -259,7 +260,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 }
 
 // executeSteps executes a list of steps. If dryRun is true, skips HTTP calls and produces preview output.
-func executeSteps(steps []model.Step, env *model.Environment, vars map[string]interface{}, projectDir string, currentDir string, depth int, role string, dryRun bool, failFast bool, sandbox *model.SandboxConfig, snapCfg SnapshotConfig, scenario string, testFile string) ([]StepResult, int, int, bool) {
+func executeSteps(steps []model.Step, env *model.Environment, vars map[string]interface{}, projectDir string, currentDir string, depth int, role string, dryRun bool, requestDelay time.Duration, failFast bool, sandbox *model.SandboxConfig, snapCfg SnapshotConfig, scenario string, testFile string) ([]StepResult, int, int, bool) {
 	var stepResults []StepResult
 	totalPass := 0
 	totalFail := 0
@@ -397,7 +398,7 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 				}
 			}
 
-			nestedSteps, nestedPass, nestedFail, _ := executeSteps(usedTest.Steps, env, vars, projectDir, usedCurrentDir, depth+1, role, dryRun, failFast, sandbox, snapCfg, scenario, testFile)
+			nestedSteps, nestedPass, nestedFail, _ := executeSteps(usedTest.Steps, env, vars, projectDir, usedCurrentDir, depth+1, role, dryRun, requestDelay, failFast, sandbox, snapCfg, scenario, testFile)
 
 			// Restore previous variable values after the used scenario completes
 			if step.With != nil {
@@ -437,7 +438,7 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 		// Interpolate variables in the request once before the loop
 		interpolatedRequest, err := InterpolateRequest(step.Request, vars)
 		if err != nil {
-		stepResult.Error = fmt.Sprintf("Variable interpolation failed: %v", err)
+			stepResult.Error = fmt.Sprintf("Variable interpolation failed: %v", err)
 			stepResults = append(stepResults, stepResult)
 			allPassed = false
 			if failFast {
@@ -448,22 +449,22 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 
 		url := resolveURL(env, interpolatedRequest)
 
-	stepResult.Request = &RequestInfo{
-		Method:  interpolatedRequest.Method,
-		URL:     url,
-		Query:   flattenQueryMap(interpolatedRequest.Query),
-		Headers: interpolatedRequest.Headers,
-	}
-	if interpolatedRequest.Body != nil {
-		if bodyJSON, err := json.Marshal(interpolatedRequest.Body); err == nil {
-			stepResult.Request.Body = string(bodyJSON)
-		} else {
-			stepResult.Request.Body = fmt.Sprintf("%v", interpolatedRequest.Body)
+		stepResult.Request = &RequestInfo{
+			Method:  interpolatedRequest.Method,
+			URL:     url,
+			Query:   flattenQueryMap(interpolatedRequest.Query),
+			Headers: interpolatedRequest.Headers,
 		}
-	}
-	if interpolatedRequest.Multipart != nil {
-		stepResult.Request.MultipartSummary = buildMultipartSummary(interpolatedRequest.Multipart)
-	}
+		if interpolatedRequest.Body != nil {
+			if bodyJSON, err := json.Marshal(interpolatedRequest.Body); err == nil {
+				stepResult.Request.Body = string(bodyJSON)
+			} else {
+				stepResult.Request.Body = fmt.Sprintf("%v", interpolatedRequest.Body)
+			}
+		}
+		if interpolatedRequest.Multipart != nil {
+			stepResult.Request.MultipartSummary = buildMultipartSummary(interpolatedRequest.Multipart)
+		}
 
 		// Run domain sandboxing validation
 		if err := ValidateURL(url, sandbox); err != nil {
@@ -552,10 +553,10 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 				stepResult.Request = &RequestInfo{
 					Method:  interpolatedRequest.Method,
 					URL:     url,
-				Query:   flattenQueryMap(interpolatedRequest.Query),
-				Headers: interpolatedRequest.Headers,
-			}
-			if interpolatedRequest.Body != nil {
+					Query:   flattenQueryMap(interpolatedRequest.Query),
+					Headers: interpolatedRequest.Headers,
+				}
+				if interpolatedRequest.Body != nil {
 					if bodyJSON, err := json.Marshal(interpolatedRequest.Body); err == nil {
 						stepResult.Request.Body = string(bodyJSON)
 					} else {
@@ -576,6 +577,9 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 			fmt.Fprintf(os.Stderr, "→ [%s] %s %s...\n", attemptLabel, interpolatedRequest.Method, url)
 
 			attemptStart := time.Now()
+			if requestDelay > 0 {
+				time.Sleep(requestDelay)
+			}
 			var mocked bool
 			if env != nil && len(env.Mocks) > 0 {
 				for _, mockRule := range env.Mocks {
@@ -1057,7 +1061,7 @@ func RunSingleStep(cfg RunConfig, env *model.Environment, testFile *model.TestFi
 	}
 
 	currentDir := filepath.Dir(cfg.TestPath)
-	runSteps, pass, fail, passed := executeSteps(stepsToRun, env, vars, cfg.ProjectDir, currentDir, 0, section, cfg.DryRun, cfg.FailFast, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
+	runSteps, pass, fail, passed := executeSteps(stepsToRun, env, vars, cfg.ProjectDir, currentDir, 0, section, cfg.DryRun, cfg.RequestDelay, cfg.FailFast, sandbox, cfg.Snapshot, testFile.Scenario, cfg.TestPath)
 
 	for i := range runSteps {
 		runSteps[i].ScenarioName = testFile.Scenario
@@ -1253,7 +1257,6 @@ func parseUntil(untilStr string, testFile *model.TestFile) (string, int, error) 
 	return section, index, nil
 }
 
-
 // SessionFilePath constructs a namespaced session file path so different env/account
 // combinations don't leak variables into each other.
 //   - With account: session-<env>-<account>.yaml   (e.g. session-staging-alpha.yaml)
@@ -1265,7 +1268,6 @@ func SessionFilePath(projectDir, env, account string) string {
 	}
 	return filepath.Join(projectDir, ".gherkio", name+".yaml")
 }
-
 
 // LoadSessionVars reads a session file and returns the stored variables.
 // Returns nil without error if the file doesn't exist.

@@ -28,14 +28,14 @@ func TestResolveNestedVar_ArrayIndex(t *testing.T) {
 		{"issueTags[0].id", "tag_001", true},
 		{"issueTags[1].id", "tag_002", true},
 		{"issueTags[2].name", "Support", true},
-		{"issueTags[5].id", nil, false},               // out of bounds
+		{"issueTags[5].id", nil, false}, // out of bounds
 		{"nested.items[0].val", 10, true},
 		{"nested.items[1].val", 20, true},
-		{"nested.items[2].val", nil, false},            // out of bounds
+		{"nested.items[2].val", nil, false}, // out of bounds
 		{"flatArray[0]", "a", true},
 		{"flatArray[2]", "c", true},
-		{"flatArray[9]", nil, false},                   // out of bounds
-		{"missingTags[0].id", nil, false},              // missing field
+		{"flatArray[9]", nil, false},      // out of bounds
+		{"missingTags[0].id", nil, false}, // missing field
 	}
 
 	for _, tt := range tests {
@@ -101,6 +101,32 @@ func TestInterpolateString_ArrayIndex(t *testing.T) {
 	}
 }
 
+func TestInterpolateString_StepPrefixedVariable(t *testing.T) {
+	vars := map[string]interface{}{
+		"1-awbNumber": "AWB-123",
+		"1-ticketId":  42,
+	}
+
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"$1-awbNumber", "AWB-123"},
+		{"${1-awbNumber}", "AWB-123"},
+		{"tickets/${1-ticketId}", "tickets/42"},
+	}
+
+	for _, tt := range tests {
+		got, err := interpolateString(tt.input, vars)
+		if err != nil {
+			t.Fatalf("interpolateString(%q): unexpected error: %v", tt.input, err)
+		}
+		if got != tt.expected {
+			t.Errorf("interpolateString(%q) = %q, want %q", tt.input, got, tt.expected)
+		}
+	}
+}
+
 func TestInterpolateString_ArrayIndex_OutOfBounds(t *testing.T) {
 	vars := map[string]interface{}{
 		"tags": []interface{}{
@@ -117,7 +143,7 @@ func TestInterpolateString_ArrayIndex_OutOfBounds(t *testing.T) {
 		t.Errorf("expected fallback, got %q", got)
 	}
 
-// Out-of-bounds without default should error
+	// Out-of-bounds without default should error
 	_, err = interpolateString("$tags[5].id", vars)
 	if err == nil {
 		t.Error("expected error for out-of-bounds access without default, got nil")
@@ -212,4 +238,3 @@ func TestInterpolateString_SingleQuotes(t *testing.T) {
 		}
 	}
 }
-

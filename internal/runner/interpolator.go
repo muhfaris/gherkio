@@ -94,7 +94,6 @@ func InterpolateRequest(req model.Request, vars map[string]interface{}) (model.R
 		interpolated.Body = bodyMap
 	}
 
-
 	// Interpolate Multipart config
 	if req.Multipart != nil {
 		multipart, err := interpolateMultipart(req.Multipart, vars)
@@ -151,6 +150,7 @@ func interpolateMultipart(mp *model.MultipartConfig, vars map[string]interface{}
 // interpolateString replaces variable references in a string with values from the vars map.
 // Supports:
 //   - Simple vars: $var, ${var}
+//   - Step-prefixed vars: $1-authToken, ${2-userId}
 //   - Nested/dotted paths: $accounts.alice.username, ${accounts.alice.username}
 //   - Array-index notation: $issueTags[0].id, ${issueTags[${randomInt(0,4)}].id}
 //   - Default values: ${var:default}, ${accounts.alice.username:default}
@@ -187,7 +187,7 @@ func interpolateString(s string, vars map[string]interface{}) (string, error) {
 	//   1: variable/function name (e.g. randomInt, accounts.eka.username, issueTags[0].id)
 	//   2: arguments inside parens (e.g. 1,100) — optional
 	//   3: default value after colon (e.g. 42 in ${var:42}) — optional
-	re := regexp.MustCompile(`\$\{?([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*|\[\d+\])*)(?:\(([^)]*)\))?(?::([^}]*))?}?`)
+	re := regexp.MustCompile(`\$\{?((?:[0-9]+-[a-zA-Z_][a-zA-Z0-9_-]*|[a-zA-Z_][a-zA-Z0-9_]*)(?:\.(?:[0-9]+-[a-zA-Z_][a-zA-Z0-9_-]*|[a-zA-Z_][a-zA-Z0-9_]*)|\[\d+\])*)(?:\(([^)]*)\))?(?::([^}]*))?}?`)
 
 	var evalErr error
 
