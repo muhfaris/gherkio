@@ -90,6 +90,57 @@ func TestMCPServerHandshakeAndList(t *testing.T) {
 		t.Fatalf("tools/list returned error: %+v", toolsResp.Error)
 	}
 
+	resultJSON, err := json.Marshal(toolsResp.Result)
+	if err != nil {
+		t.Fatalf("failed to encode tools/list result: %v", err)
+	}
+	var toolsResult struct {
+		Tools []struct {
+			Name        string `json:"name"`
+			InputSchema struct {
+				AdditionalProperties *bool                      `json:"additionalProperties"`
+				Properties           map[string]json.RawMessage `json:"properties"`
+				Required             *[]string                  `json:"required"`
+			} `json:"inputSchema"`
+		} `json:"tools"`
+	}
+	if err := json.Unmarshal(resultJSON, &toolsResult); err != nil {
+		t.Fatalf("failed to decode tools/list result: %v", err)
+	}
+	for _, tool := range toolsResult.Tools {
+		if tool.InputSchema.AdditionalProperties == nil {
+			t.Errorf("tool %q input schema is missing additionalProperties", tool.Name)
+			continue
+		}
+		if *tool.InputSchema.AdditionalProperties {
+			t.Errorf("tool %q input schema allows additional properties", tool.Name)
+		}
+		if tool.InputSchema.Required == nil {
+			t.Errorf("tool %q input schema is missing required", tool.Name)
+			continue
+		}
+		required := make(map[string]bool, len(*tool.InputSchema.Required))
+		for _, name := range *tool.InputSchema.Required {
+			required[name] = true
+		}
+		for name := range tool.InputSchema.Properties {
+			if !required[name] {
+				t.Errorf("tool %q required does not include property %q", tool.Name, name)
+			}
+		}
+		if tool.Name == "init_project" {
+			var pathSchema struct {
+				Type []string `json:"type"`
+			}
+			if err := json.Unmarshal(tool.InputSchema.Properties["path"], &pathSchema); err != nil {
+				t.Fatalf("init_project optional path is not nullable: %v", err)
+			}
+			if len(pathSchema.Type) != 2 || pathSchema.Type[0] != "string" || pathSchema.Type[1] != "null" {
+				t.Errorf("init_project path type = %v, want [string null]", pathSchema.Type)
+			}
+		}
+	}
+
 	// Terminate stdio loop gracefully by closing stdin pipe
 	inWrite.Close()
 
