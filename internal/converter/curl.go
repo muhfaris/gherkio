@@ -14,12 +14,13 @@ import (
 )
 
 // LenientInterpolateString replaces variable references in a string with values from vars.
-// Supports simple vars ($var, ${var}), dotted paths ($accounts.alice.username, ${accounts.alice.username}),
-// and defaults (${var:default}, ${accounts.alice.username:default}).
+// Supports simple vars ($var, ${var}), step-prefixed vars ($1-token, ${1-token}),
+// dotted paths ($accounts.alice.username, ${accounts.alice.username}), and defaults
+// (${var:default}, ${accounts.alice.username:default}).
 // If a variable is not defined, it leaves it intact instead of failing (lenient).
 func LenientInterpolateString(s string, vars map[string]interface{}) string {
 	// Matches $var, ${var}, $accounts.eka.username, ${accounts.eka.username}, ${var:default}
-	re := regexp.MustCompile(`\$\{?([a-zA-Z_][a-zA-Z0-9_]+(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)(?::([^}]*))?}?`)
+	re := regexp.MustCompile(`\$\{?((?:[0-9]+-[a-zA-Z_][a-zA-Z0-9_-]*|[a-zA-Z_][a-zA-Z0-9_]*)(?:\.(?:[0-9]+-[a-zA-Z_][a-zA-Z0-9_-]*|[a-zA-Z_][a-zA-Z0-9_]*))*)(?::([^}]*))?}?`)
 
 	return re.ReplaceAllStringFunc(s, func(match string) string {
 		submatches := re.FindStringSubmatch(match)

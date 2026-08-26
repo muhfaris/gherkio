@@ -84,6 +84,19 @@ steps:
 `
 	_ = os.WriteFile(filepath.Join(testsDir, "valid.yaml"), []byte(validYaml), 0644)
 
+	stepPrefixedYaml := `scenario: Valid Step-Prefixed Variable
+steps:
+  - request:
+      method: POST
+      url: https://api.example.com/tickets
+    save:
+      1-ticketId: body.id
+  - request:
+      method: GET
+      url: https://api.example.com/tickets/${1-ticketId}
+`
+	_ = os.WriteFile(filepath.Join(testsDir, "step_prefixed.yaml"), []byte(stepPrefixedYaml), 0644)
+
 	// 2. Negative case: undefined variable
 	undefVarYaml := `scenario: Undefined Var
 steps:
@@ -121,18 +134,20 @@ steps:
 			t.Fatalf("ValidateProject failed: %v", err)
 		}
 
-		// We have 3 files: valid.yaml, undefined_var.yaml, undefined_account.yaml
-		if len(results) != 3 {
-			t.Errorf("expected 3 files validated, got %d", len(results))
+		// We have 4 files: two valid files plus the undefined variable/account cases.
+		if len(results) != 4 {
+			t.Errorf("expected 4 files validated, got %d", len(results))
 		}
 
 		// Find results for each file
-		var validRes, undefVarRes, undefAccRes *ValidationResult
+		var validRes, stepPrefixedRes, undefVarRes, undefAccRes *ValidationResult
 		for i := range results {
 			base := filepath.Base(results[i].File)
 			switch base {
 			case "valid.yaml":
 				validRes = &results[i]
+			case "step_prefixed.yaml":
+				stepPrefixedRes = &results[i]
 			case "undefined_var.yaml":
 				undefVarRes = &results[i]
 			case "undefined_account.yaml":
@@ -142,6 +157,9 @@ steps:
 
 		if validRes == nil || len(validRes.Issues) > 0 {
 			t.Errorf("expected valid.yaml to have 0 issues, got: %+v", validRes)
+		}
+		if stepPrefixedRes == nil || len(stepPrefixedRes.Issues) > 0 {
+			t.Errorf("expected step_prefixed.yaml to have 0 issues, got: %+v", stepPrefixedRes)
 		}
 
 		if undefVarRes == nil || len(undefVarRes.Issues) != 1 {

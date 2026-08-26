@@ -6,8 +6,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/muhfaris/gherkio/internal/core/project"
 	"github.com/muhfaris/gherkio/internal/model"
@@ -17,19 +19,21 @@ import (
 )
 
 var (
-	envName       string
-	verbose       bool
-	reportFormat  string
-	reportRaw     bool
-	accountName   string
-	allAccounts   bool
-	stepIdx       int
-	lineNum       int
-	stepSection   string
-	filterTags    []string
-	parallelCount int
-	dryRun        bool
-	untilSlice    string
+	envName              string
+	verbose              bool
+	reportFormat         string
+	reportRaw            bool
+	accountName          string
+	allAccounts          bool
+	stepIdx              int
+	lineNum              int
+	stepSection          string
+	filterTags           []string
+	parallelCount        int
+	dryRun               bool
+	untilSlice           string
+	requestDelay         string
+	requestDelayDuration time.Duration
 )
 
 // runCmd represents the gherkio run command.
@@ -82,9 +86,14 @@ func init() {
 	runCmd.Flags().IntVarP(&parallelCount, "parallel", "p", 0, "Number of tests to run in parallel (0 = auto-detect CPU count)")
 	runCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview test execution without making HTTP requests")
 	runCmd.Flags().StringVarP(&untilSlice, "until", "u", "", "Execute steps until a specific target, e.g. 'steps:1' or '2'")
+	runCmd.Flags().StringVar(&requestDelay, "request-delay", "", "Wait before each HTTP request (defaults: 50ms/file, 100ms/directory; bare numbers are milliseconds)")
 }
 
 func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw bool, accountName string, allAccounts bool) error {
+	if _, err := parseRequestDelay(requestDelay); err != nil {
+		return err
+	}
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("failed to get current directory: %w", err)
@@ -174,12 +183,14 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 
 	// No test path or directory: run all tests
 	if testPath == "" {
+		requestDelayDuration, _ = requestDelayForTarget(requestDelay, true)
 		return runAllTests(projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap, snapshotCfg)
 	}
 
 	// Check if the path is a directory
 	fullPath := filepath.Join(cwd, testPath)
 	if info, err := os.Stat(fullPath); err == nil && info.IsDir() {
+		requestDelayDuration, _ = requestDelayForTarget(requestDelay, true)
 		testDir := fullPath
 		// Also try resolving relative to .gherkio/tests/
 		altPath := filepath.Join(projectDir, ".gherkio", "tests", testPath)
@@ -192,6 +203,7 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 	// Also check if path exists relative to .gherkio/tests/ (for paths like "configurations/partner-status/")
 	altFullPath := filepath.Join(projectDir, ".gherkio", "tests", testPath)
 	if info, err := os.Stat(altFullPath); err == nil && info.IsDir() {
+		requestDelayDuration, _ = requestDelayForTarget(requestDelay, true)
 		return runAllInDir(altFullPath, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap, snapshotCfg)
 	}
 
@@ -201,6 +213,7 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 		return fmt.Errorf("test file not found: %w", err)
 	}
 
+	requestDelayDuration, _ = requestDelayForTarget(requestDelay, false)
 	return runSingleTest(fullPath, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap, snapshotCfg)
 }
 
@@ -355,6 +368,7 @@ func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *re
 		StepIndex:      targetStepIdx,
 		StepSection:    targetSection,
 		DryRun:         dryRun,
+		RequestDelay:   requestDelayDuration,
 		Snapshot:       snapshotCfg,
 		Until:          untilSlice,
 		SessionFile:    sessionFile,
@@ -378,6 +392,39 @@ func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *re
 	}
 
 	return nil
+}
+
+func parseRequestDelay(value string) (time.Duration, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return 0, nil
+	}
+
+	if milliseconds, err := strconv.ParseInt(value, 10, 64); err == nil {
+		if milliseconds < 0 {
+			return 0, fmt.Errorf("request delay must not be negative")
+		}
+		return time.Duration(milliseconds) * time.Millisecond, nil
+	}
+
+	delay, err := time.ParseDuration(value)
+	if err != nil {
+		return 0, fmt.Errorf("invalid request delay %q: use milliseconds (e.g. 1000) or a duration (e.g. 500ms, 1s)", value)
+	}
+	if delay < 0 {
+		return 0, fmt.Errorf("request delay must not be negative")
+	}
+	return delay, nil
+}
+
+func requestDelayForTarget(value string, isDirectory bool) (time.Duration, error) {
+	if strings.TrimSpace(value) != "" {
+		return parseRequestDelay(value)
+	}
+	if isDirectory {
+		return 100 * time.Millisecond, nil
+	}
+	return 50 * time.Millisecond, nil
 }
 
 // testReferencesAccounts checks if a test file references $accounts.<name>.<field> syntax.
@@ -469,6 +516,7 @@ func runSingleTestMultiAccount(testPath, projectDir, env string, verbose bool, r
 			StepIndex:      -1,
 			StepSection:    "",
 			DryRun:         dryRun,
+			RequestDelay:   requestDelayDuration,
 			Snapshot:       snapshotCfg,
 			Until:          untilSlice,
 			SessionFile:    runner.SessionFilePath(projectDir, env, accountName),
@@ -613,6 +661,7 @@ func runAllInDir(testDir, projectDir, env string, verbose bool, reportCfg *repor
 			StepIndex:      -1,
 			StepSection:    "",
 			DryRun:         dryRun,
+			RequestDelay:   requestDelayDuration,
 			Snapshot:       snapshotCfg,
 			Until:          untilSlice,
 			SessionFile:    runner.SessionFilePath(projectDir, env, accName),
@@ -729,6 +778,7 @@ func runAllInDirMultiAccount(testDir, projectDir, env string, verbose bool, repo
 				StepIndex:      -1,
 				StepSection:    "",
 				DryRun:         dryRun,
+				RequestDelay:   requestDelayDuration,
 				Snapshot:       snapshotCfg,
 				Until:          untilSlice,
 				SessionFile:    runner.SessionFilePath(projectDir, env, accountName),
@@ -948,6 +998,7 @@ func runAllInDirParallel(testDir, projectDir, env string, verbose bool, reportCf
 				StepIndex:      -1,
 				StepSection:    "",
 				DryRun:         dryRun,
+				RequestDelay:   requestDelayDuration,
 				Snapshot:       snapshotCfg,
 				Until:          untilSlice,
 				SessionFile:    runner.SessionFilePath(projectDir, env, accName),

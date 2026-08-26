@@ -140,8 +140,9 @@ func ValidateFile(filePath, projectDir string, creds *model.Credentials, schemas
 func validateVariableReferences(test *model.TestFile, creds *model.Credentials) []ValidationIssue {
 	var issues []ValidationIssue
 
-	// Regex to match variable references: $accounts.name.field, $var, ${var}, ${randomInt(1,100)}
-	varPattern := regexp.MustCompile(`\$(accounts\.[a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*|[a-zA-Z_][a-zA-Z0-9_]*|\{[a-zA-Z_][a-zA-Z0-9_.]*(?:\([^}]*\))?\})`)
+	// Regex to match variable references: $accounts.name.field, $var,
+	// $1-stepVar, ${var}, ${1-stepVar}, ${randomInt(1,100)}.
+	varPattern := regexp.MustCompile(`\$(accounts\.[a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*|[0-9]+-[a-zA-Z_][a-zA-Z0-9_-]*|[a-zA-Z_][a-zA-Z0-9_]*|\{(?:[0-9]+-[a-zA-Z_][a-zA-Z0-9_-]*|[a-zA-Z_][a-zA-Z0-9_.\[\]]*)(?:\([^}]*\))?\})`)
 
 	// Collect variable sources
 	savedVars := make(map[string]bool)
@@ -438,7 +439,7 @@ func validateStepCompleteness(test *model.TestFile) []ValidationIssue {
 
 	// Keyword → expected condition
 	type hint struct {
-		keywords    []string
+		keywords   []string
 		expectCond func(*model.Step) bool
 		msg        string
 	}

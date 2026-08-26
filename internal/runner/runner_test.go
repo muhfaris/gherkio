@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/muhfaris/gherkio/internal/model"
 )
@@ -158,6 +159,7 @@ func TestExecuteSteps_Set(t *testing.T) {
 		0,  // depth
 		"steps",
 		false, // dryRun
+		0,     // requestDelay
 		false, // failFast
 		nil,   // sandbox
 		SnapshotConfig{},
@@ -220,6 +222,7 @@ func TestExecuteSteps_Set_Error(t *testing.T) {
 		0,  // depth
 		"steps",
 		false, // dryRun
+		0,     // requestDelay
 		false, // failFast
 		nil,   // sandbox
 		SnapshotConfig{},
@@ -256,10 +259,10 @@ func TestMockMatchingAndInterpolation(t *testing.T) {
 				"Content-Type": "application/json",
 			},
 			Body: map[string]interface{}{
-				"id":      "ch_123",
-				"amount":  "$request.body.amount",
-				"auth":    "Bearer $request.headers.Authorization",
-				"custom":  "static-val",
+				"id":     "ch_123",
+				"amount": "$request.body.amount",
+				"auth":   "Bearer $request.headers.Authorization",
+				"custom": "static-val",
 				"nested": map[string]interface{}{
 					"currency": "$request.body.currency",
 				},
@@ -381,6 +384,7 @@ func TestExecuteSteps_Mocks(t *testing.T) {
 		0,  // depth
 		"steps",
 		false, // dryRun
+		0,     // requestDelay
 		false, // failFast
 		nil,   // sandbox
 		SnapshotConfig{},
@@ -410,9 +414,33 @@ func TestExecuteSteps_Mocks(t *testing.T) {
 	}
 }
 
+func TestExecuteSteps_RequestDelay(t *testing.T) {
+	steps := []model.Step{{
+		Request: model.Request{Method: "GET", URL: "https://api.example.com/health"},
+		Expect:  model.Expect{Status: 200},
+	}}
+	env := &model.Environment{Mocks: []model.MockRule{{
+		Request:  model.MockRequest{Method: "GET", URL: "/health"},
+		Response: model.MockResponse{Status: 200},
+	}}}
+	delay := 30 * time.Millisecond
+	started := time.Now()
+	_, _, _, ok := executeSteps(
+		steps, env, map[string]interface{}{}, "", "", 0, "steps",
+		false, delay, false, nil, SnapshotConfig{}, "scenario", "testfile.yaml",
+	)
+
+	if !ok {
+		t.Fatal("expected delayed request to succeed")
+	}
+	if elapsed := time.Since(started); elapsed < delay {
+		t.Fatalf("request completed after %s, before configured delay %s", elapsed, delay)
+	}
+}
+
 func TestRun_Parametrization(t *testing.T) {
 	tmpDir := t.TempDir()
-	
+
 	// Create a test file with examples
 	testYAML := `
 scenario: Parametrized User Login
@@ -443,7 +471,7 @@ steps:
 	if err := os.MkdirAll(filepath.Join(projectDir, ".gherkio", "environments"), 0755); err != nil {
 		t.Fatalf("failed to create env dir: %v", err)
 	}
-	
+
 	// Write environment with a mock matching the request
 	envYAML := `
 baseUrl: https://api.example.com
@@ -467,7 +495,7 @@ mocks:
 	// body: { role: "$request.body.user" }
 	// And then expected_role in examples can be "alice" and "bob"!
 	// Yes! That is extremely elegant and requires no conditional mock rules!
-	
+
 	testYAMLWithAdjustedExpectedRole := `
 scenario: Parametrized User Login
 description: Test login for multiple roles
@@ -641,5 +669,3 @@ func TestFlattenQueryMap(t *testing.T) {
 		})
 	}
 }
-
-

@@ -26,11 +26,19 @@ Example:
   gherkio run login.yaml --section steps        # Run all steps in 'steps' section only
   gherkio run login.yaml --section setup        # Run all setup steps only
   gherkio run login.yaml --section teardown     # Run all teardown steps only
+  gherkio run restful-api/ --request-delay 1000 # Wait 1000ms before every request
+  gherkio run restful-api/ --request-delay 1s   # Explicit duration syntax also works
 
 ```
 ```
 gherkio run [test-file] [flags]
 ```
+
+By default, directory/all-tests runs wait `100ms` before each request and single-file runs wait
+`50ms`. `--request-delay` overrides that default, including `--request-delay 0` to disable it.
+The delay applies before every request attempt, including retries and requests in composed
+scenarios. Bare numbers use milliseconds. With `--parallel`, each worker applies its own delay
+independently; omit `--parallel` when requests must remain globally sequential.
 
 ### Options
 
@@ -42,6 +50,7 @@ gherkio run [test-file] [flags]
   -h, --help             help for run
       --line int         Line number containing the step to run (default -1)
   -p, --parallel int     Number of tests to run in parallel (0 = auto-detect CPU count)
+      --request-delay string   Wait before each HTTP request (defaults: 50ms/file, 100ms/directory; bare numbers are milliseconds)
       --report string    Generate a report (format: html, json, or html,json)
       --report-raw       Skip sensitive data masking in JSON reports (cURL commands remain masked)
       --section string   Section to run (setup, steps, teardown). When used without --step or --line, runs ALL steps in that section only.
@@ -54,4 +63,3 @@ gherkio run [test-file] [flags]
 ### SEE ALSO
 
 * [gherkio](gherkio.md)	 - Gherkio is a testing and validation framework
-
