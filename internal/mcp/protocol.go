@@ -1,6 +1,9 @@
 package mcp
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"sort"
+)
 
 // Standard JSON-RPC 2.0 error codes
 const (
@@ -68,9 +71,54 @@ type Tool struct {
 
 // InputSchema defines the JSON schema arguments of a tool.
 type InputSchema struct {
-	Type       string                 `json:"type"`
-	Properties map[string]interface{} `json:"properties"`
-	Required   []string               `json:"required,omitempty"`
+	Type                 string                 `json:"type"`
+	Properties           map[string]interface{} `json:"properties"`
+	Required             []string               `json:"required,omitempty"`
+	AdditionalProperties bool                   `json:"additionalProperties"`
+}
+
+// MarshalJSON emits the closed, fully-required object shape expected by strict
+// function-schema consumers. Fields that are optional to Gherkio remain
+// optional in practice by accepting null.
+func (s InputSchema) MarshalJSON() ([]byte, error) {
+	requiredByGherkio := make(map[string]bool, len(s.Required))
+	for _, name := range s.Required {
+		requiredByGherkio[name] = true
+	}
+
+	properties := make(map[string]interface{}, len(s.Properties))
+	required := make([]string, 0, len(s.Properties))
+	for name, rawProperty := range s.Properties {
+		required = append(required, name)
+		property, ok := rawProperty.(map[string]interface{})
+		if !ok || requiredByGherkio[name] {
+			properties[name] = rawProperty
+			continue
+		}
+
+		nullableProperty := make(map[string]interface{}, len(property))
+		for key, value := range property {
+			nullableProperty[key] = value
+		}
+		if propertyType, ok := property["type"].(string); ok && propertyType != "null" {
+			nullableProperty["type"] = []string{propertyType, "null"}
+		}
+		properties[name] = nullableProperty
+	}
+	sort.Strings(required)
+
+	type strictInputSchema struct {
+		Type                 string                 `json:"type"`
+		Properties           map[string]interface{} `json:"properties"`
+		Required             []string               `json:"required"`
+		AdditionalProperties bool                   `json:"additionalProperties"`
+	}
+	return json.Marshal(strictInputSchema{
+		Type:                 s.Type,
+		Properties:           properties,
+		Required:             required,
+		AdditionalProperties: s.AdditionalProperties,
+	})
 }
 
 // CallToolRequest represents the parameters for calling a tool.
