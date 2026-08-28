@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -24,22 +25,35 @@ func MapResultsToSuiteReportData(results []*runner.RunResult, env string, maskFi
 	suiteTotalSteps := 0
 	var suiteDuration time.Duration
 	var scenarios []ScenarioData
+	loadMode := false
+	virtualUsers := 0
+	iterationsPerUser := 0
+	passedWorkflows := 0
+	failedWorkflows := 0
+	requestCount := 0
+	var requestDurations []time.Duration
+	var earliestStart time.Time
+	var latestFinish time.Time
 
 	for _, result := range results {
 		scData := MapResultToReportData(result, env, maskFields, forceCurlMasking)
 
 		// Create a scenario entry from the per-result data
 		scenario := ScenarioData{
-			Name:          result.Scenario,
-			Description:   result.Description,
-			TestFile:      result.TestFile,
-			Account:       result.Account,
-			TotalDuration: runner.FormatDuration(result.Duration),
-			TotalSteps:    scData.TotalSteps,
-			PassCount:     scData.PassCount,
-			FailCount:     scData.FailCount,
-			SkipCount:     scData.SkipCount,
-			Steps:         scData.Steps,
+			Name:              result.Scenario,
+			Description:       result.Description,
+			TestFile:          result.TestFile,
+			Account:           result.Account,
+			TotalDuration:     runner.FormatDuration(result.Duration),
+			TotalSteps:        scData.TotalSteps,
+			PassCount:         scData.PassCount,
+			FailCount:         scData.FailCount,
+			SkipCount:         scData.SkipCount,
+			Steps:             scData.Steps,
+			Passed:            result.Passed,
+			VirtualUser:       result.VirtualUser,
+			Iteration:         result.Iteration,
+			IterationsPerUser: result.IterationsPerUser,
 		}
 		if scData.TotalSteps > 0 {
 			scenario.PassPercent = float64(scData.PassCount) / float64(scData.TotalSteps) * 100
@@ -52,8 +66,73 @@ func MapResultsToSuiteReportData(results []*runner.RunResult, env string, maskFi
 		suiteTotalSkip += scData.SkipCount
 		suiteTotalSteps += scData.TotalSteps
 		suiteDuration += result.Duration
+		if result.Passed {
+			passedWorkflows++
+		} else {
+			failedWorkflows++
+		}
+		if result.VirtualUser > 0 {
+			loadMode = true
+			if result.VirtualUser > virtualUsers {
+				virtualUsers = result.VirtualUser
+			}
+			if result.IterationsPerUser > iterationsPerUser {
+				iterationsPerUser = result.IterationsPerUser
+			}
+			if earliestStart.IsZero() || (!result.StartedAt.IsZero() && result.StartedAt.Before(earliestStart)) {
+				earliestStart = result.StartedAt
+			}
+			if result.FinishedAt.After(latestFinish) {
+				latestFinish = result.FinishedAt
+			}
+			for _, step := range result.Steps {
+				if step.Skipped || step.Request == nil || (step.Response == nil && step.Error == "" && len(step.RetryHistory) == 0) {
+					continue
+				}
+				if len(step.RetryHistory) > 0 {
+					for _, attempt := range step.RetryHistory {
+						requestCount++
+						requestDurations = append(requestDurations, attempt.Duration)
+					}
+				} else {
+					requestCount++
+					requestDurations = append(requestDurations, step.Duration)
+				}
+			}
+		}
 
 		scenarios = append(scenarios, scenario)
+	}
+	if loadMode && !earliestStart.IsZero() && latestFinish.After(earliestStart) {
+		suiteDuration = latestFinish.Sub(earliestStart)
+	}
+
+	averageResponseTime := "0s"
+	p95ResponseTime := "0s"
+	requestsPerSecond := "0.00"
+	if len(requestDurations) > 0 {
+		var totalRequestDuration time.Duration
+		for _, duration := range requestDurations {
+			totalRequestDuration += duration
+		}
+		averageResponseTime = runner.FormatDuration(totalRequestDuration / time.Duration(len(requestDurations)))
+		sort.Slice(requestDurations, func(i, j int) bool { return requestDurations[i] < requestDurations[j] })
+		p95Index := (95*len(requestDurations)+99)/100 - 1
+		p95ResponseTime = runner.FormatDuration(requestDurations[p95Index])
+	}
+	if suiteDuration > 0 {
+		requestsPerSecond = fmt.Sprintf("%.2f", float64(requestCount)/suiteDuration.Seconds())
+	}
+
+	scenarioName := "Test Suite"
+	description := ""
+	timestamp := time.Now()
+	if loadMode && len(results) > 0 {
+		scenarioName = results[0].Scenario + " · Load Run"
+		description = results[0].Description
+		if !earliestStart.IsZero() {
+			timestamp = earliestStart
+		}
 	}
 
 	passPercent := 0.0
@@ -65,10 +144,11 @@ func MapResultsToSuiteReportData(results []*runner.RunResult, env string, maskFi
 		skipPercent = float64(suiteTotalSkip) / float64(suiteTotalSteps) * 100
 	}
 
-	return ReportData{
-		ScenarioName:  "Test Suite",
+	data := ReportData{
+		ScenarioName:  scenarioName,
+		Description:   description,
 		Environment:   env,
-		Timestamp:     time.Now().Format(time.RFC1123),
+		Timestamp:     timestamp.Format(time.RFC1123),
 		TotalDuration: runner.FormatDuration(suiteDuration),
 		TotalSteps:    suiteTotalSteps,
 		PassCount:     suiteTotalPass,
@@ -79,6 +159,19 @@ func MapResultsToSuiteReportData(results []*runner.RunResult, env string, maskFi
 		SkipPercent:   skipPercent,
 		Scenarios:     scenarios,
 	}
+	if loadMode {
+		data.LoadMode = true
+		data.VirtualUsers = virtualUsers
+		data.IterationsPerUser = iterationsPerUser
+		data.WorkflowCount = len(results)
+		data.PassedWorkflows = passedWorkflows
+		data.FailedWorkflows = failedWorkflows
+		data.RequestCount = requestCount
+		data.AverageResponseTime = averageResponseTime
+		data.P95ResponseTime = p95ResponseTime
+		data.RequestsPerSecond = requestsPerSecond
+	}
+	return data
 }
 
 // MapResultToReportData converts a runner.RunResult to ReportData.
@@ -172,25 +265,28 @@ func MapResultToReportData(result *runner.RunResult, env string, maskFields []st
 
 		method := ""
 		url := ""
-	var query map[string]any
-	var headers map[string]string
-	if step.Request != nil {
-		method = step.Request.Method
-		url = step.Request.URL
-		// Convert map[string]string to map[string]any for consistent typing
-		if step.Request.Query != nil {
-			query = make(map[string]any, len(step.Request.Query))
-			for k, v := range step.Request.Query {
-				query[k] = v
+		var query map[string]any
+		var headers map[string]string
+		if step.Request != nil {
+			method = step.Request.Method
+			url = step.Request.URL
+			// Convert map[string]string to map[string]any for consistent typing
+			if step.Request.Query != nil {
+				query = make(map[string]any, len(step.Request.Query))
+				for k, v := range step.Request.Query {
+					query[k] = v
+				}
 			}
+			headers = step.Request.Headers
+		} else if step.Redis != nil {
+			method = "REDIS " + strings.ToUpper(step.Redis.Command)
+			url = step.Redis.Key + " @ " + step.Redis.Connection
+		} else if step.Original.Request.URL != "" {
+			method = step.Original.Request.Method
+			url = step.Original.Request.URL
+			query = step.Original.Request.Query
+			headers = step.Original.Request.Headers
 		}
-		headers = step.Request.Headers
-	} else if step.Original.Request.URL != "" {
-		method = step.Original.Request.Method
-		url = step.Original.Request.URL
-		query = step.Original.Request.Query
-		headers = step.Original.Request.Headers
-	}
 
 		var retryHistory []RetryEntry
 		for _, entry := range step.RetryHistory {

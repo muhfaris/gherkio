@@ -118,6 +118,9 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 	if result.Account != "" {
 		scenarioName = fmt.Sprintf("%s (%s)", result.Scenario, result.Account)
 	}
+	if result.VirtualUser > 0 {
+		scenarioName = fmt.Sprintf("%s · VU %d · iteration %d/%d", scenarioName, result.VirtualUser, result.Iteration, result.IterationsPerUser)
+	}
 
 	// Check if this is a dry-run result (has request but no response)
 	isDryRun := false
@@ -197,6 +200,8 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 			stepLabel = step.Name
 		} else if step.Request != nil {
 			stepLabel = fmt.Sprintf("%s %s", step.Request.Method, step.Request.URL)
+		} else if step.Redis != nil {
+			stepLabel = fmt.Sprintf("redis %s %s", strings.ToUpper(step.Redis.Command), step.Redis.Key)
 		} else if len(step.Original.Set) > 0 {
 			var keys []string
 			for k := range step.Original.Set {
@@ -282,7 +287,7 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 			fmt.Println()
 
 			// Request details
-		if step.Request != nil {
+			if step.Request != nil {
 				fmt.Printf("%sRequest:\n%s%s %s\n", statusIndent, statusIndent, step.Request.Method, step.Request.URL)
 				if len(step.Request.Headers) > 0 {
 					fmt.Printf("%sHeaders:\n", statusIndent)
@@ -491,28 +496,28 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 				fmt.Printf("%s└─ saved: %s\n", statusIndent, strings.Join(parts, ", "))
 			}
 
-		// Show request and response on failure in summary mode
-		if !stepPassed {
-			fmt.Println()
-			if step.Request != nil {
-				if len(step.Request.Headers) > 0 {
-					fmt.Printf("%sRequest Headers:\n", statusIndent)
-					for k, v := range step.Request.Headers {
-						if isSensitiveField(k, maskFields) {
-							fmt.Printf("%s  %s: ***masked***\n", statusIndent, k)
-						} else {
-							fmt.Printf("%s  %s: %s\n", statusIndent, k, v)
+			// Show request and response on failure in summary mode
+			if !stepPassed {
+				fmt.Println()
+				if step.Request != nil {
+					if len(step.Request.Headers) > 0 {
+						fmt.Printf("%sRequest Headers:\n", statusIndent)
+						for k, v := range step.Request.Headers {
+							if isSensitiveField(k, maskFields) {
+								fmt.Printf("%s  %s: ***masked***\n", statusIndent, k)
+							} else {
+								fmt.Printf("%s  %s: %s\n", statusIndent, k, v)
+							}
 						}
 					}
+					if step.Request.Body != "" {
+						fmt.Printf("%sRequest Body:\n%s\n\n", statusIndent, indentBlock(FormatRequestBody(step.Request.Body, maskFields), statusIndent))
+					}
 				}
-				if step.Request.Body != "" {
-					fmt.Printf("%sRequest Body:\n%s\n\n", statusIndent, indentBlock(FormatRequestBody(step.Request.Body, maskFields), statusIndent))
+				if step.Response != nil {
+					fmt.Printf("%sResponse:\n%sStatus: %d\n\n%sBody:\n%s\n", statusIndent, statusIndent, step.Response.Status, statusIndent, indentBlock(FormatRequestBody(step.Response.Body, maskFields), statusIndent))
 				}
 			}
-			if step.Response != nil {
-				fmt.Printf("%sResponse:\n%sStatus: %d\n\n%sBody:\n%s\n", statusIndent, statusIndent, step.Response.Status, statusIndent, indentBlock(FormatRequestBody(step.Response.Body, maskFields), statusIndent))
-			}
-		}
 
 			if step.Error != "" {
 				fmt.Printf("%s   ✗ Error: %s\n", indent, step.Error)
@@ -671,6 +676,8 @@ func PrintStepResult(result *RunResult, verbose bool, maskFields []string) {
 			stepLabel = step.Name
 		} else if step.Request != nil {
 			stepLabel = fmt.Sprintf("%s %s", step.Request.Method, step.Request.URL)
+		} else if step.Redis != nil {
+			stepLabel = fmt.Sprintf("redis %s %s", strings.ToUpper(step.Redis.Command), step.Redis.Key)
 		} else if len(step.Original.Set) > 0 {
 			var keys []string
 			for k := range step.Original.Set {

@@ -9,6 +9,10 @@ import (
 	"github.com/muhfaris/gherkio/internal/model"
 )
 
+var randomItemPattern = regexp.MustCompile(`\$\{?randomItem\(([^)]*)\)\}?`)
+var trimAffixPattern = regexp.MustCompile(`\$\{?(trimPrefix|trimSuffix)\(([^)]*)\)\}?`)
+var splitPattern = regexp.MustCompile(`\$\{?split\(([^)]*)\)\}?`)
+
 // InterpolateRequest processes a request and replaces any variable references with values from the vars map.
 func InterpolateRequest(req model.Request, vars map[string]interface{}) (model.Request, error) {
 	// Create a copy of the request to avoid modifying the original
@@ -155,7 +159,62 @@ func interpolateMultipart(mp *model.MultipartConfig, vars map[string]interface{}
 //   - Array-index notation: $issueTags[0].id, ${issueTags[${randomInt(0,4)}].id}
 //   - Default values: ${var:default}, ${accounts.alice.username:default}
 //   - Parametrized generators: ${randomInt(1,100)}, ${randomInt()}
+//   - Response-aware selection: ${randomItem(users,id)}
 func interpolateString(s string, vars map[string]interface{}) (string, error) {
+	// Resolve generators that depend on runtime variables before the ordinary
+	// self-contained generator pass. The optional second argument is a field
+	// path selected from the randomly chosen array element.
+	var randomItemErr error
+	s = randomItemPattern.ReplaceAllStringFunc(s, func(match string) string {
+		if randomItemErr != nil {
+			return match
+		}
+		submatch := randomItemPattern.FindStringSubmatch(match)
+		value, err := selectRandomItem(submatch[1], vars)
+		if err != nil {
+			randomItemErr = err
+			return match
+		}
+		return fmt.Sprintf("%v", value)
+	})
+	if randomItemErr != nil {
+		return "", fmt.Errorf("function 'randomItem' failed: %w", randomItemErr)
+	}
+
+	var trimAffixErr error
+	s = trimAffixPattern.ReplaceAllStringFunc(s, func(match string) string {
+		if trimAffixErr != nil {
+			return match
+		}
+		submatch := trimAffixPattern.FindStringSubmatch(match)
+		value, err := applyTrimAffix(submatch[1], submatch[2], vars)
+		if err != nil {
+			trimAffixErr = err
+			return match
+		}
+		return value
+	})
+	if trimAffixErr != nil {
+		return "", trimAffixErr
+	}
+
+	var splitErr error
+	s = splitPattern.ReplaceAllStringFunc(s, func(match string) string {
+		if splitErr != nil {
+			return match
+		}
+		submatch := splitPattern.FindStringSubmatch(match)
+		value, err := applySplit(submatch[1], vars)
+		if err != nil {
+			splitErr = err
+			return match
+		}
+		return value
+	})
+	if splitErr != nil {
+		return "", splitErr
+	}
+
 	// Pre-pass: resolve ${func(args)} generator calls embedded anywhere in the string
 	// (e.g. inside bracket notation like $issueTags[${randomInt(0,4)}].id).
 	// These are self-contained (no variable dependencies), so resolving them first
@@ -262,6 +321,122 @@ func interpolateString(s string, vars map[string]interface{}) (string, error) {
 	}
 
 	return result, nil
+}
+
+func applyTrimAffix(name, args string, vars map[string]interface{}) (string, error) {
+	parts := strings.SplitN(args, ",", 2)
+	if len(parts) != 2 {
+		return "", fmt.Errorf("function '%s' failed: %s requires exactly 2 arguments (value,affix)", name, name)
+	}
+	value, err := resolveStringTransformArg(parts[0], vars)
+	if err != nil {
+		return "", fmt.Errorf("function '%s' failed: %w", name, err)
+	}
+	affix, err := resolveStringTransformArg(parts[1], vars)
+	if err != nil {
+		return "", fmt.Errorf("function '%s' failed: %w", name, err)
+	}
+	if name == "trimPrefix" {
+		return strings.TrimPrefix(value, affix), nil
+	}
+	return strings.TrimSuffix(value, affix), nil
+}
+
+func applySplit(args string, vars map[string]interface{}) (string, error) {
+	parts := strings.SplitN(args, ",", 3)
+	if len(parts) != 3 {
+		return "", fmt.Errorf("function 'split' failed: split requires exactly 3 arguments (value,delimiter,index)")
+	}
+	value, err := resolveStringTransformArg(parts[0], vars)
+	if err != nil {
+		return "", fmt.Errorf("function 'split' failed: %w", err)
+	}
+	delimiter, err := resolveStringTransformArg(parts[1], vars)
+	if err != nil {
+		return "", fmt.Errorf("function 'split' failed: %w", err)
+	}
+	if delimiter == "" {
+		return "", fmt.Errorf("function 'split' failed: delimiter cannot be empty")
+	}
+	indexRaw, err := resolveStringTransformArg(parts[2], vars)
+	if err != nil {
+		indexRaw = strings.TrimSpace(parts[2])
+	}
+	index, err := strconv.Atoi(indexRaw)
+	if err != nil || index < 0 {
+		return "", fmt.Errorf("function 'split' failed: index must be a non-negative integer, got %q", indexRaw)
+	}
+	segments := strings.Split(value, delimiter)
+	if index >= len(segments) {
+		return "", fmt.Errorf("function 'split' failed: index %d out of range (split produced %d segments)", index, len(segments))
+	}
+	return segments[index], nil
+}
+
+func resolveStringTransformArg(raw string, vars map[string]interface{}) (string, error) {
+	arg := strings.TrimSpace(raw)
+	if len(arg) >= 2 && ((arg[0] == '"' && arg[len(arg)-1] == '"') ||
+		(arg[0] == '\'' && arg[len(arg)-1] == '\'')) {
+		return arg[1 : len(arg)-1], nil
+	}
+
+	path := strings.TrimPrefix(arg, "$")
+	if strings.HasPrefix(path, "{") && strings.HasSuffix(path, "}") {
+		path = path[1 : len(path)-1]
+	}
+	if value, ok := resolveNestedVar(path, vars); ok {
+		return fmt.Sprintf("%v", value), nil
+	}
+	return "", fmt.Errorf("undefined variable: %s", path)
+}
+
+// resolveSetValue preserves the runtime type of an exact randomItem expression.
+// Embedded expressions still use ordinary string interpolation so existing set
+// behavior remains unchanged.
+func resolveSetValue(raw string, vars map[string]interface{}) (interface{}, error) {
+	trimmed := strings.TrimSpace(raw)
+	if matches := randomItemPattern.FindStringSubmatch(trimmed); len(matches) == 2 && matches[0] == trimmed {
+		return selectRandomItem(matches[1], vars)
+	}
+	return interpolateString(raw, vars)
+}
+
+func selectRandomItem(args string, vars map[string]interface{}) (interface{}, error) {
+	parts := strings.SplitN(args, ",", 2)
+	arrayPath := strings.Trim(strings.TrimSpace(parts[0]), "\"'")
+	arrayPath = strings.TrimPrefix(arrayPath, "$")
+	if arrayPath == "" {
+		return nil, fmt.Errorf("randomItem requires an array variable")
+	}
+	value, found := resolveNestedVar(arrayPath, vars)
+	if !found {
+		return nil, fmt.Errorf("array variable %q is not defined", arrayPath)
+	}
+	items, ok := value.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("%q is %T, expected array", arrayPath, value)
+	}
+	if len(items) == 0 {
+		return nil, fmt.Errorf("array variable %q is empty", arrayPath)
+	}
+	selected := items[generateRandomIntInRange(0, len(items)-1)]
+	if len(parts) == 1 {
+		return normalizeJSONNumber(selected), nil
+	}
+	fieldPath := strings.Trim(strings.TrimSpace(parts[1]), "\"'")
+	fieldPath = strings.TrimPrefix(fieldPath, "$")
+	if fieldPath == "" {
+		return nil, fmt.Errorf("randomItem field path cannot be empty")
+	}
+	selectedMap, ok := selected.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("selected item is %T, cannot read field %q", selected, fieldPath)
+	}
+	fieldValue, found := resolveNestedVar(fieldPath, selectedMap)
+	if !found {
+		return nil, fmt.Errorf("field %q does not exist on selected item", fieldPath)
+	}
+	return normalizeJSONNumber(fieldValue), nil
 }
 
 // resolveNestedVar looks up a potentially dotted variable path in the vars map.

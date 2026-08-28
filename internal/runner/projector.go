@@ -197,6 +197,9 @@ func resolveTypePreserving(val interface{}, localVars map[string]interface{}) (i
 	}
 
 	trimmed := strings.TrimSpace(strVal)
+	if matches := randomItemPattern.FindStringSubmatch(trimmed); len(matches) == 2 && matches[0] == trimmed {
+		return selectRandomItem(matches[1], localVars)
+	}
 
 	// Check for type casting helpers
 	if strings.HasPrefix(trimmed, "$string(") && strings.HasSuffix(trimmed, ")") {

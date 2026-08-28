@@ -203,6 +203,48 @@ func TestExecuteSteps_Set(t *testing.T) {
 	}
 }
 
+func TestExecuteSteps_SetRandomItemPreservesSelectedObject(t *testing.T) {
+	partnerStatuses := []interface{}{
+		map[string]interface{}{"id": "status-1", "value": "active"},
+	}
+	steps := []model.Step{
+		{Set: map[string]string{
+			"PARTNER_STATUS":    "${randomItem(respPartnerStatuses)}",
+			"PARTNER_STATUS_ID": "${randomItem(respPartnerStatuses,id)}",
+		}},
+		{Set: map[string]string{
+			"SELECTED_ID":    "$PARTNER_STATUS.id",
+			"SELECTED_VALUE": "$PARTNER_STATUS.value",
+		}},
+	}
+	vars := map[string]interface{}{"respPartnerStatuses": partnerStatuses}
+
+	results, pass, fail, ok := executeSteps(
+		steps, nil, vars, "", "", 0, "steps", false, 0, false, nil,
+		SnapshotConfig{}, "scenario", "testfile.yaml",
+	)
+
+	if !ok || pass != 2 || fail != 0 {
+		t.Fatalf("executeSteps() = ok %v, pass %d, fail %d, results %+v", ok, pass, fail, results)
+	}
+	selected, ok := vars["PARTNER_STATUS"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("PARTNER_STATUS = %T, want map[string]interface{}", vars["PARTNER_STATUS"])
+	}
+	if selected["id"] != "status-1" || selected["value"] != "active" {
+		t.Fatalf("PARTNER_STATUS = %#v", selected)
+	}
+	if vars["PARTNER_STATUS_ID"] != "status-1" {
+		t.Errorf("PARTNER_STATUS_ID = %#v, want status-1", vars["PARTNER_STATUS_ID"])
+	}
+	if vars["SELECTED_ID"] != "status-1" || vars["SELECTED_VALUE"] != "active" {
+		t.Errorf("nested values = (%#v, %#v), want (status-1, active)", vars["SELECTED_ID"], vars["SELECTED_VALUE"])
+	}
+	if _, ok := results[0].SavedVars["PARTNER_STATUS"].(map[string]interface{}); !ok {
+		t.Errorf("SavedVars PARTNER_STATUS = %T, want map[string]interface{}", results[0].SavedVars["PARTNER_STATUS"])
+	}
+}
+
 func TestExecuteSteps_Set_Error(t *testing.T) {
 	steps := []model.Step{
 		{

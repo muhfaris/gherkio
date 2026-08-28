@@ -374,6 +374,45 @@ func GetGeneratorFuncs() map[string]GeneratorFunc {
 			val := strings.Trim(strings.TrimSpace(args), "\"'")
 			return strings.TrimSpace(val), nil
 		},
+		"trimPrefix": func(args string) (interface{}, error) {
+			parts := strings.SplitN(args, ",", 2)
+			if len(parts) != 2 {
+				return nil, fmt.Errorf("trimPrefix requires exactly 2 arguments (value,prefix)")
+			}
+			value := strings.Trim(strings.TrimSpace(parts[0]), "\"'")
+			prefix := strings.Trim(strings.TrimSpace(parts[1]), "\"'")
+			return strings.TrimPrefix(value, prefix), nil
+		},
+		"trimSuffix": func(args string) (interface{}, error) {
+			parts := strings.SplitN(args, ",", 2)
+			if len(parts) != 2 {
+				return nil, fmt.Errorf("trimSuffix requires exactly 2 arguments (value,suffix)")
+			}
+			value := strings.Trim(strings.TrimSpace(parts[0]), "\"'")
+			suffix := strings.Trim(strings.TrimSpace(parts[1]), "\"'")
+			return strings.TrimSuffix(value, suffix), nil
+		},
+		"split": func(args string) (interface{}, error) {
+			parts := strings.SplitN(args, ",", 3)
+			if len(parts) != 3 {
+				return nil, fmt.Errorf("split requires exactly 3 arguments (value,delimiter,index)")
+			}
+			value := strings.Trim(strings.TrimSpace(parts[0]), "\"'")
+			delimiter := strings.Trim(strings.TrimSpace(parts[1]), "\"'")
+			if delimiter == "" {
+				return nil, fmt.Errorf("split delimiter cannot be empty")
+			}
+			indexRaw := strings.Trim(strings.TrimSpace(parts[2]), "\"'")
+			index, err := strconv.Atoi(indexRaw)
+			if err != nil || index < 0 {
+				return nil, fmt.Errorf("split index must be a non-negative integer: %s", indexRaw)
+			}
+			segments := strings.Split(value, delimiter)
+			if index >= len(segments) {
+				return nil, fmt.Errorf("split index %d out of range (split produced %d segments)", index, len(segments))
+			}
+			return segments[index], nil
+		},
 	}
 }
 

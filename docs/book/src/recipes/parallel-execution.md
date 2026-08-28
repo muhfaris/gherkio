@@ -13,6 +13,22 @@ Run a directory of tests with custom concurrency levels using the `--parallel` (
 gherkio run .gherkio/tests/ -p 4
 ```
 
+`--parallel 4` means up to four **different test files** run at once. It is intended to speed up
+a directory or suite run; it is not a virtual-user load model.
+
+To repeat the **same workflow** with concurrent virtual users, use:
+
+```bash
+gherkio run .gherkio/tests/checkout.yaml \
+  --virtual-users 2 \
+  --iterations-per-user 3 \
+  --report html
+```
+
+Here, two users run concurrently and each user performs three sequential iterations, for six
+workflow executions in total. Each user's variables are isolated from the other user. The HTML
+report preserves the VU/iteration hierarchy and lets you expand or collapse each workflow.
+
 ---
 
 ## ⚠️ The Concurrent Mutation Problem

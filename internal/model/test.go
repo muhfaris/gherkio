@@ -33,23 +33,32 @@ type Step struct {
 	With    map[string]string `yaml:"with,omitempty" json:"with,omitempty" jsonschema:"description=Variable overrides passed into a 'use' step (e.g. with: {username: $accounts.alpha.email})"`
 	Set     map[string]string `yaml:"set,omitempty" json:"set,omitempty" jsonschema:"description=Set or override variables inline without making a request (e.g. set: {TICKET_ID: 01KRXW3WT8V5X0JP6QSHS96YJD})"`
 	Request Request           `yaml:"request,omitempty" json:"request,omitempty" jsonschema:"description=HTTP request definition"`
+	Redis   *RedisStep        `yaml:"redis,omitempty" json:"redis,omitempty" jsonschema:"description=Read-only Redis operation"`
 	Retry   *RetryConfig      `yaml:"retry,omitempty" json:"retry,omitempty" jsonschema:"description=Retry configuration for the step"`
 	Expect  Expect            `yaml:"expect,omitempty" json:"expect,omitempty" jsonschema:"description=Assertions for the step response"`
 	Save    map[string]string `yaml:"save,omitempty" json:"save,omitempty" jsonschema:"description=Variable extractions mapped from response paths"`
 	Timing  TimingConfig      `yaml:"timing,omitempty" json:"timing,omitempty" jsonschema:"description=Timing expectations for the step"`
 }
 
+// RedisStep is a controlled, read-only Redis operation. Command is limited to
+// get, exists, ttl, and hgetall; arbitrary Redis commands are intentionally not exposed.
+type RedisStep struct {
+	Connection string `yaml:"connection" json:"connection" jsonschema:"required,description=Named Redis connection from the active environment"`
+	Command    string `yaml:"command" json:"command" jsonschema:"required,enum=get,enum=exists,enum=ttl,enum=hgetall,description=Read-only Redis command"`
+	Key        string `yaml:"key" json:"key" jsonschema:"required,description=Redis key; supports variable interpolation"`
+}
+
 // Request represents an HTTP request definition.
 type Request struct {
-	Service   string            `yaml:"service,omitempty" json:"service,omitempty" jsonschema:"description=Name of the service defined in environment"`
-	Method    string            `yaml:"method" json:"method" jsonschema:"required,enum=GET,enum=POST,enum=PUT,enum=DELETE,enum=PATCH,description=HTTP method"`
-	URL       string            `yaml:"url" json:"url" jsonschema:"required,description=Request URL path or absolute URL. Supports variable interpolation ($var ${var:default} $accounts.(name).(field) $uuid $ulid $randomInt $randomEmail $randomPhone)"`
-	Query     map[string]any    `yaml:"query,omitempty" json:"query,omitempty" jsonschema:"description=Query parameters to append to the URL. Values can be a string or an array of strings (for repeated keys). Supports variable interpolation in values."`
-	Headers   map[string]string `yaml:"headers,omitempty" json:"headers,omitempty" jsonschema:"description=HTTP request headers. Supports variable interpolation in values ($var ${var:default} $accounts.(name).(field) $uuid $ulid $randomInt $randomEmail $randomPhone)"`
-	Body      interface{}       `yaml:"body,omitempty" json:"body,omitempty" jsonschema:"description=HTTP request body as JSON object or string. Supports variable interpolation in string values ($var ${var:default} $accounts.(name).(field) $uuid $ulid $randomInt $randomEmail $randomPhone) and type casting operators ($string(var) $int(var) $bool(var) $float(var))"`
-	Multipart *MultipartConfig  `yaml:"multipart,omitempty" json:"multipart,omitempty" jsonschema:"description=Multipart form-data configuration for file uploads and form fields"`
+	Service   string                       `yaml:"service,omitempty" json:"service,omitempty" jsonschema:"description=Name of the service defined in environment"`
+	Method    string                       `yaml:"method" json:"method" jsonschema:"required,enum=GET,enum=POST,enum=PUT,enum=DELETE,enum=PATCH,description=HTTP method"`
+	URL       string                       `yaml:"url" json:"url" jsonschema:"required,description=Request URL path or absolute URL. Supports variable interpolation ($var ${var:default} $accounts.(name).(field) $uuid $ulid $randomInt $randomEmail $randomPhone)"`
+	Query     map[string]any               `yaml:"query,omitempty" json:"query,omitempty" jsonschema:"description=Query parameters to append to the URL. Values can be a string or an array of strings (for repeated keys). Supports variable interpolation in values."`
+	Headers   map[string]string            `yaml:"headers,omitempty" json:"headers,omitempty" jsonschema:"description=HTTP request headers. Supports variable interpolation in values ($var ${var:default} $accounts.(name).(field) $uuid $ulid $randomInt $randomEmail $randomPhone)"`
+	Body      interface{}                  `yaml:"body,omitempty" json:"body,omitempty" jsonschema:"description=HTTP request body as JSON object or string. Supports variable interpolation in string values ($var ${var:default} $accounts.(name).(field) $uuid $ulid $randomInt $randomEmail $randomPhone) and type casting operators ($string(var) $int(var) $bool(var) $float(var))"`
+	Multipart *MultipartConfig             `yaml:"multipart,omitempty" json:"multipart,omitempty" jsonschema:"description=Multipart form-data configuration for file uploads and form fields"`
 	Transform map[string]*ProjectionConfig `yaml:"transform,omitempty" json:"transform,omitempty" jsonschema:"description=Declarative projections reshaped into request payload paths"`
-	Timeout   string            `yaml:"timeout,omitempty" json:"timeout,omitempty" jsonschema:"description=HTTP client timeout for this request (e.g. 5s 30s 1m)"` // e.g. "5s", "30s", "1m"
+	Timeout   string                       `yaml:"timeout,omitempty" json:"timeout,omitempty" jsonschema:"description=HTTP client timeout for this request (e.g. 5s 30s 1m)"` // e.g. "5s", "30s", "1m"
 }
 
 // MultipartConfig holds the configuration for a multipart/form-data request.

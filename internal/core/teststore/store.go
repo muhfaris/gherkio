@@ -175,23 +175,60 @@ func Validate(test *model.TestFile, schemasDir string) (*ValidationResult, error
 	// Validate steps
 	for i, step := range test.Steps {
 		prefix := fmt.Sprintf("steps[%d]", i)
-		if step.Use == "" && step.Request.Method == "" && step.Request.URL == "" {
+		operationCount := 0
+		if step.Use != "" {
+			operationCount++
+		}
+		if step.Set != nil {
+			operationCount++
+		}
+		if step.Redis != nil {
+			operationCount++
+		}
+		if step.Request.Method != "" || step.Request.URL != "" {
+			operationCount++
+		}
+		if operationCount == 0 {
 			result.Valid = false
 			result.Errors = append(result.Errors, ValidationError{
 				Field:   prefix,
-				Message: "Step must define either a 'use' reference or a 'request' configuration",
+				Message: "Step must define one of 'request', 'redis', 'use', or 'set'",
 				Code:    "invalid_step",
 			})
 			continue
 		}
 
-		if step.Use != "" && (step.Request.Method != "" || step.Request.URL != "") {
+		if operationCount > 1 {
 			result.Valid = false
 			result.Errors = append(result.Errors, ValidationError{
 				Field:   prefix,
-				Message: "Step cannot define both 'use' and 'request'",
+				Message: "Step operations 'request', 'redis', 'use', and 'set' are mutually exclusive",
 				Code:    "mutually_exclusive",
 			})
+		}
+
+		if step.Redis != nil {
+			validCommands := map[string]bool{"get": true, "exists": true, "ttl": true, "hgetall": true}
+			if strings.TrimSpace(step.Redis.Connection) == "" {
+				result.Valid = false
+				result.Errors = append(result.Errors, ValidationError{Field: prefix + ".redis.connection", Message: "Redis connection is required", Code: "missing_field"})
+			}
+			if !validCommands[strings.ToLower(step.Redis.Command)] {
+				result.Valid = false
+				result.Errors = append(result.Errors, ValidationError{Field: prefix + ".redis.command", Message: "Redis command must be one of: get, exists, ttl, hgetall", Code: "invalid_command"})
+			}
+			if strings.TrimSpace(step.Redis.Key) == "" {
+				result.Valid = false
+				result.Errors = append(result.Errors, ValidationError{Field: prefix + ".redis.key", Message: "Redis key is required", Code: "missing_field"})
+			}
+			if step.Expect.Status != 0 {
+				result.Valid = false
+				result.Errors = append(result.Errors, ValidationError{Field: prefix + ".expect.status", Message: "HTTP status assertions are not valid on Redis steps", Code: "invalid_assertion"})
+			}
+			if step.Retry != nil && len(step.Retry.OnStatus) > 0 {
+				result.Valid = false
+				result.Errors = append(result.Errors, ValidationError{Field: prefix + ".retry.onStatus", Message: "HTTP status retry conditions are not valid on Redis steps", Code: "invalid_retry"})
+			}
 		}
 
 		if step.Request.Method != "" || step.Request.URL != "" {
@@ -342,4 +379,3 @@ func parseProjectionConfig(m map[string]interface{}) (*model.ProjectionConfig, b
 
 	return cfg, true
 }
-

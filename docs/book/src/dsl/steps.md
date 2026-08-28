@@ -33,9 +33,10 @@ Each step in a scenario sequence supports the following top-level keys:
 | :--- | :--- | :--- | :--- | :--- |
 | `name` | `string` | No | Human-readable label for the step. Shown in test output and HTML report instead of `METHOD /url`. | `name: Create new order` |
 | `if` | `string` | No | Conditional guard clause. Step is skipped if the expression evaluates to false. | `if: $responseCode == 200` |
-| `request` | `object` | Conditional | HTTP request payload block. **Mutually exclusive with `use` and `set`**. | (See Request Properties below) |
-| `use` | `string` | Conditional | Scenario composition. Imports and executes another scenario YAML file inline. **Mutually exclusive with `request` and `set`**. | `use: shared/login.yaml` |
-| `set` | `map[string]string`| Conditional | Inline variable assignment. Explicitly assigns or overrides variables. **Mutually exclusive with `request` and `use`**. | `set: { QUEUE_ID: "01KT4EBA37Y" }` |
+| `request` | `object` | Conditional | HTTP request payload block. Mutually exclusive with other step operations. | (See Request Properties below) |
+| `redis` | `object` | Conditional | Controlled read-only Redis operation. Mutually exclusive with other step operations. | `redis: { connection: local-cache, command: get, key: "product:42" }` |
+| `use` | `string` | Conditional | Scenario composition. Imports and executes another scenario YAML file inline. | `use: shared/login.yaml` |
+| `set` | `map[string]string`| Conditional | Inline variable assignment. Explicitly assigns or overrides variables. | `set: { QUEUE_ID: "01KT4EBA37Y" }` |
 | `with` | `map[string]string`| No | Variable overrides injected into a `use:` step. Values interpolated before injection; original values restored after completion. | `with: { PARENT_CLAIM_ISSUE_ID: $STATUS_APPROVED_ID }` |
 | `expect` | `object` | No | Assertions mapping target dot-notation paths to expected formats or matchers. | `expect: { status: 200 }` |
 | `save` | `map[string]string`| No | Context extraction map. Binds response parameters to dynamic variables. | `save: { token: body.accessToken }` |
@@ -59,6 +60,31 @@ The `request` block defines the HTTP action Gherkio will execute. It supports th
 | `transform` | `object` | No | Declarative collection projections: filter, slice, and reshape arrays from saved variables into the request payload. | (See Requests chapter) |
 | `multipart` | `object` | No | Multipart form-data wrapper used for sending form fields and binary file uploads. | (See Requests chapter) |
 | `timeout` | `string` | No | HTTP socket timeout limit (parsed via standard Go duration strings like `5s`, `500ms`, `1m`). | `timeout: 10s` |
+
+## Redis Steps (`redis`)
+
+Redis steps expose only the read-only commands `get`, `exists`, `ttl`, and
+`hgetall`. Arbitrary commands and Lua scripts are intentionally unsupported.
+
+```yaml
+- name: Verify product cache
+  redis:
+    connection: local-cache
+    command: get
+    key: "product:$productId"
+  expect:
+    redis.exists: true
+    redis.value.id: "$productId"
+  save:
+    cachedName: redis.value.name
+  retry:
+    attempts: 5
+    interval: 200
+```
+
+`get` automatically decodes JSON values. Redis assertions and saved values use
+the `redis.*` path: `redis.exists`, `redis.value`, `redis.value.<field>`, and
+`redis.ttl`. Existing matchers, timing assertions, and retry strategies apply.
 
 ---
 
@@ -212,4 +238,19 @@ steps:
 ### Key Behaviors
 - **Mutual Exclusion**: A step containing `set` must not contain a `request` or `use` key.
 - **Interpolation**: Variables referenced in `set` values (e.g. `$QUEUE_ID`) are interpolated immediately at execution time using the active variable store.
+- **Typed random selection**: An exact `${randomItem(array)}` value preserves the selected object, so later steps can access fields such as `$PARTNER_STATUS.id`. `${randomItem(array,id)}` continues to store only the selected field.
 - **CLI Output**: In test logs, a `set` step is formatted to show which variables are being set (e.g., `set variables: QUEUE_ID`).
+
+```yaml
+- name: Select one partner status
+  set:
+    PARTNER_STATUS: ${randomItem(respPartnerStatuses)}
+
+- name: Use fields from the same selected object
+  request:
+    method: POST
+    url: /v1/partners
+    body:
+      partner_status_id: $PARTNER_STATUS.id
+      partner_status_value: $PARTNER_STATUS.value
+```

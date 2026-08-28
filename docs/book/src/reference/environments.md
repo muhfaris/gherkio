@@ -19,6 +19,53 @@ Gherkio matches the environment filename with the CLI `--env` (or `-e`) executio
 | :--- | :--- | :--- | :--- | :--- |
 | `baseUrl` | `string` | Yes | Target domain for relative requests | `baseUrl: https://api.staging.net` |
 | `services`| `object` | No | Microservice override pathways | (See below) |
+| `connections` | `object` | No | Named Redis connections used by `redis` steps | (See below) |
+
+## Redis Connections
+
+Redis connection details belong to the active environment rather than scenario files:
+
+```yaml
+baseUrl: http://localhost:8080
+
+connections:
+  local-cache:
+    type: redis
+    address: localhost:6379
+    database: 0
+    timeout: 5s
+```
+
+Optional fields are `username`, `password`, `database`, `tls`, and `timeout`.
+Connection strings support normal Gherkio interpolation, so secrets can be supplied
+through `GHERKIO_` environment variables instead of committed to source control.
+
+For Redis Sentinel, replace the direct `address` with a `sentinel` block:
+
+```yaml
+connections:
+  application-cache:
+    type: redis
+    sentinel:
+      master: mymaster
+      addresses:
+        - sentinel-1:26379
+        - sentinel-2:26379
+        - sentinel-3:26379
+      username: sentinel-user
+      password: $GHERKIO_SENTINEL_PASSWORD
+      tls: false
+    username: redis-user
+    password: $GHERKIO_REDIS_PASSWORD
+    database: 0
+    tls: false
+    timeout: 5s
+```
+
+Sentinel endpoints are tried in order. Each Redis operation discovers the current
+primary using `SENTINEL get-master-addr-by-name`, so a retried step discovers the
+new primary after failover. Credentials and TLS inside `sentinel` apply only to
+Sentinel; the connection-level credentials and TLS apply to the Redis primary.
 
 ---
 

@@ -19,9 +19,26 @@ If a variable might not be defined under the current context, you can specify a 
 If a saved variable contains an array, you can access individual elements by index using bracket notation:
 - `$tags[0].id` ➔ accesses the `id` field of the first element in the `$tags` array
 - `$tags[${randomInt(0,4)}].id` ➔ picks a random element each time (useful with retry)
+- `${randomItem(tags,id)}` ➔ picks an item using the actual array length and returns its `id`
+- `${randomItem(tags)}` in an exact `set` value ➔ stores the selected object, allowing `$SELECTED_TAG.id` and `$SELECTED_TAG.name`
 - `$items[2].name` ➔ accesses the `name` field of the third element
 
 This works in all variable interpolation contexts: request body, headers, URLs, save paths, and assertion values.
+
+When the response length is not fixed, prefer `randomItem`:
+
+```yaml
+steps:
+  - request:
+      method: GET
+      url: /users
+    save:
+      users: body.data
+
+  - request:
+      method: GET
+      url: /users/${randomItem(users,id)}
+```
 
 **Example** — randomly pick an issue tag from a saved array:
 
@@ -82,6 +99,11 @@ For more specialized payloads, Gherkio provides a collection of **parameterized 
 
 *   **`${randomInt(min, max)}`**: Generates a random integer within a custom inclusive range.
     *   *Example*: `${randomInt(1, 100)}` ➔ `42`
+*   **`${randomItem(array[, field])}`**: Selects from a saved response array using its runtime length.
+    *   *Example*: `${randomItem(users,id)}` ➔ selects a random user and returns its `id`.
+    *   *Example*: `${randomItem(users,profile.email)}` ➔ returns a nested field.
+    *   *Example*: `${randomItem(ids)}` ➔ returns a random primitive item.
+    *   Empty arrays, missing variables, and missing fields produce clear interpolation errors.
 *   **`${randomString(length, charset)}`**: Generates a random string of a specified length using a selected character set (`alpha`, `numeric`, `alphanumeric`).
     *   *Example*: `${randomString(12, "alphanumeric")}` ➔ `a8F2k9Pq3xLm`
 *   **`${randomPhone(countryOrPrefix)}`**: Generates a random phone number based on a country code or a raw dialing prefix.
@@ -175,6 +197,12 @@ For more specialized payloads, Gherkio provides a collection of **parameterized 
     *   *Example*: `${toLower("TOKEN")}` ➔ `"token"`
 *   **`${trim(text)}`**: Trims leading and trailing whitespaces.
     *   *Example*: `${trim("   secret   ")}` ➔ `"secret"`
+*   **`${trimPrefix(value, prefix)}`**: Removes the prefix when present. Arguments may be quoted literals or saved variable paths.
+    *   *Example*: `${trimPrefix(PARTNER_STATUS.value,"Lainnya::")}` ➔ `"Gramedia UT - Gramedia UT"`
+*   **`${trimSuffix(value, suffix)}`**: Removes the suffix when present. Arguments may be quoted literals or saved variable paths.
+    *   *Example*: `${trimSuffix(filename,".json")}` ➔ removes the `.json` suffix.
+*   **`${split(value, delimiter, index)}`**: Splits a string and returns the segment at the zero-based index. The value and delimiter may be quoted literals or saved variable paths.
+    *   *Example*: `${split(PARTNER_STATUS.value,"::",1)}` turns `"abc::yyy"` into `"yyy"`.
 
 ---
 

@@ -279,3 +279,65 @@ func TestRenderHTML_ComposedTraceability(t *testing.T) {
 		t.Errorf("expected HTML to contain calc margin-left styling for depth 1")
 	}
 }
+
+func TestRenderHTMLSuite_LoadRunSummaryAndCollapsibleWorkflows(t *testing.T) {
+	started := time.Date(2026, 8, 28, 10, 0, 0, 0, time.UTC)
+	results := []*runner.RunResult{
+		loadRunResult(1, 1, true, started, started.Add(200*time.Millisecond), 100*time.Millisecond),
+		loadRunResult(1, 2, false, started.Add(210*time.Millisecond), started.Add(510*time.Millisecond), 300*time.Millisecond),
+		loadRunResult(2, 1, true, started.Add(10*time.Millisecond), started.Add(160*time.Millisecond), 150*time.Millisecond),
+		loadRunResult(2, 2, true, started.Add(170*time.Millisecond), started.Add(370*time.Millisecond), 200*time.Millisecond),
+	}
+
+	data := MapResultsToSuiteReportData(results, "local", nil, true)
+	if !data.LoadMode || data.VirtualUsers != 2 || data.IterationsPerUser != 2 || data.WorkflowCount != 4 {
+		t.Fatalf("unexpected load metadata: %+v", data)
+	}
+	if data.PassedWorkflows != 3 || data.FailedWorkflows != 1 || data.RequestCount != 4 {
+		t.Fatalf("unexpected workflow/request counts: %+v", data)
+	}
+	if data.TotalDuration != runner.FormatDuration(510*time.Millisecond) {
+		t.Errorf("wall duration = %s, want %s", data.TotalDuration, runner.FormatDuration(510*time.Millisecond))
+	}
+	if data.P95ResponseTime != runner.FormatDuration(300*time.Millisecond) {
+		t.Errorf("p95 = %s, want %s", data.P95ResponseTime, runner.FormatDuration(300*time.Millisecond))
+	}
+
+	html, err := RenderHTMLSuite(results, ReportConfig{}, "local")
+	if err != nil {
+		t.Fatalf("RenderHTMLSuite: %v", err)
+	}
+	for _, fragment := range []string{
+		"2 virtual users", "2 iterations each", "4 workflow executions",
+		"VU 1 · iteration 1/2", "details class=\"scenario-block\"",
+		"class=\"scenario-block\" open", "p95 latency",
+	} {
+		if !strings.Contains(html, fragment) {
+			t.Errorf("expected rendered report to contain %q", fragment)
+		}
+	}
+}
+
+func loadRunResult(vu, iteration int, passed bool, started, finished time.Time, requestDuration time.Duration) *runner.RunResult {
+	step := runner.StepResult{
+		Name:     "Request",
+		Request:  &runner.RequestInfo{Method: "GET", URL: "/users"},
+		Response: &runner.ResponseInfo{Status: 200},
+		Duration: requestDuration,
+	}
+	if !passed {
+		step.Error = "assertion failed"
+	}
+	return &runner.RunResult{
+		Scenario:          "Create attachment",
+		TestFile:          "1-create-attachment.yaml",
+		Steps:             []runner.StepResult{step},
+		Passed:            passed,
+		Duration:          finished.Sub(started),
+		VirtualUser:       vu,
+		Iteration:         iteration,
+		IterationsPerUser: 2,
+		StartedAt:         started,
+		FinishedAt:        finished,
+	}
+}

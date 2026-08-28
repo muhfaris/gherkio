@@ -34,6 +34,8 @@ var (
 	untilSlice           string
 	requestDelay         string
 	requestDelayDuration time.Duration
+	virtualUsers         int
+	iterationsPerUser    int
 )
 
 // runCmd represents the gherkio run command.
@@ -87,9 +89,14 @@ func init() {
 	runCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview test execution without making HTTP requests")
 	runCmd.Flags().StringVarP(&untilSlice, "until", "u", "", "Execute steps until a specific target, e.g. 'steps:1' or '2'")
 	runCmd.Flags().StringVar(&requestDelay, "request-delay", "", "Wait before each HTTP request (defaults: 50ms/file, 100ms/directory; bare numbers are milliseconds)")
+	runCmd.Flags().IntVar(&virtualUsers, "virtual-users", 1, "Number of isolated users executing the same test concurrently")
+	runCmd.Flags().IntVar(&iterationsPerUser, "iterations-per-user", 1, "Number of sequential workflow executions performed by each virtual user")
 }
 
 func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw bool, accountName string, allAccounts bool) error {
+	if err := validateVirtualUserFlags(testPath, allAccounts); err != nil {
+		return err
+	}
 	if _, err := parseRequestDelay(requestDelay); err != nil {
 		return err
 	}
@@ -190,6 +197,9 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 	// Check if the path is a directory
 	fullPath := filepath.Join(cwd, testPath)
 	if info, err := os.Stat(fullPath); err == nil && info.IsDir() {
+		if virtualUserMode() {
+			return fmt.Errorf("virtual-user mode requires a single test file, not a directory")
+		}
 		requestDelayDuration, _ = requestDelayForTarget(requestDelay, true)
 		testDir := fullPath
 		// Also try resolving relative to .gherkio/tests/
@@ -203,6 +213,9 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 	// Also check if path exists relative to .gherkio/tests/ (for paths like "configurations/partner-status/")
 	altFullPath := filepath.Join(projectDir, ".gherkio", "tests", testPath)
 	if info, err := os.Stat(altFullPath); err == nil && info.IsDir() {
+		if virtualUserMode() {
+			return fmt.Errorf("virtual-user mode requires a single test file, not a directory")
+		}
 		requestDelayDuration, _ = requestDelayForTarget(requestDelay, true)
 		return runAllInDir(altFullPath, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap, snapshotCfg)
 	}
@@ -214,6 +227,9 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 	}
 
 	requestDelayDuration, _ = requestDelayForTarget(requestDelay, false)
+	if virtualUserMode() && strings.TrimSpace(requestDelay) == "" {
+		requestDelayDuration = 0
+	}
 	return runSingleTest(fullPath, projectDir, env, verbose, reportCfg, maskFields, creds, accountName, allAccounts, allAccountsMap, snapshotCfg)
 }
 
@@ -335,6 +351,10 @@ func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *re
 		}
 	}
 
+	if virtualUserMode() {
+		return runSingleTestVirtualUsers(testPath, projectDir, env, verbose, reportCfg, maskFields, credentialVars, accName, allAccountsMap, snapshotCfg)
+	}
+
 	targetStepIdx := stepIdx
 	targetSection := stepSection
 	if lineNum >= 0 {
@@ -391,6 +411,96 @@ func runSingleTest(testPath, projectDir, env string, verbose bool, reportCfg *re
 		os.Exit(1)
 	}
 
+	return nil
+}
+
+func virtualUserMode() bool {
+	return virtualUsers > 1 || iterationsPerUser > 1
+}
+
+func validateVirtualUserFlags(testPath string, allAccounts bool) error {
+	if virtualUsers < 1 {
+		return fmt.Errorf("--virtual-users must be at least 1")
+	}
+	if iterationsPerUser < 1 {
+		return fmt.Errorf("--iterations-per-user must be at least 1")
+	}
+	if !virtualUserMode() {
+		return nil
+	}
+	if testPath == "" {
+		return fmt.Errorf("virtual-user mode requires a single test file")
+	}
+	if parallelCount > 0 {
+		return fmt.Errorf("--parallel runs different files and cannot be combined with virtual-user mode")
+	}
+	if allAccounts {
+		return fmt.Errorf("--all-accounts cannot be combined with virtual-user mode; select one --account")
+	}
+	if stepIdx >= 0 || lineNum >= 0 || stepSection != "" || untilSlice != "" {
+		return fmt.Errorf("virtual-user mode executes complete workflows and cannot be combined with --step, --line, --section, or --until")
+	}
+	return nil
+}
+
+func runSingleTestVirtualUsers(testPath, projectDir, env string, verbose bool, reportCfg *report.ReportConfig, maskFields []string, credentialVars map[string]interface{}, accName string, allAccountsMap map[string]interface{}, snapshotCfg runner.SnapshotConfig) error {
+	totalWorkflows := virtualUsers * iterationsPerUser
+	fmt.Printf("Load run: %d virtual users × %d iterations each = %d workflow executions\n", virtualUsers, iterationsPerUser, totalWorkflows)
+	fmt.Println("Each virtual user keeps private variables and runs its iterations sequentially.")
+	fmt.Println()
+
+	cfg := runner.RunConfig{
+		TestPath:       testPath,
+		EnvName:        env,
+		ProjectDir:     projectDir,
+		Verbose:        verbose,
+		MaskFields:     maskFields,
+		AccountName:    accName,
+		CredentialVars: credentialVars,
+		AllAccounts:    allAccountsMap,
+		StepIndex:      -1,
+		DryRun:         dryRun,
+		RequestDelay:   requestDelayDuration,
+		Snapshot:       snapshotCfg,
+		FailFast:       false,
+		SessionFile:    runner.SessionFilePath(projectDir, env, accName),
+	}
+
+	started := time.Now()
+	results, err := runner.RunVirtualUsers(cfg, virtualUsers, iterationsPerUser)
+	if err != nil {
+		return fmt.Errorf("virtual-user execution failed: %w", err)
+	}
+
+	passedWorkflows := 0
+	failedWorkflows := 0
+	for _, result := range results {
+		if verbose {
+			runner.PrintResult(result, true, maskFields)
+		}
+		icon := "✓"
+		status := "PASS"
+		if !result.Passed {
+			icon = "✗"
+			status = "FAIL"
+			failedWorkflows++
+		} else {
+			passedWorkflows++
+		}
+		fmt.Printf("%s VU %d · iteration %d/%d · %s · %s\n", icon, result.VirtualUser, result.Iteration, result.IterationsPerUser, status, runner.FormatDuration(result.Duration))
+	}
+
+	fmt.Println()
+	fmt.Println(strings.Repeat("═", 64))
+	fmt.Printf("Workflows: %d passed, %d failed, %d total\n", passedWorkflows, failedWorkflows, totalWorkflows)
+	fmt.Printf("Wall time: %s\n", runner.FormatDuration(time.Since(started)))
+
+	if reportCfg != nil {
+		handleSuiteReport(results, projectDir, env, reportCfg)
+	}
+	if failedWorkflows > 0 {
+		return fmt.Errorf("%d of %d workflow executions failed", failedWorkflows, totalWorkflows)
+	}
 	return nil
 }
 

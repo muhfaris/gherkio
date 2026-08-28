@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -30,6 +31,29 @@ func TestParseRequestDelay(t *testing.T) {
 				t.Errorf("parseRequestDelay(%q) = %s, want %s", tt.input, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestValidateVirtualUserFlags(t *testing.T) {
+	oldVirtualUsers, oldIterations := virtualUsers, iterationsPerUser
+	oldParallel, oldStep, oldLine := parallelCount, stepIdx, lineNum
+	oldSection, oldUntil := stepSection, untilSlice
+	t.Cleanup(func() {
+		virtualUsers, iterationsPerUser = oldVirtualUsers, oldIterations
+		parallelCount, stepIdx, lineNum = oldParallel, oldStep, oldLine
+		stepSection, untilSlice = oldSection, oldUntil
+	})
+
+	virtualUsers, iterationsPerUser = 2, 3
+	parallelCount, stepIdx, lineNum = 0, -1, -1
+	stepSection, untilSlice = "", ""
+	if err := validateVirtualUserFlags("test.yaml", false); err != nil {
+		t.Fatalf("valid virtual-user flags rejected: %v", err)
+	}
+
+	parallelCount = 4
+	if err := validateVirtualUserFlags("test.yaml", false); err == nil || !strings.Contains(err.Error(), "different files") {
+		t.Fatalf("expected --parallel conflict, got %v", err)
 	}
 }
 
