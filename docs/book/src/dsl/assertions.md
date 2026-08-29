@@ -8,11 +8,10 @@ Assertions are the core validation engine of Gherkio. Placed inside the `expect`
 
 The `expect` block defines a set of strict contracts that the HTTP response must satisfy. Gherkio evaluates these assertions sequentially upon request completion.
 
-### ⚡ Fail-Fast Execution
-Gherkio implements a strict **fail-fast** design. 
-- Assertions are checked in the order they are written.
-- If any single assertion fails, step execution is immediately aborted, the entire scenario is marked as failed, and any subsequent steps (such as database queries or follow-up requests) are skipped.
-- This prevents cascading failures, reduces network bandwidth waste, and keeps your test reports clean and focused on the root cause.
+### ⚡ Assertion Failure Behavior
+Gherkio evaluates the assertions for a response and records every result in the report. A failed assertion marks the step and scenario as failed.
+
+The CLI continues with remaining steps by default so one run can expose multiple failures. Teardown always runs. MCP callers can request fail-fast execution through the `run_test` tool when stopping after the first failed step is preferable.
 
 ---
 

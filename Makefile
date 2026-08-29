@@ -79,6 +79,7 @@ docs-build: docs-gen
 	cp -R docs/book/playground docs/book/book/
 	@echo "Copying AI crawler configuration into build bundle…"
 	cp docs/book/robots.txt docs/book/book/robots.txt
+	cp docs/book/llms.txt docs/book/book/llms.txt
 	@echo "✅ Gherkio mdBook compiled. Open docs/book/book/index.html to view local pages."
 
 docs-serve: docs-gen
@@ -89,4 +90,3 @@ docs-clean:
 	@echo "Cleaning compiled documentation artifacts…"
 	cd docs/book && mdbook clean
 	@echo "✅ Finished cleaning docs."
-

@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Step-Prefixed Variables**: Saved names such as `1-ticketId` and `2-userId` now validate, interpolate, and convert consistently.
 - **Load-Test Reporting**: HTML reports now present load-run summaries and virtual-user workflow executions with clearer expandable details.
 - **Documentation Theme**: Set Navy as the default mdBook theme and placed Mermaid diagrams on a light canvas for readable labels across Light, Navy, Ayu, and Coal.
+- **AI Documentation Reliability**: Added a compact machine-readable reference, refreshed `llms.txt`, corrected stale runtime claims, and introduced consistency tests for CLI flags, book links, MCP request fields, matchers, and built-in functions.
 
 ### Fixed
 - **Strict MCP Schemas**: MCP tool input schemas now emit explicit object properties and strict validation metadata required by stricter clients.

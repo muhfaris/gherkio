@@ -71,7 +71,7 @@ type MultipartConfig struct {
 // Supports both a simple string path and a structured configuration.
 type MultipartItem struct {
 	Path        string `yaml:"path" json:"path" jsonschema:"required,description=Path to the file (relative to project root or absolute),example=fixtures/avatar.png"`
-	ContentType string `yaml:"contentType,omitempty" json:"contentType,omitempty" jsonschema:"description=MIME type of the file (auto-detected if not specified),example=image/png"`
+	ContentType string `yaml:"contentType,omitempty" json:"contentType,omitempty" jsonschema:"description=MIME type override; defaults to application/octet-stream when omitted,example=image/png"`
 	Filename    string `yaml:"filename,omitempty" json:"filename,omitempty" jsonschema:"description=Override filename sent in the Content-Disposition header,example=avatar.png"`
 }
 

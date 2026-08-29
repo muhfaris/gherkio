@@ -138,12 +138,11 @@ Use setup, steps, and teardown blocks strategically:
 - **query**: (Map of string:string, Optional) Query parameters appended to the URL. Supports variable interpolation in values.
 - **headers**: (Map of string:string, Optional) Custom HTTP headers. Supports variable interpolation in values.
 - **body**: (Free-form object/string, Optional) Request body content. Supports variable interpolation in string values.
-- **query**: (Map of string:string, Optional) Query parameters appended to the URL. Supports variable interpolation in values. Example: 'status: available' generates ?status=available.
 - **multipart**: (MultipartConfig, Optional) Multipart form-data for file uploads and form fields.
   - **fields**: (Map of string:string) Text form fields (e.g. 'username: $user', 'role: admin'). Supports variable interpolation.
   - **files**: (Map of string:item) File uploads. Each item supports:
     - **path**: (String, Required) Path to the file (relative to project root or absolute).
-    - **contentType**: (String, Optional) MIME type (auto-detected if omitted).
+    - **contentType**: (String, Optional) MIME type override. If omitted, the multipart writer uses application/octet-stream.
     - **filename**: (String, Optional) Custom filename sent in the Content-Disposition header.
   Simple syntax: 'avatar: fixtures/avatar.png' (path only).
   Advanced syntax: 'document: {path: doc.pdf, contentType: application/pdf, filename: report.pdf}'.

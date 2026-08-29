@@ -57,6 +57,7 @@
 
 ## 📚 Reference & FAQ
 - [Frequently Asked Questions](reference/faq.md)
+- [AI & Machine-Readable Reference](reference/ai-reference.md)
 - [Configuration Reference](reference/configuration.md)
   - [Environments](reference/environments.md)
   - [Credentials File](reference/credentials-file.md)

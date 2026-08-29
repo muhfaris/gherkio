@@ -80,7 +80,7 @@ To lower Gherkio's learning curve to zero, Gherkio includes a self-contained, br
 ## ⚡ Core Features
 
 *   **Declarative YAML DSL** — Describe test scenarios, not implementation. Scenarios double as live, executable documentation readable by engineers, QA, and product managers.
-*   **HTTP Request Execution** — POST, GET, PUT, DELETE, PATCH with full header/body support, multipart uploads, and automatic MIME detection.
+*   **HTTP Request Execution** — POST, GET, PUT, DELETE, PATCH with full header/body support and streaming multipart uploads with explicit MIME overrides.
 *   **Rich Assertion Engine** — 30+ built-in matchers including status codes, field types (`uuid`, `email`, `datetime`, `uri`), list lengths, existence checks, and negative assertions.
 *   **JWT Auto-Decoding** — Automatically decode and assert claims from response tokens (`jwt.role: admin`) without writing custom parser code. Extract claims into variables via `save: { role: jwt.user_role }`. Configure custom token paths in `.gherkio/config.yaml` with `jwt_token_path: "data.access_token"`.
 *   **Scenario Composition** — Reuse existing scenarios as steps with `use:` for clean, DRY orchestration across test suites.
