@@ -330,6 +330,25 @@ func resolveMultipartFilePath(filePath, projectDir string) (string, error) {
 		}
 	}
 
+	// Try the configured multipart assets directory. A relative assets path is
+	// resolved from the project root; an absolute assets path is used as-is.
+	if projectDir != "" {
+		cfg, err := LoadConfig(projectDir)
+		if err != nil {
+			return "", err
+		}
+		if cfg.Assets.Path != "" {
+			assetsDir := cfg.Assets.Path
+			if !filepath.IsAbs(assetsDir) {
+				assetsDir = filepath.Join(projectDir, assetsDir)
+			}
+			assetsPath := filepath.Join(assetsDir, filePath)
+			if _, err := os.Stat(assetsPath); err == nil {
+				return assetsPath, nil
+			}
+		}
+	}
+
 	// Try fixtures directory fallback at project root
 	if projectDir != "" {
 		fixturesPath := filepath.Join(projectDir, "fixtures", filepath.Base(filePath))
@@ -352,7 +371,7 @@ func resolveMultipartFilePath(filePath, projectDir string) (string, error) {
 		return absPath, nil
 	}
 
-	return "", fmt.Errorf("file not found: %s (checked: absolute, project root, fixtures/, .gherkio/fixtures/", filePath)
+	return "", fmt.Errorf("file not found: %s (checked: absolute, project root, configured assets, fixtures/, .gherkio/fixtures/, current directory)", filePath)
 }
 
 // detectContentType returns the MIME type for a file based on its extension.

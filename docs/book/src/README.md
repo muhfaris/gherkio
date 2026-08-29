@@ -2,13 +2,9 @@
 
 > **The Declarative Integration Testing Platform** — Build bulletproof API test suites in pure YAML. No boilerplate, no runtime compilation, zero custom glue-code required.
 
-Gherkio is a declarative integration testing platform that compiles to a single static Go binary. Teams use it to write API integration tests by describing HTTP request sequences, assertions, and variable extractions in pure YAML — no imperative code required. It features a native MCP server for AI assistant integration, outbound network sandboxing for security, and structured reporting for CI/CD pipelines.
+Gherkio is a declarative integration testing platform compiled into a single static Go binary. Teams write API integration tests by describing HTTP request sequences, assertions, and variable extractions in pure YAML. It features a native MCP server for AI assistant integration, outbound network sandboxing for security, and structured reporting for CI/CD pipelines.
 
 ---
-
-API testing has traditionally been trapped between two bad options: click-and-point GUI client workbooks that cannot scale under continuous integration, and heavy codebases written in JavaScript, Python, or Go that suffer from dependency bloat, fragile custom assert frameworks, and poor readability.
-
-**Gherkio** offers a professional third path: a single, self-contained binary that executes highly readable, multi-step declarative testing scenarios defined in simple YAML. 
 
 ```yaml
 scenario: Authenticate & Retrieve Profile
@@ -37,31 +33,54 @@ steps:
 
 ---
 
-## ⚡ Key Value Pillars
+## 🧭 Tiered Learning Paths
 
-### 🟢 1. Built for Speed and Ephemeral CI
-Written in pure Go, Gherkio compiles to a single static binary with zero external runtime dependencies. Boot up tests instantly inside empty Docker instances, local terminals, or standard GitHub runner nodes.
+Whether you are writing your first test scenario, building reusable enterprise test suites, or integrating AI agent automation into CI/CD, choose your path below:
 
-### 🟢 2. Declarative Syntax as Single-Source-of-Truth
-Because scenarios are written in pure YAML, your API test files double as live, executable documentation. Developers, QA specialists, and product managers can read, write, and audit scenario steps without needing to understand complex software architecture.
+### 🟢 1. Beginner Path (Zero-to-Hero)
+*Ideal for developers & QA engineers getting started with Gherkio.*
 
-### 🟢 3. Industrial-Grade Native Ecosystem
-Forget writing custom wrapper functions. Gherkio features native support for **JWT assertions**, **automatic credential masking**, **exponential-backoff retries**, **multi-role account loops**, **full JSON schema matching**, and **timing budgets** right out of the box.
-
-### 🟢 4. Agentic AI Ready (Model Context Protocol)
-Gherkio includes a native Model Context Protocol (MCP) server that exposes your testing sandbox directly to AI developer assistants (like Cursor, Windsurf, or custom Claude Desktop environments). Let AI agents draft, execute, validate, and debug integration tests automatically inside your project workspace.
+| Guide | Description |
+| :--- | :--- |
+| 🚀 **[Installation](getting-started/installation.md)** | Download static binaries for Linux, macOS, or Windows. |
+| ⚡ **[2-Minute Quickstart](getting-started/quickstart.md)** | Scaffold your workspace and run your first scenario in under two minutes. |
+| 📁 **[Folder & Project Setup](getting-started/project-setup.md)** | Learn `.gherkio/` directory structure, environments, and configuration. |
+| 📝 **[Tutorial: Build Your First Test](getting-started/first-test-tutorial.md)** | Step-by-step guide to modeling HTTP requests, status assertions, and saved variables. |
+| 🔍 **[What Happens in a Test: Lifecycle](getting-started/execution-lifecycle.md)** | Detailed breakdown of the internal 9-phase execution pipeline, variable resolution, and step execution. |
+| 🎨 **[Interactive Playground](getting-started/playground.md)** | Convert legacy cURL commands to Gherkio YAML DSL instantly. |
 
 ---
 
-## 🗺️ Developer Onboarding Roadmap
+### 🟡 2. Advanced Practitioner Path
+*For engineers building modular, resilient, and multi-environment test suites.*
 
-To learn Gherkio systematically, follow our structured, progressive onboarding chapters:
+| Guide | Description |
+| :--- | :--- |
+| 🧩 **[Scenario Composition](dsl/composition.md)** | Modularize tests using `use: path/to/scenario.yaml` for shared auth & setup flows. |
+| 🎯 **[Dynamic Assertions & Matchers](dsl/matchers.md)** | Master value matchers (`contains`, `greaterThan`, `oneOf`, `in`, `matchesRegex`), JWT validation, and timing budgets. |
+| 📋 **[JSON Schema Validation](dsl/schemas.md)** | Enforce structural schema rules against response payloads using `.gherkio/schemas/`. |
+| 🔄 **[Async Retries & Polling](dsl/retry.md)** | Handle asynchronous background jobs with exponential backoff and retry rules. |
+| ⚡ **[Redis Cache State Checks](dsl/redis.md)** | Assert key-value states in Redis directly inside scenario test steps. |
+| 🔐 **[Credentials & Environments](reference/environments.md)** | Manage multi-account credentials and staging/production target overrides. |
+| 🛠️ **[CLI Tooling & Validation](cli/overview.md)** | Run static analysis (`gherkio validate`), generate JSON Schema (`gherkio schema`), and convert cURL (`gherkio convert`). |
 
-| Step | Section | Description |
-| :--- | :--- | :--- |
-| **1** | 🚀 **[Getting Started: Installation](getting-started/installation.md)** | Install pre-compiled binaries or run dynamically with zero-install Go run directives. |
-| **2** | ⏱️ **[Getting Started: 2-Minute Quickstart](getting-started/quickstart.md)** | Scaffold your first testing sandbox and see Gherkio's console reporting in action. |
-| **3** | 📁 **[Getting Started: Project & Folder Setup](getting-started/project-setup.md)** | Master config files, environments overrides, and microservice hosts mapping. |
-| **4** | 📝 **[Tutorial: Build Your First Test](getting-started/first-test-tutorial.md)** | Step-by-step walkthrough detailing request modeling, data assertions, and variable saving. |
-| **5** | 🎨 **[Interactive Browser Playground](getting-started/playground.md)** | Visualize test steps dynamically and convert legacy cURL statements instantly. |
-| **6** | ❓ **[Frequently Asked Questions](reference/faq.md)** | Common questions about setup, credentials, CI/CD, and troubleshooting. |
+---
+
+### 🔴 3. Expert & Platform Engineer Path
+*For architects, DevOps teams, and AI-assisted workflow integration.*
+
+| Guide | Description |
+| :--- | :--- |
+| 🤖 **[MCP Server & AI Assistant Workflows](mcp/overview.md)** | Connect Gherkio directly to Cursor, Claude Desktop, or Windsurf for AI-generated testing & self-healing runs. |
+| 🏗️ **[Engine Architecture & Security Sandboxing](contributing/architecture.md)** | Deep-dive into static Go engine internals, thread safety, and outbound SSRF protection. |
+| 📊 **[Enterprise CI/CD & Reporting](reference/reports.md)** | Generate JUnit XML, HTML, and JSON reports for GitHub Actions, GitLab CI, and Jenkins. |
+| 🛠️ **[Extending Gherkio](contributing/adding-matchers.md)** | Add custom matchers and extend the static evaluation engine in Go. |
+
+---
+
+## ⚡ Key Value Pillars
+
+* **Built for Speed**: Written in pure Go, Gherkio compiles to a single static binary with zero external dependencies.
+* **Declarative YAML Syntax**: Human-readable scenarios double as executable API documentation.
+* **Native Tooling**: Out-of-the-box support for JWT checks, Redis assertions, exponential backoff retries, and dynamic generators (`$randomEmail`, `$uuid`).
+* **Agentic AI Ready**: Built-in Model Context Protocol (MCP) server enables AI developer tools to run, validate, and write tests autonomously.

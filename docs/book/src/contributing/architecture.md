@@ -1,35 +1,54 @@
-# Codebase Architecture
+# Engine Architecture & System Design
 
-Understand Gherkio's package structures, compilation hierarchy, and execution control flows.
+> 🔴 **Expert & Platform Engineering Guide** — A deep-dive into Gherkio's static Go engine, package hierarchy, thread-safe execution pipeline, security sandboxing, and reporting subsystems.
 
 ---
 
 ## 📁 Core Package Hierarchy
 
-Gherkio's codebase is designed with modularity, strong decoupling, and easy testability in mind:
+Gherkio's codebase is designed in Go with strict decoupling, zero external runtime dependencies, and high execution speed:
 
-- **`cmd/`**: CLI command interfaces powered by Cobra. Each subcommand (e.g. `run`, `init`, `validate`) registers itself via Go package `init()` functions to the unexported root command.
-- **`internal/parser/`**: Reads YAML Gherkio DSL files, performs syntactic structural parsing, checks schema validity, and compiles raw strings into Go struct schemas.
-- **`internal/runner/`**: The core execution engine. Handles the sequence state machine, processes HTTP requests, manages dynamic variable interpolation, evaluates assertions against matchers, and prints terminal logs.
-- **`internal/mcp/`**: A programmatic Model Context Protocol (MCP) server stdio wrapper, exposing parser, workspace, and runner capabilities directly to AI models.
-- **`internal/report/`**: Generates and compiles HTML/JSON integration report assets.
+- **`cmd/`**: CLI command interfaces powered by Cobra. Defines subcommands (`run`, `init`, `validate`, `convert`, `schema`, `mcp`).
+- **`internal/parser/`**: Reads YAML Gherkio DSL files, performs syntactic structural parsing, checks schema validity, and compiles raw strings into Go AST structs.
+- **`internal/runner/`**: The core execution state machine. Manages HTTP client connections, dynamic variable scopes (`$accounts`, `$env`, saved variables), timing budgets, and assertion evaluation.
+- **`internal/matcher/`**: Evaluation engine for value matchers (`equal`, `contains`, `greaterThan`, `lessThan`, `oneOf`, `in`, `matchesRegex`, `jwt`, `schema`).
+- **`internal/mcp/`**: Native JSON-RPC Model Context Protocol (MCP) server running on `stdio`, exposing 25+ tools and resources for AI assistant workflows.
+- **`internal/report/`**: Compiles execution traces into console ANSI logs, JUnit XML, HTML interactive dashboards, and JSON files.
 
 ---
 
-## ⚡ Execution Control Flow
+## ⚡ Step Execution & State Machine
 
-When a developer runs `gherkio run <file>`, the engine follows this linear sequence:
+The runner evaluates each scenario step using an isolated state machine:
 
 ```mermaid
 graph TD
-    A[Cobra Command CLI] --> B[Parser: Read & Validate DSL]
-    B --> C[Workspace: Load Config & Environment]
-    C --> D[Runner: Initialize Execution Context]
-    D --> E[Runner: Run SETUP steps]
-    E -- Success --> F[Runner: Run Main STEPS]
-    E -- Failure --> G[Skip Main STEPS]
-    F --> H[Runner: Run TEARDOWN steps]
+    A[Cobra CLI invocation] --> B[Parser: Load & Validate DSL YAML]
+    B --> C[Workspace: Resolve Environment & Credentials]
+    C --> D[Runner: Initialize Scenario Context]
+    D --> E[Execute SETUP Steps]
+    E -- Success --> F[Execute STEPS Sequence]
+    E -- Failure --> G[Skip STEPS Sequence]
+    F --> H[Execute TEARDOWN Steps]
     G --> H
-    H --> I[Report: Compile HTML/JSON Logs]
-    I --> J[Exit with Status Code]
+    H --> I[Report Subsystem: Render Logs & Files]
+    I --> J[Exit Code: 0 = PASS, 1 = FAIL]
 ```
+
+---
+
+## 🛡️ Outbound Network Security & SSRF Sandboxing
+
+Gherkio features built-in Server-Side Request Forgery (SSRF) prevention sandboxing for safe execution in untrusted CI/CD pipelines:
+* **IP Whitelisting / Blacklisting**: Inspects resolved IP addresses prior to TCP connection handshake.
+* **Subnet Isolation**: Prevents test steps from probing internal cloud metadata endpoints (e.g. `169.254.169.254` or `127.0.0.1/8`) unless explicitly authorized in `.gherkio/config.yaml`.
+* **Credential Redaction**: Intercepts terminal logging buffers and automatically sanitizes values from `$accounts` and authorization headers.
+
+---
+
+## 🏎️ Parallel Execution & Thread Safety
+
+When running multiple scenarios concurrently via `gherkio run --parallel=4`:
+* **Isolated Scenario Scopes**: Each scenario run maintains its own isolated memory map for saved variables (`save` block) and response buffers.
+* **Stateless HTTP Client Pooling**: Shares TCP connections safely across worker goroutines while isolating TLS session states.
+* **Thread-Safe Reporting**: Synchronizes stdout ANSI log printing and file output writers via mutex locking to guarantee clean, non-interleaved terminal logs.

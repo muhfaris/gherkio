@@ -4,10 +4,58 @@ Gherkio can verify application cache state in the same scenario that exercises
 the HTTP API. Redis access is deliberately read-only: scenarios can inspect
 keys, but cannot create, update, or delete production data.
 
-Define the connection once in the active [environment](../reference/environments.md#redis-connections),
-then reference its name from a `redis` step.
+Define the connection once in your active environment file (`.gherkio/environments/<env>.yaml`), then reference its connection name from your `redis` scenario step.
 
-## Complete API and Cache Example
+---
+
+## 🔌 Defining Redis Connections
+
+Redis connection configurations belong in environment files (`.gherkio/environments/local.yaml`, `staging.yaml`, etc.) under the `connections:` block. This keeps host IPs, ports, and credentials out of your test scenario files.
+
+### 1. Standalone Redis Connection
+
+Add a named connection entry to `.gherkio/environments/local.yaml`:
+
+```yaml
+baseUrl: http://localhost:8080
+
+connections:
+  application-cache:
+    type: redis
+    address: localhost:6379
+    database: 0
+    password: $GHERKIO_REDIS_PASSWORD   # Optional: Supports GHERKIO_ env vars
+    timeout: 5s
+```
+
+### 2. Redis Sentinel Connection (High Availability)
+
+For Sentinel clusters, replace `address` with a `sentinel` block:
+
+```yaml
+connections:
+  application-cache:
+    type: redis
+    sentinel:
+      master: mymaster
+      addresses:
+        - sentinel-1:26379
+        - sentinel-2:26379
+        - sentinel-3:26379
+      username: sentinel-user
+      password: $GHERKIO_SENTINEL_PASSWORD
+    username: redis-user
+    password: $GHERKIO_REDIS_PASSWORD
+    database: 0
+    timeout: 5s
+```
+
+---
+
+## 📝 Complete API and Cache Example
+
+Once your connection (`application-cache`) is declared in your environment file, reference it directly inside your scenario step:
+
 
 ```yaml
 scenario: Product API populates Redis cache

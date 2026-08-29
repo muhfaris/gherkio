@@ -1,0 +1,9 @@
+/* Mermaid's default theme uses colors intended for a light canvas. Keep the
+   complete diagram readable when the surrounding mdBook theme is dark. */
+.mermaid {
+  background-color: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-x: auto;
+}

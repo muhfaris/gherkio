@@ -218,7 +218,14 @@ schemas:
   path: .gherkio/schemas
 
 # ----------------------------------------------------------------------
-# 5. Reports & Core Failure Snapshots
+# 5. Multipart Assets Configuration
+# ----------------------------------------------------------------------
+assets:
+  # Default directory used for multipart files declared with a relative name.
+  path: assets
+
+# ----------------------------------------------------------------------
+# 6. Reports & Core Failure Snapshots
 # ----------------------------------------------------------------------
 reports:
   # Output path where execution summaries are compiled.
@@ -244,7 +251,7 @@ reports:
     retainCount: 50
 
 # ----------------------------------------------------------------------
-# 6. Security, Masking, and Domain Sandboxing Guardrails
+# 7. Security, Masking, and Domain Sandboxing Guardrails
 # ----------------------------------------------------------------------
 security:
   # Sensitive field masking to secure stdout logs and run traces.

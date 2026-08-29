@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+- **Redis Cache Assertions**: Added controlled, read-only Redis steps for `GET`, `EXISTS`, `TTL`, and `HGETALL`, including `redis.*` assertions, saved values, retries, timing checks, authentication, TLS, database selection, and Redis Sentinel primary discovery.
+- **Virtual-User Load Runs**: Added `--virtual-users` and `--iterations-per-user` for concurrent isolated users running complete workflows sequentially, with virtual-user and iteration metadata included in reports.
+- **Response-Aware Random Selection**: Added `${randomItem(array[,field])}` using the runtime collection length, including typed object preservation when the expression is used as an exact `set:` value.
+- **String Helpers**: Added `${trimPrefix(...)}`, `${trimSuffix(...)}`, and `${split(...,delimiter,index)}` interpolation helpers.
+- **Configurable Multipart Assets**: Added `assets.path` to `.gherkio/config.yaml` while retaining the existing project-root and fixtures fallbacks when it is omitted.
+
+### Changed
+- **Request Pacing**: Added `--request-delay` with sensible defaults for individual files and directory runs.
+- **Step-Prefixed Variables**: Saved names such as `1-ticketId` and `2-userId` now validate, interpolate, and convert consistently.
+- **Load-Test Reporting**: HTML reports now present load-run summaries and virtual-user workflow executions with clearer expandable details.
+- **Documentation Theme**: Set Navy as the default mdBook theme and placed Mermaid diagrams on a light canvas for readable labels across Light, Navy, Ayu, and Coal.
+
+### Fixed
+- **Strict MCP Schemas**: MCP tool input schemas now emit explicit object properties and strict validation metadata required by stricter clients.
+- **Deterministic Query Parameters**: Request URLs now serialize query parameters in a stable order.
+
+## [0.1.0-alpha.8] - 2026-08-08
+
+### Added
+- **Payload-Aware MCP Authoring**: MCP scenario creation prompts can derive useful request bodies, queries, headers, expectations, and saved values from supplied API payload context.
+
+### Fixed
+- **MCP Step Isolation**: Running step index `0` through `run_test` now executes only that step instead of falling back to the complete scenario.
+
+## [0.1.0-alpha.7] - 2026-07-23
+
+### Added
+- **Collection Assertions**: Added `any(path)` and expanded `all(path)` collection matching, including nested collection fields.
+- **Session Persistence**: Saved scenario values can persist between runs and are available to reverse cURL conversion and subsequent workflows.
+- **Collection Diagnostics**: HTML reports show collection assertion details and clearer matching failures.
+
+### Changed
+- **Showcase Suite**: Standardized the example scenarios, added third-party Stripe virtualization, and integrated the showcase into CI.
+
 ## [0.1.0-alpha.6] - 2026-07-15
 
 ### Added
@@ -18,6 +55,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Rich Schema Hover Documentation**: Enhanced autocomplete JSON schemas with detailed description strings for editor tooltips.
 - **Declarative Variable Assignment (`set:`)**: Direct inline variable assignment step style.
 - **Environment Context Command (`env context`)**: Interactive auto-selection hints command.
+
+## [0.1.0-alpha.5] - 2026-06-22
+
+### Added
+- **Fail-Fast Mode**: Added runner and MCP support for stopping after the first failure while still guaranteeing teardown execution.
+- **Composition Overrides**: Added `with:` variables for `use:` steps, with interpolation and restoration of the caller's values after composition completes.
+- **Save-Path Warnings**: Missing response paths referenced by `save:` now produce non-fatal warnings in terminal, JSON, and HTML output.
+- **Resolved Variables in Reports**: Reports now expose resolved workflow variables for debugging and traceability.
+- **MCP Documentation Improvements**: Expanded DSL resources with multipart, query, bracket-path, assertion, and granular execution guidance.
+
+### Changed
+- **Documentation Discoverability**: Added AI-crawler metadata, FAQs, and denser answer-first project documentation.
+
+## [0.1.0-alpha.4] - 2026-06-10
+
+### Added
+- **Conditional Steps**: Added value-based conditional execution for declarative workflows.
+- **Scenario and Step Metadata**: Added scenario `description`, step `name`, and request `query` fields.
+- **Structured Request Reports**: HTML and JSON reports now preserve step names and expose request method, URL, headers, query parameters, and body details.
+- **Editor and Report Documentation**: Added dedicated references for JSON Schema editor integration and generated test reports.
+
+### Fixed
+- **MCP Authoring Feedback**: Improved MCP test creation and execution behavior based on early user feedback.
+
+## [0.1.0-alpha.3] - 2026-05-31
+
+### Added
+- **Declarative Collection Transforms**: Added filtering, slicing, projection, and explicit type casting for response collections used in later requests.
+- **Partial Execution with `--until`**: Added execution through a selected step boundary.
+- **Swagger Petstore Showcase**: Added a complete public API example suite.
+
+### Fixed
+- **JSON Number Precision**: Preserved large integer values without lossy floating-point conversion.
+- **Report Error Handling**: Corrected failures encountered while producing reports.
+- **MCP DSL Resources**: Exposed variable and DSL guidance through MCP resources.
 
 ## [0.1.0-alpha.2] - 2026-05-29
 
@@ -36,7 +108,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.1.0-alpha.1] - 2026-05-20
+## [0.1.0-alpha.1] - 2026-05-28
 
 ### Added
 - **RFC-18 Automated Failure Debug Snapshots**: Auto-capturing raw request/response payload snapshots during test failures.
@@ -48,7 +120,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.1.0-alpha] - 2026-05-15
+## [0.1.0-alpha] - 2026-05-26
 
 ### Added
 - **Core Declarative Engine**: Sequential HTTP requests, responses, headers, and parameter binding.

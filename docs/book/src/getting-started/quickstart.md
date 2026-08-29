@@ -1,6 +1,6 @@
-# Quickstart
+# 2-Minute Quickstart
 
-Start testing your HTTP APIs with Gherkio in under 2 minutes. We will initialize a sandbox project, review the generated declarative scenario, and execute it.
+> 🟢 **Beginner Guide** — Start testing your HTTP APIs with Gherkio in under 2 minutes. We will initialize a sandbox project, review the generated declarative scenario, and execute it.
 
 ---
 
@@ -106,3 +106,16 @@ SCENARIO RESULT: PASSED
 Total Steps: 1 | Passed: 1 | Failed: 0 | Duration: 182ms
 =======================================================
 ```
+
+---
+
+## 🔍 What Happened Behind the Scenes?
+
+When you ran `gherkio run`:
+1. Gherkio loaded `.gherkio/environments/local.yaml` and resolved the base target URL.
+2. Credentials and variables (`$username`, `$password`) were dynamically injected.
+3. The HTTP request was compiled and dispatched over a secure connection.
+4. Response status, body values, and schema definitions were evaluated.
+5. Saved tokens were stored in scenario runtime context for downstream steps.
+
+To learn more about the 9-phase execution pipeline, see **[What Happens in a Test: Execution Lifecycle](execution-lifecycle.md)**.

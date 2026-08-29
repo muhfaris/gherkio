@@ -5,6 +5,8 @@ language = "en"
 description = "Gherkio is a declarative API integration testing platform. Write tests in YAML, run as a static Go binary with zero dependencies. Features native MCP server for AI assistants, SSRF prevention sandboxing, and structured CI/CD reporting."
 
 [output.html]
+default-theme = "navy"
+additional-css = ["theme/custom.css"]
 additional-js = ["mermaid.min.js", "mermaid-init.js"]
 no-section-label = true
 git-repository-url = "https://github.com/muhfaris/gherkio"
