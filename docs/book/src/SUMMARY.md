@@ -14,6 +14,7 @@
     - [Setup & Teardown](dsl/setup-teardown.md)
   - [Steps & Actions](dsl/steps.md)
     - [HTTP Requests](dsl/requests.md)
+    - [Redis Cache Checks](dsl/redis.md)
     - [Scenario Composition](dsl/composition.md)
   - [Assertions & Validation](dsl/assertions.md)
     - [Value Matchers](dsl/matchers.md)

@@ -67,6 +67,9 @@ primary using `SENTINEL get-master-addr-by-name`, so a retried step discovers th
 new primary after failover. Credentials and TLS inside `sentinel` apply only to
 Sentinel; the connection-level credentials and TLS apply to the Redis primary.
 
+See [Redis Cache Checks](../dsl/redis.md) for using the named connection in a
+test scenario with assertions, saved values, timing limits, and retry polling.
+
 ---
 
 ## ⚡ Microservice Endpoint Overrides

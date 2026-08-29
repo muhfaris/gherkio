@@ -86,6 +86,9 @@ Redis steps expose only the read-only commands `get`, `exists`, `ttl`, and
 the `redis.*` path: `redis.exists`, `redis.value`, `redis.value.<field>`, and
 `redis.ttl`. Existing matchers, timing assertions, and retry strategies apply.
 
+See [Redis Cache Checks](redis.md) for complete API-plus-cache scenarios,
+command-specific result paths, TTL and hash examples, polling, and Sentinel use.
+
 ---
 
 ## 🔀 Conditional Execution (`if`)
