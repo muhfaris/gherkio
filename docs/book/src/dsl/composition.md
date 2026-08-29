@@ -10,19 +10,31 @@ A common testing pattern is performing an authentication sequence before request
 
 ### Shared Auth Step: `.gherkio/tests/shared/login.yaml`
 ```yaml
-scenario: Authenticate Admin
+scenario: Authenticate User
 steps:
   - request:
       method: POST
       url: /auth/login
       body:
-        username: $accounts.admin.username
-        password: $accounts.admin.password
+        # Option A: Dynamic runtime account resolution (selected via --account <name> CLI flag)
+        username: $accounts.username
+        password: $accounts.password
+
+        # Option B: Explicit account name (hardcoded to specific credential block)
+        # username: $accounts.admin.username
+        # password: $accounts.admin.password
     expect:
       status: 200
     save:
-      adminToken: body.token
+      authToken: body.token
 ```
+
+> 💡 **Dynamic Account Resolution with `--account`**:
+> If you write `$accounts.username` or `$accounts.password` without an account name, Gherkio automatically maps those variables to the active account specified by the `--account` CLI parameter:
+> * `gherkio run --account admin` → `$accounts.username` resolves to `$accounts.admin.username`
+> * `gherkio run --account alice` → `$accounts.username` resolves to `$accounts.alice.username`
+>
+> This allows your shared `login.yaml` file to be 100% reusable across different user roles and test accounts without modifying the scenario YAML!
 
 ### Main Scenario: `.gherkio/tests/users/list.yaml`
 ```yaml
@@ -34,10 +46,11 @@ steps:
       method: GET
       url: /users
       headers:
-        Authorization: "Bearer ${adminToken}"   # Uses variable saved in the used scenario
+        Authorization: "Bearer ${authToken}"   # Uses variable saved in the used scenario
     expect:
       status: 200
 ```
+
 
 ---
 
@@ -136,58 +149,94 @@ To protect runner performance and prevent system freezes:
 
 ## ↔ Variable Overrides (`with:`)
 
-Sometimes you need to pass a value *into* a composed scenario, rather than just consuming values that bubble *out*. The `with:` block lets you inject temporary variables into the used scenario's context:
+Sometimes you need to pass dynamic input parameters *into* a composed scenario (parameterized test templates) rather than just consuming variables that bubble *out*. The `with:` block lets you inject temporary variable overrides into the target composed scenario's execution context.
 
 ```yaml
 - use: shared/lookup/status_claim.yaml
   with:
-    PARENT_CLAIM_ISSUE_ID: $STATUS_APPROVED_ID
+    CLAIM_ID: $CREATED_CLAIM_ID
+    EXPECTED_STATUS: "APPROVED"
 ```
 
-### How it works
+### ⚙️ How `with:` Works
 
-1. Each key in `with:` is **interpolated** against the current execution context before injection.
-2. The resolved values are injected as local variables into the used scenario for the duration of its execution.
-3. After the `use:` step completes, the **previous values are restored** — the override doesn't leak to subsequent steps.
+1. **Interpolation**: Each expression in `with:` is evaluated against the current parent context before injection.
+2. **Context Scope**: The resolved values are injected as local variables into the target scenario for the duration of its execution.
+3. **Automatic Restoration**: Once the composed scenario finishes executing, previous parent variable values are restored so the injected override doesn't pollute subsequent steps in the main scenario.
 
-### Real-world example
+---
+
+### 📂 Complete Two-File Workflow Example
+
+Below is a complete real-world setup showing both the shared target scenario file and the main parent scenario file using `with:`.
+
+#### 1. Shared Composed Scenario: `.gherkio/tests/shared/lookup/status_claim.yaml`
+
+This scenario expects two input variables (`$CLAIM_ID` and `$EXPECTED_STATUS`), which will be injected via `with:` by any parent scenario:
 
 ```yaml
-scenario: check claim status after approval
-
-setup:
-  - request:
-      method: POST
-      url: /auth/login
-      body:
-        username: $accounts.default.username
-        password: $accounts.default.password
-    expect:
-      status: 200
-    save:
-      STATUS_APPROVED_ID: body.approvedStatusId
-
+scenario: Shared Claim Status Lookup
 steps:
-  # Pass the approved status ID into a shared lookup scenario
-  - use: shared/lookup/status_claim.yaml
-    with:
-      PARENT_CLAIM_ISSUE_ID: $STATUS_APPROVED_ID
-
-  - request:
+  - name: Fetch claim status details
+    request:
       method: GET
-      url: /claims/$CLAIM_ID
+      url: /v1/claims/$CLAIM_ID            # Uses injected $CLAIM_ID
       headers:
-        Authorization: "Bearer ${adminToken}"
+        Authorization: "Bearer ${authToken}"
     expect:
       status: 200
-      body.status: Approved
+      body.data.status: "$EXPECTED_STATUS" # Asserts against injected $EXPECTED_STATUS
+    save:
+      claimAssignee: body.data.assignedTo  # Bubbles up saved variable back to parent
 ```
 
-### Notes
+#### 2. Main Parent Scenario: `.gherkio/tests/claims/verify-approval.yaml`
 
-- `with:` is **only valid on `use:` steps**. It cannot be combined with `request:`.
-- Values support full variable interpolation (`$var`, `${var:default}`, `$accounts.<name>.<field>`, built-in generators, etc.).
-- Overrides take precedence over any variables with the same name from the parent context, but only inside the used scenario.
+The parent scenario imports `shared/lookup/status_claim.yaml` and passes runtime parameters using the `with:` block:
+
+```yaml
+scenario: Verify Order Claim Approval Flow
+
+setup:
+  - use: shared/login.yaml                # Logs in and provides $authToken
+
+steps:
+  - name: Create new insurance claim
+    request:
+      method: POST
+      url: /v1/claims
+      headers:
+        Authorization: "Bearer ${authToken}"
+      body:
+        policyId: "POL-1002"
+        amount: 500
+    expect:
+      status: 201
+    save:
+      NEW_CLAIM_ID: body.data.id          # Saves "CLM-9948"
+
+  - name: Validate claim status using shared lookup template
+    use: shared/lookup/status_claim.yaml
+    with:
+      CLAIM_ID: $NEW_CLAIM_ID             # Passes $NEW_CLAIM_ID into the shared step as $CLAIM_ID
+      EXPECTED_STATUS: "PENDING"          # Passes expected status threshold
+
+  - name: Verify assignee bubbled up from shared step
+    request:
+      method: GET
+      url: /v1/users/$claimAssignee       # Uses $claimAssignee saved by the shared lookup step
+    expect:
+      status: 200
+```
+
+---
+
+### 💡 Key Rules for `with:`
+
+- **`use:` Only**: `with:` is **only valid on `use:` steps**. It cannot be combined with standard `request:` steps.
+- **Full Interpolation Support**: Values inside `with:` support all Gherkio expressions (`$var`, `${var:default}`, `$accounts.username`, built-in generators, etc.).
+- **Scoped Precedence**: Injected variables take highest precedence inside the target composed scenario without modifying the caller's global variable state.
+
 
 ---
 
@@ -198,4 +247,3 @@ When executing nested scenarios, tracing execution flows and context variables c
 1. **Visual Grouping**: Composed scenarios are rendered as distinct, visually encapsulated boxes containing their inner steps.
 2. **Nesting Indentation**: Steps inside composed scenarios are dynamically indented according to their nesting `depth`.
 3. **Variable Snapshots**: The entry point of every composed scenario captures a complete snapshot of all active context variables (both inherited and overridden via `with:`), allowing you to inspect execution states during debug.
-

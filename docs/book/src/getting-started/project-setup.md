@@ -4,36 +4,42 @@ Learn how Gherkio structures its folders, configures environments, and maps serv
 
 ---
 
-## 📁 The `.gherkio/` Directory Layout
+## 📁 Directory & Workspace Layout
 
-All Gherkio configuration, variables, tests, schemas, and reports reside inside a single, hidden `.gherkio/` folder at the root of your repository:
+All Gherkio configuration, variables, tests, schemas, and reports reside inside a single, hidden `.gherkio/` folder at the root of your project workspace. Test media files (images, avatars, PDFs for `multipart` uploads) reside in an `assets/` directory at the project root:
 
 ```
-.gherkio/
-├── config.yaml                     # Global test execution config
-├── credentials/                    # Environment-specific usernames & keys
-│   └── local.yaml
-├── environments/                   # Target API hosts and service mappings
-│   └── local.yaml
-├── schemas/                        # Reusable JSON/YAML validation schemas
-│   └── example/
-│       ├── login-response.yaml
-│       └── user-response.yaml
-├── tests/                          # Your declarative YAML test scenario suites
-│   └── example/
-│       ├── accounts/
-│       │   └── login-as-alice.yaml
-│       ├── auth/
-│       │   ├── login.yaml
-│       │   ├── me.yaml
-│       │   └── refresh.yaml
-│       └── builtins/
-│           └── login-with-generators.yaml
-└── reports/                        # Automatically generated test run logs & HTML reports
-    ├── archive/
-    ├── failures/                   # Dynamic JSON snapshots for failed assertions
-    └── latest/
+my-project/
+├── .gherkio/                           # Gherkio engine configuration & test files
+│   ├── config.yaml                     # Global test execution config
+│   ├── credentials/                    # Environment-specific usernames & keys
+│   │   └── local.yaml
+│   ├── environments/                   # Target API hosts and service mappings
+│   │   └── local.yaml
+│   ├── schemas/                        # Reusable JSON/YAML validation schemas
+│   │   └── example/
+│   │       ├── login-response.yaml
+│   │       └── user-response.yaml
+│   ├── tests/                          # Your declarative YAML test scenario suites
+│   │   └── example/
+│   │       ├── accounts/
+│   │       │   └── login-as-alice.yaml
+│   │       ├── auth/
+│   │       │   ├── login.yaml
+│   │       │   ├── me.yaml
+│   │       │   └── refresh.yaml
+│   │       └── builtins/
+│   │           └── login-with-generators.yaml
+│   └── reports/                        # Automatically generated test run logs & HTML reports
+│       ├── archive/
+│       ├── failures/                   # Dynamic JSON snapshots for failed assertions
+│       └── latest/
+└── assets/                             # Test media files (images, PDFs) for multipart file uploads
+    ├── john-avatar.png
+    ├── sample-image.jpg
+    └── resume.pdf
 ```
+
 
 ---
 
@@ -71,7 +77,13 @@ schemas:
   path: .gherkio/schemas            # Directory containing validation schemas
 
 # ----------------------------------------------------------------------
-# 5. Reports & Core Failure Snapshots
+# 5. Multipart File Assets Directory
+# ----------------------------------------------------------------------
+assets:
+  path: assets                      # Default directory for multipart file uploads
+
+# ----------------------------------------------------------------------
+# 6. Reports & Core Failure Snapshots
 # ----------------------------------------------------------------------
 reports:
   path: .gherkio/reports            # Output path for test summaries
@@ -86,7 +98,7 @@ reports:
     retainCount: 50                 # Retain up to 50 debug snapshots
 
 # ----------------------------------------------------------------------
-# 6. Security and Sandboxing (Policy Engine)
+# 7. Security and Sandboxing (Policy Engine)
 # ----------------------------------------------------------------------
 security:
   mask:
@@ -104,7 +116,33 @@ security:
     blockedDomains:                 # Explicitly blocked targets
       - "analytics.untrusted.com"
     blockPrivateSubnets: true       # Prevent loopback (127.0.0.1) and private IP calls
+
+# ----------------------------------------------------------------------
+# 8. Authentication Defaults (Optional)
+# ----------------------------------------------------------------------
+jwt_token_path: "body.token"        # JSON path for auto-extracting JWT tokens
 ```
+
+The default `assets.path: assets` points to the `assets/` directory beside `.gherkio/`. You can place the directory elsewhere by changing the path relative to the project root:
+
+```yaml
+assets:
+  path: .gherkio/test-assets
+```
+
+This produces a layout such as:
+
+```text
+my-project/
+└── .gherkio/
+    ├── config.yaml
+    ├── test-assets/
+    │   └── attachments/
+    │       └── sample.pdf
+    └── tests/
+```
+
+A multipart file value of `attachments/sample.pdf` will then resolve inside `.gherkio/test-assets/`. See [Multipart Form Data](../dsl/requests.md#multipart-form-data-multipart) for complete examples and lookup rules.
 
 ---
 
@@ -273,4 +311,3 @@ If you don't use VS Code or prefer localized configuration, add this directive c
 ```yaml
 # yaml-language-server: $schema=../../.gherkio-schema.json
 ```
-

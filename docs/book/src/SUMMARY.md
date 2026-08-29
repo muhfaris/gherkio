@@ -2,20 +2,24 @@
 
 [Gherkio Documentation](README.md)
 
-- [Getting Started](getting-started/introduction.md)
-  - [Installation](getting-started/installation.md)
-  - [2-Minute Quickstart](getting-started/quickstart.md)
-  - [Folder & Project Setup](getting-started/project-setup.md)
-  - [Tutorial: Build Your First Test](getting-started/first-test-tutorial.md)
-  - [Interactive Playground](getting-started/playground.md)
+## 🟢 Beginner Guide
+- [Introduction](getting-started/introduction.md)
+- [Installation](getting-started/installation.md)
+- [2-Minute Quickstart](getting-started/quickstart.md)
+- [Folder & Project Setup](getting-started/project-setup.md)
+- [Tutorial: Build Your First Test](getting-started/first-test-tutorial.md)
+- [What Happens in a Test: Execution Lifecycle](getting-started/execution-lifecycle.md)
+- [Interactive Playground](getting-started/playground.md)
 
-- [DSL Reference](dsl/overview.md)
+## 🟡 Advanced Guide
+- [DSL Overview](dsl/overview.md)
   - [Scenarios & Lifecycle](dsl/scenarios.md)
     - [Setup & Teardown](dsl/setup-teardown.md)
   - [Steps & Actions](dsl/steps.md)
     - [HTTP Requests](dsl/requests.md)
     - [Redis Cache Checks](dsl/redis.md)
     - [Scenario Composition](dsl/composition.md)
+    - [Service Mocking & Virtualization](dsl/mocking.md)
   - [Assertions & Validation](dsl/assertions.md)
     - [Value Matchers](dsl/matchers.md)
     - [Schema Validation](dsl/schemas.md)
@@ -23,7 +27,6 @@
   - [Variables & Context](dsl/variables.md)
     - [Credentials](dsl/credentials.md)
     - [Retry & Polling](dsl/retry.md)
-
 - [CLI Reference](cli/overview.md)
   - [gherkio (Root CLI)](cli/gherkio.md)
   - [gherkio init (Workspace Setup)](cli/init.md)
@@ -33,8 +36,7 @@
   - [gherkio schema (JSON Schema)](cli/schema.md)
   - [gherkio mcp (AI Integration)](cli/mcp.md)
   - [Shell Auto-Completions](cli/completion.md)
-
-- [Recipes](recipes/overview.md)
+- [Recipes & Patterns](recipes/overview.md)
   - [Authentication Flow](recipes/authentication.md)
   - [Bulk Upload Flow](recipes/bulk-upload.md)
   - [Negative Testing](recipes/negative-testing.md)
@@ -44,21 +46,24 @@
   - [Parallel Execution](recipes/parallel-execution.md)
   - [Data Management](recipes/data-management.md)
 
-- [MCP Server](mcp/overview.md)
-  - [Setup](mcp/setup.md)
+## 🔴 Expert & Platform Engineering
+- [MCP Server & AI Integration](mcp/overview.md)
+  - [Setup & Configuration](mcp/setup.md)
   - [Tools Reference](mcp/tools.md)
   - [Resources Reference](mcp/resources.md)
-  - [LLM Integration](mcp/llm-integration.md)
+  - [LLM & AI Assistant Workflows](mcp/llm-integration.md)
+- [Architecture & Engine Design](contributing/architecture.md)
+- [Enterprise CI/CD & Reporting](reference/reports.md)
 
-- [FAQ](reference/faq.md)
-- [Reference](reference/configuration.md)
+## 📚 Reference & FAQ
+- [Frequently Asked Questions](reference/faq.md)
+- [Configuration Reference](reference/configuration.md)
   - [Environments](reference/environments.md)
   - [Credentials File](reference/credentials-file.md)
   - [Schema Definitions](reference/schema-definitions.md)
-  - [Test Reports & Run Results](reference/reports.md)
 
-- [Contributing](contributing/overview.md)
-  - [Architecture](contributing/architecture.md)
+## 🤝 Contributing
+- [Contributing Overview](contributing/overview.md)
   - [Adding Matchers](contributing/adding-matchers.md)
   - [Deploying to GitHub Pages](contributing/deploying-docs.md)
 

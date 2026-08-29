@@ -119,11 +119,97 @@ steps:
       body.updated: true
 ```
 
-#### 💡 Key Details:
+#### 📁 Assets Directory Location & Project Tree
+
+File attachments specified under `multipart.files` are resolved relative to your project workspace root directory (the parent directory of `.gherkio/`). By convention, create an `assets/` directory at your project root to store test media files (images, avatars, PDFs):
+
+You can configure that default directory in `.gherkio/config.yaml`:
+
+```yaml
+assets:
+  path: assets
+```
+
+The path is relative to the project root, although an absolute directory is also accepted. With this configuration, a multipart value such as `avatar: "john-avatar.png"` resolves to `<projectRoot>/assets/john-avatar.png`. If `assets.path` is omitted, the existing project-root and fixtures lookup behavior remains unchanged.
+
+```
+my-api-tests/                      <-- Project Workspace Root
+├── .gherkio/                      <-- Gherkio Test Engine Config & Suites
+│   ├── config.yaml
+│   ├── environments/
+│   │   └── local.yaml
+│   └── tests/
+│       └── user/
+│           └── upload-avatar.yaml
+└── assets/                        <-- Assets Directory for Multipart File Uploads
+    ├── john-avatar.png
+    ├── sample-image.jpg
+    └── resume.pdf
+```
+
+#### Custom Assets Directory
+
+To keep upload fixtures inside `.gherkio`, set a custom path relative to the project root:
+
+```yaml
+# .gherkio/config.yaml
+assets:
+  path: .gherkio/test-assets
+```
+
+The corresponding project structure is:
+
+```text
+my-api-tests/
+└── .gherkio/
+    ├── config.yaml
+    ├── test-assets/
+    │   ├── avatars/
+    │   │   └── john.png
+    │   └── documents/
+    │       └── resume.pdf
+    └── tests/
+        └── upload.yaml
+```
+
+Files are then referenced relative to the configured directory:
+
+```yaml
+multipart:
+  files:
+    avatar: "avatars/john.png"
+    resume:
+      path: "documents/resume.pdf"
+      contentType: "application/pdf"
+```
+
+The resolved paths are `.gherkio/test-assets/avatars/john.png` and `.gherkio/test-assets/documents/resume.pdf` under the project root.
+
+An absolute assets directory is also supported when the files live outside the project:
+
+```yaml
+assets:
+  path: /opt/gherkio/shared-assets
+```
+
+In that case, `avatar: "avatars/john.png"` resolves to `/opt/gherkio/shared-assets/avatars/john.png`. Absolute paths make a configuration machine-specific, so relative paths are preferable for repositories and CI environments.
+
+#### 💡 Key Details & File Path Resolution:
+
 - **`multipart.fields`**: A flat map of key-value string pairs representing text form fields.
 - **`multipart.files`**: A map of files. The field key is the form property name (e.g. `avatar`).
-- **File Resolution**: Gherkio resolves relative file paths relative to your Gherkio project directory (`.gherkio` parent directory).
-- **MIME Detection**: If using the simple string syntax, Gherkio automatically infers the `Content-Type` of the file from its file extension (e.g. `.png` ➔ `image/png`). Use the advanced map syntax to specify overrides explicitly.
+- **Flexible Directory Paths**: You can configure **any custom directory or path name** in your scenario step (e.g. `"assets/avatar.png"`, `"media/uploads/doc.pdf"`, or `"fixtures/test.csv"`).
+- **Configured Assets Directory**: A bare relative file such as `"avatar.png"` is also looked up under the optional `assets.path` from `.gherkio/config.yaml`.
+- **Search & Resolution Order**: When resolving a file, Gherkio automatically looks up the file in the following order:
+  1. **Absolute Path**: If an absolute path is specified (e.g. `/tmp/test-image.png`)
+  2. **Declared Path**: `<projectRoot>/<declared-path>` (e.g. `my-project/assets/john-avatar.png` or `my-project/custom-folder/file.jpg`)
+  3. **Configured Assets Directory**: `<projectRoot>/<assets.path>/<declared-path>` when configured
+  4. **Project Fixtures Fallback**: `<projectRoot>/fixtures/<filename>`
+  5. **Gherkio Fixtures Fallback**: `<projectRoot>/.gherkio/fixtures/<filename>`
+  6. **Current Working Directory**: Relative path from where `gherkio run` was executed.
+- **MIME Detection**: If using the simple string syntax, Gherkio automatically infers the `Content-Type` of the file from its file extension (e.g. `.png` ➔ `image/png`, `.jpg` ➔ `image/jpeg`). Use the advanced map syntax (`path`, `contentType`, `filename`) to specify explicit overrides.
+
+
 
 ---
 

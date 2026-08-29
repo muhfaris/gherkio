@@ -1,6 +1,6 @@
 # Getting Started with Gherkio
 
-Welcome to Gherkio! This guide is structured to take you from a complete beginner to writing and orchestrating advanced declarative integration tests in minutes.
+> 🟢 **Beginner Guide** — Welcome to Gherkio! This guide is structured to take you from a complete beginner to writing and orchestrating advanced declarative integration tests in minutes.
 
 ---
 
@@ -14,14 +14,16 @@ graph TD
     B --> C[3. 2-Minute Quickstart]
     C --> D[4. Project Setup]
     D --> E[5. Build Your First Test]
-    E --> F[6. Interactive Playground]
+    E --> F[6. Test Execution Lifecycle]
+    F --> G[7. Interactive Playground]
 ```
 
-1.  **[Installation](installation.md)**: Compile from source or fetch compiled binaries for Linux, macOS, or Windows.
-2.  **[2-Minute Quickstart](quickstart.md)**: Scaffold a testing sandbox with `gherkio init` and execute your first local test scenario.
-3.  **[Project & Folder Setup](project-setup.md)**: Master Gherkio's folder layout, configuration overrides, and environments.
-4.  **[Tutorial: Build Your First Test](first-test-tutorial.md)**: A hands-on walkthrough guiding you from an empty file to a multi-step variable-injecting test flow.
-5.  **[Interactive Browser Playground](playground.md)**: Visualize YAML steps and translate legacy cURL statements instantly in your browser.
+1. **[Installation](installation.md)**: Compile from source or fetch compiled binaries for Linux, macOS, or Windows.
+2. **[2-Minute Quickstart](quickstart.md)**: Scaffold a testing sandbox with `gherkio init` and execute your first local test scenario.
+3. **[Project & Folder Setup](project-setup.md)**: Master Gherkio's folder layout, configuration overrides, and environments.
+4. **[Tutorial: Build Your First Test](first-test-tutorial.md)**: A hands-on walkthrough guiding you from an empty file to a multi-step variable-injecting test flow.
+5. **[What Happens in a Test: Execution Lifecycle](execution-lifecycle.md)**: Deep-dive into the 9-phase internal execution pipeline, variable resolution, and assertion rules.
+6. **[Interactive Browser Playground](playground.md)**: Visualize YAML steps and translate legacy cURL statements instantly in your browser.
 
 ---
 
@@ -43,9 +45,9 @@ Gherkio solves this by introducing a **Declarative YAML Domain Specific Language
 ## ⚡ Core Concepts to Remember
 
 As you read the documentation, keep these three structural pillars in mind:
-- **Scenarios**: A scenario is a list of sequential HTTP request steps representing a user journey (e.g. *Login ➔ Create Cart ➔ Checkout*).
-- **Environments**: Define your target base hosts (e.g. `https://api.staging.company.com`) without hardcoding them in test files.
-- **Variables**: Save response fields dynamically (`save: authToken: body.token`) and reuse them in subsequent headers or bodies (`Authorization: Bearer ${authToken}`).
+* **Scenarios**: A scenario is a list of sequential HTTP request steps representing a user journey (e.g. *Login ➔ Create Cart ➔ Checkout*).
+* **Environments**: Define your target base hosts (e.g. `https://api.staging.company.com`) without hardcoding them in test files.
+* **Variables**: Save response fields dynamically (`save: authToken: body.token`) and reuse them in subsequent headers or bodies (`Authorization: Bearer $authToken`).
 
 ---
 
@@ -55,7 +57,7 @@ Gherkio is built on a simple, uncompromising core principle:
 
 > **Integration testing should describe *what* behavior to orchestrate, not *how* to implement it.**
 
-*   **Declarative-First**: Scenarios describe high-level API workflows rather than writing custom test scripts or boilerplate code.
-*   **Readability Matters**: Integration tests are written to be easily read, audited, and maintained by anyone on the team after 1–2 years.
-*   **Deep Observability**: Every execution outputs structured, high-precision payloads and validation tracebacks so failures are debugged instantly.
-*   **Constrained DSL**: No arbitrary coding loops or complex branching inside test files—forcing tests to stay clean, predictable, and robust.
+* **Declarative-First**: Scenarios describe high-level API workflows rather than writing custom test scripts or boilerplate code.
+* **Readability Matters**: Integration tests are written to be easily read, audited, and maintained by anyone on the team after 1–2 years.
+* **Deep Observability**: Every execution outputs structured, high-precision payloads and validation tracebacks so failures are debugged instantly.
+* **Constrained DSL**: No arbitrary coding loops or complex branching inside test files—forcing tests to stay clean, predictable, and robust.

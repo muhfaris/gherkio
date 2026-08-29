@@ -16,15 +16,59 @@ In modern microservice and serverless systems, APIs are frequently eventually co
 
 ### Backoff Strategies
 
-Each strategy applies ±25% random jitter to prevent thundering herd problems:
+Each strategy applies ±25% random jitter to prevent thundering herd problems on your backend servers:
 
-| Strategy | Formula | Example (interval=1000) |
+| Strategy | Formula | Example (`interval: 1000`) |
 | :--- | :--- | :--- |
-| `constant` | `interval × jitter` | 1st: ~950ms, 2nd: ~1050ms, 3rd: ~900ms |
-| `linear` | `interval × attempt × jitter` | 1st: ~950ms, 2nd: ~2100ms, 3rd: ~2700ms |
-| `exponential` | `interval × 2^(attempt-1) × jitter` | 1st: ~950ms, 2nd: ~2100ms, 3rd: ~3600ms |
+| `constant` | `interval × jitter` | 1st: ~1000ms, 2nd: ~1000ms, 3rd: ~1000ms |
+| `linear` | `interval × attempt × jitter` | 1st: ~1000ms, 2nd: ~2000ms, 3rd: ~3000ms |
+| `exponential` | `interval × 2^(attempt-1) × jitter` | 1st: ~1000ms, 2nd: ~2000ms, 3rd: ~4000ms |
+
+#### 📊 Backoff Strategy Timelines (`interval: 1000ms`)
+
+```
+1. CONSTANT BACKOFF (Fixed interval between retries)
+Attempt 1      Attempt 2      Attempt 3      Attempt 4      Attempt 5
+   |--------------|--------------|--------------|--------------|--------------|
+   [0s]          [1s]           [2s]           [3s]           [4s]           [5s]
+                (1.0s)         (1.0s)         (1.0s)         (1.0s)
+
+2. LINEAR BACKOFF (Interval increases linearly: 1s, 2s, 3s, 4s...)
+Attempt 1      Attempt 2           Attempt 3                Attempt 4
+   |--------------|-------------------|------------------------|-----------------------------|
+   [0s]          [1s]                [3s]                     [6s]                          [10s]
+                (1.0s)              (2.0s)                   (3.0s)
+
+3. EXPONENTIAL BACKOFF (Interval doubles each attempt: 1s, 2s, 4s, 8s...)
+Attempt 1      Attempt 2           Attempt 3                Attempt 4
+   |--------------|-------------------|------------------------|-----------------------------------|
+   [0s]          [1s]                [3s]                     [7s]                               [15s]
+                (1.0s)              (2.0s)                   (4.0s)
+```
+
+#### 🔄 Retry Loop Execution Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Runner as Gherkio Runner
+    participant API as Target API Endpoint
+
+    Runner->>API: GET /jobs/job-123 (Attempt 1)
+    API-->>Runner: 200 OK { status: "pending" }
+    Note over Runner: Assertion Failed (status != "completed")<br/>Wait 1000ms (Interval × 1)
+
+    Runner->>API: GET /jobs/job-123 (Attempt 2)
+    API-->>Runner: 200 OK { status: "processing" }
+    Note over Runner: Assertion Failed (status != "completed")<br/>Wait 2000ms (Exponential Backoff)
+
+    Runner->>API: GET /jobs/job-123 (Attempt 3)
+    API-->>Runner: 200 OK { status: "completed" }
+    Note over Runner: Assertions Passed! Step Succeeded.
+```
 
 ---
+
 
 ## ⚡ Eventually Consistent Polling Pattern
 

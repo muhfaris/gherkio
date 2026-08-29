@@ -535,6 +535,20 @@ func resolveMultipartValidationPath(filePath, projectDir, testFilePath string) s
 		}
 	}
 
+	// Try the multipart assets directory configured in .gherkio/config.yaml.
+	if projectDir != "" {
+		if cfg, err := runner.LoadConfig(projectDir); err == nil && cfg.Assets.Path != "" {
+			assetsDir := cfg.Assets.Path
+			if !filepath.IsAbs(assetsDir) {
+				assetsDir = filepath.Join(projectDir, assetsDir)
+			}
+			assetsPath := filepath.Join(assetsDir, filePath)
+			if _, err := os.Stat(assetsPath); err == nil {
+				return assetsPath
+			}
+		}
+	}
+
 	// Try fixtures directory
 	if projectDir != "" {
 		fixturesPath := filepath.Join(projectDir, "fixtures", filepath.Base(filePath))

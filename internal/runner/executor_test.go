@@ -988,6 +988,33 @@ func TestResolveMultipartFilePath(t *testing.T) {
 	})
 }
 
+func TestResolveMultipartFilePathConfiguredAssets(t *testing.T) {
+	tmpDir := t.TempDir()
+	assetsDir := filepath.Join(tmpDir, "testdata", "uploads")
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".gherkio"), 0755); err != nil {
+		t.Fatalf("failed to create config dir: %v", err)
+	}
+	if err := os.MkdirAll(assetsDir, 0755); err != nil {
+		t.Fatalf("failed to create assets dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, ".gherkio", "config.yaml"), []byte("assets:\n  path: testdata/uploads\n"), 0644); err != nil {
+		t.Fatalf("failed to write config: %v", err)
+	}
+
+	want := filepath.Join(assetsDir, "avatar.png")
+	if err := os.WriteFile(want, []byte("image"), 0644); err != nil {
+		t.Fatalf("failed to create asset: %v", err)
+	}
+
+	got, err := resolveMultipartFilePath("avatar.png", tmpDir)
+	if err != nil {
+		t.Fatalf("expected configured asset to resolve: %v", err)
+	}
+	if got != want {
+		t.Fatalf("expected %s, got %s", want, got)
+	}
+}
+
 func TestDetectContentType(t *testing.T) {
 	tests := []struct {
 		filename    string
@@ -1230,4 +1257,3 @@ func TestEvaluateAssertion_JSONPath(t *testing.T) {
 		})
 	}
 }
-
