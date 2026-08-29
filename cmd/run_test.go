@@ -1,10 +1,40 @@
 package cmd
 
 import (
+	"os"
+	"path/filepath"
+	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestDocumentedRunFlagsExist(t *testing.T) {
+	_, file, _, _ := runtime.Caller(0)
+	root := filepath.Clean(filepath.Join(filepath.Dir(file), ".."))
+	paths := []string{
+		filepath.Join(root, "docs", "book", "src", "cli", "run.md"),
+		filepath.Join(root, "docs", "book", "src", "getting-started", "execution-lifecycle.md"),
+	}
+	flagPattern := regexp.MustCompile(`--([a-z][a-z0-9-]*)`)
+
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		for _, match := range flagPattern.FindAllStringSubmatch(string(data), -1) {
+			name := match[1]
+			if name == "help" {
+				continue
+			}
+			if runCmd.Flags().Lookup(name) == nil {
+				t.Errorf("%s documents unsupported gherkio run flag --%s", path, name)
+			}
+		}
+	}
+}
 
 func TestParseRequestDelay(t *testing.T) {
 	tests := []struct {

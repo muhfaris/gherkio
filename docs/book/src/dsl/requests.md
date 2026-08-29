@@ -207,7 +207,7 @@ In that case, `avatar: "avatars/john.png"` resolves to `/opt/gherkio/shared-asse
   4. **Project Fixtures Fallback**: `<projectRoot>/fixtures/<filename>`
   5. **Gherkio Fixtures Fallback**: `<projectRoot>/.gherkio/fixtures/<filename>`
   6. **Current Working Directory**: Relative path from where `gherkio run` was executed.
-- **MIME Detection**: If using the simple string syntax, Gherkio automatically infers the `Content-Type` of the file from its file extension (e.g. `.png` ➔ `image/png`, `.jpg` ➔ `image/jpeg`). Use the advanced map syntax (`path`, `contentType`, `filename`) to specify explicit overrides.
+- **MIME Type**: The simple string syntax uses `application/octet-stream`. Use the advanced map syntax (`path`, `contentType`, `filename`) when the receiving API requires a specific MIME type such as `image/png` or `application/pdf`.
 
 
 

@@ -30,17 +30,17 @@ flowchart TD
 
 ### Phase 1: Initialization & Environment Context Resolution
 Before executing any network calls, Gherkio loads workspace context from the `.gherkio/` directory:
-1. **Reads Configuration (`.gherkio/config.yaml`)**: Identifies default environment, default timeouts, and microservice base URLs.
+1. **Reads Configuration (`.gherkio/config.yaml`)**: Loads project paths, report settings, masking, sandboxing, and multipart asset settings.
 2. **Loads Environment Overrides (`.gherkio/environments/<env>.yaml`)**: Maps base URLs and service endpoints (e.g., `baseUrl: https://api.staging.example.com`).
 3. **Injects Credentials (`.gherkio/credentials/<env>.yaml`)**: Injects user accounts and API keys into the `$accounts.<name>.<field>` variable scope. Sensitive values are marked for automatic console masking.
-4. **Static Syntax Analysis**: Verifies YAML syntax, ensures required fields exist, and checks schema references before sending any network packet.
+4. **Scenario Parsing**: Parses the selected YAML scenario. Run `gherkio validate` separately when you want full static validation before execution.
 
 ---
 
 ### Phase 2: Setup Block Execution (`setup`)
 If your scenario defines a `setup` block, Gherkio executes these steps **first**, before the main `steps` sequence:
 * **Purpose**: Seed test database, authenticate admin users, or create prerequisite resources.
-* **Failure Rule**: If any `setup` step fails, scenario execution halts immediately (unless `--fail-fast=false` is set), jumping directly to cleanup.
+* **Failure Rule**: If setup fails, the main `steps` block is skipped and execution proceeds to `teardown`.
 
 ```yaml
 setup:
@@ -58,16 +58,14 @@ For each step in the `steps` array, Gherkio dynamically compiles the HTTP reques
 1. **Generator Evaluation**: Dynamic variables like `$randomEmail`, `$uuid`, or `$timestamp` are evaluated to produce fresh runtime values.
 2. **Context Substitution**: Placeholders in URL paths, headers, query parameters, and request bodies are replaced:
    * `$accounts.admin.token` → retrieved from credential store.
-   * `$1-userId` → retrieved from variable saved in Step 1.
-   * `$env.baseUrl` → resolved from active environment target.
-3. **Headers & Body Serialization**: Formats payloads as JSON, Form-Data, or UrlEncoded based on request configuration.
+   * `$1-userId` → retrieved when a variable with that explicit name exists.
+3. **Headers & Body Serialization**: Formats payloads as JSON or multipart form data based on request configuration.
 
 ---
 
 ### Phase 4: Network Execution & Outbound Security Sandboxing
 Gherkio passes the compiled HTTP request to its HTTP client engine:
 * **SSRF Protection**: Evaluates destination IP addresses against local subnet blocklists to prevent unintended internal network scanning in CI environments.
-* **TLS & Proxy Rules**: Respects configured CA certificates, custom TLS settings, and proxy endpoints.
 * **HTTP Wire Dispatch**: Opens TCP connection and transmits payload over HTTP/1.1 or HTTP/2.
 
 ---
@@ -75,7 +73,7 @@ Gherkio passes the compiled HTTP request to its HTTP client engine:
 ### Phase 5: Latency Budgeting & Timing Measurement
 Simultaneously with wire execution, Gherkio's high-precision timing engine measures response performance:
 * Records exact latency in milliseconds (`durationMs`).
-* Evaluates configured timing budgets (e.g., `maxDuration: 200ms`).
+* Evaluates configured timing budgets (e.g., `timing: { max: 200ms }`).
 * If response latency exceeds budget, the step is flagged with a timing violation.
 
 ---
@@ -85,17 +83,16 @@ Once the HTTP response arrives, Gherkio evaluates all defined expectations in se
 
 1. **Status Code Assertion**: Compares actual status code against expected (`expect.status`).
 2. **Header Assertions**: Verifies required headers (`Content-Type`, `Cache-Control`).
-3. **Body Value Matchers**: Evaluates field matchers on JSON/XML response bodies:
-   * `equal`, `contains`, `greaterThan`, `lessThan`, `oneOf`, `in`, `matchesRegex`, `exists`, `notNull`.
-4. **JWT Verification**: Decodes JWT headers/payloads and validates claims (expiration `exp`, issuer `iss`, role `role`).
+3. **Body Value Matchers**: Evaluates exact values and supported matchers such as `contains`, `startsWith`, `endsWith`, `regex`, `oneOf`, `in`, `gt`, `gte`, `lt`, `lte`, `exists`, and type/format matchers.
+4. **JWT Assertions**: Auto-decodes a discovered JWT and exposes claims through paths such as `jwt.sub` and `jwt.role`.
 5. **JSON Schema Matching**: Validates full response body against `.gherkio/schemas/<schema-name>.yaml`.
-6. **Redis Cache State Checks**: Optional secondary check querying Redis keys to verify cache invalidation or session storage.
+6. **Redis Assertions**: A separate `redis:` step exposes `redis.exists`, `redis.value`, and `redis.ttl` to the same assertion engine.
 
 ```yaml
 expect:
   status: 200
-  body.user.role: oneOf [admin, manager]
-  body.token: jwt { alg: RS256, exp: future }
+  body.user.role: oneOf admin,manager
+  body.token: exists
   schema: user-profile
 ```
 
@@ -103,8 +100,8 @@ expect:
 
 ### Phase 7: State Persistence & Save Block
 When assertions succeed, Gherkio extracts specified response values and stores them in the scenario runtime context:
-* **Sequential Prefixing**: Saved variables are automatically tracked (e.g., `save: { userId: body.id }` in Step 1 becomes `$1-userId` for explicit traceability).
-* **Cross-Step Propagation**: Subsequent steps can immediately reference `$1-userId` or `$userId` in URLs, headers, or payloads.
+* **Explicit Names**: The key written under `save:` is the variable name. Names such as `1-userId` are supported when explicit step-oriented naming is useful.
+* **Cross-Step Propagation**: Subsequent steps can immediately reference saved values such as `$userId` in URLs, headers, or payloads.
 
 ```yaml
 save:
@@ -133,10 +130,7 @@ teardown:
 ### Phase 9: Reporting & Output Generation
 Finally, Gherkio aggregates all step timing, assertions, and payloads into output reports:
 * **Console Terminal**: Outputs colored ANSI tree view with pass/fail badges, latency indicators, and masked sensitive data.
-* **CI Artifacts**: Writes structured test reports when flags are provided:
-  * `--report-junit report.xml` → Standard XML for Jenkins, GitHub Actions, GitLab CI.
-  * `--report-html report.html` → Interactive visual dashboard.
-  * `--report-json report.json` → Machine-readable summary.
+* **Report Artifacts**: Use `--report html`, `--report json`, or `--report html,json`. Output paths and retention are configured under `reports:` in `.gherkio/config.yaml`.
 
 ---
 
@@ -165,7 +159,7 @@ Here is what happens step-by-step when executing a simple 2-step authentication 
 
 | Feature | Behavior |
 | :--- | :--- |
-| **Fail-Fast** | By default, scenario halts on first failed assertion. Use `--fail-fast=false` to evaluate all steps. |
+| **Failure behavior** | Remaining steps continue by default; a failed setup skips the main block. Teardown still runs. |
 | **Variable Scoping** | Saved variables persist throughout the scenario run; reset on new scenario. |
 | **Teardown Guarantee** | `teardown` block executes regardless of scenario pass/fail outcome. |
 | **Credential Safety** | Values from `$accounts` are automatically sanitized and redacted in logs. |
