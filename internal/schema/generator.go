@@ -164,6 +164,7 @@ func patchExpectSchema(schema *jsonschema.Schema) {
 			"- **body.<path>**: Assert against json body fields (e.g. 'body.id: exists', 'body.status: equal success').\n" +
 			"- **headers.<header>**: Assert against response headers (e.g. 'headers.content-type: contains json').\n" +
 			"- **jwt.<claim>**: Assert against decoded JWT claims (e.g. 'jwt.role: equal admin').\n" +
+			"- **redis.<path>**: Assert against Redis results (e.g. 'redis.exists: true', 'redis.value.id: 42').\n" +
 			"- **count(<path>)**: Assert exact length of an array field (e.g. 'count(body.items): 5').\n" +
 			"- **all(<path>)**: Assert every element in an array matches a matcher (e.g. 'all(body.items.status): equal active').\n\n" +
 			"Available Gherkio matchers:\n" +
@@ -203,6 +204,8 @@ func patchExpectSchema(schema *jsonschema.Schema) {
 				desc = "Assert against response headers. Example: headers.content-type"
 			} else if p == "jwt" {
 				desc = "Assert against decoded JWT claims. Example: jwt.role, jwt.exp"
+			} else if p == "redis" {
+				desc = "Assert against a Redis step result. Example: redis.exists, redis.value.id, redis.ttl"
 			}
 
 			expectSchema.Properties.Set(p+".", &jsonschema.Schema{
@@ -261,17 +264,18 @@ func patchProjectionSchema(schema *jsonschema.Schema) {
 	}
 }
 
-// patchStepOneOf adds oneOf constraint to Step to ensure request OR use OR set is provided, not both.
+// patchStepOneOf adds oneOf constraint to Step to ensure exactly one operation is provided.
 func patchStepOneOf(schema *jsonschema.Schema) {
 	if stepSchema, ok := schema.Definitions["Step"]; ok {
-		// Make all step fields optional except request OR use OR set
+		// Make all step fields optional except exactly one operation.
 		stepSchema.Required = []string{}
 
 		stepSchema.Description = "A single test execution step.\n\n" +
 			"Available options:\n" +
 			"- **name**: (String, Optional) Human-readable label for the step.\n" +
 			"- **if**: (String, Optional) Conditional guard expression (e.g. '$status == 200').\n" +
-			"- **request**: (Object, Conditional) HTTP Request config. Mutually exclusive with 'use' and 'set'.\n" +
+			"- **request**: (Object, Conditional) HTTP Request config.\n" +
+			"- **redis**: (Object, Conditional) Controlled read-only Redis operation.\n" +
 			"- **use**: (String, Conditional) Path to compose/execute another scenario. Mutually exclusive with 'request' and 'set'.\n" +
 			"- **set**: (Map, Conditional) Inline variable assignment / override map. Mutually exclusive with 'request' and 'use'.\n" +
 			"- **expect**: (Object, Optional) Response assertions.\n" +
@@ -279,7 +283,7 @@ func patchStepOneOf(schema *jsonschema.Schema) {
 			"- **timing**: (Object, Optional) Execution latency check.\n" +
 			"- **retry**: (Object, Optional) Retry configuration for transient failures."
 
-		// Add oneOf constraint for request/use/set mutual exclusion
+		// Add oneOf constraint for operation mutual exclusion.
 		stepSchema.OneOf = []*jsonschema.Schema{
 			{
 				Required:    []string{"request"},
@@ -292,6 +296,10 @@ func patchStepOneOf(schema *jsonschema.Schema) {
 			{
 				Required:    []string{"set"},
 				Description: "Step setting or overriding variables inline",
+			},
+			{
+				Required:    []string{"redis"},
+				Description: "Step executing a read-only Redis operation",
 			},
 		}
 	}
@@ -326,6 +334,7 @@ func patchStepsProperties(schema *jsonschema.Schema) {
 		"- **name**: (String, Optional) Human-readable label for the step.\n" +
 		"- **if**: (String, Optional) Conditional guard expression (e.g. '$status == 200').\n" +
 		"- **request**: (Object, Conditional) HTTP Request config. Mutually exclusive with 'use' and 'set'.\n" +
+		"- **redis**: (Object, Conditional) Read-only Redis operation. Mutually exclusive with other operations.\n" +
 		"- **use**: (String, Conditional) Path to compose/execute another scenario. Mutually exclusive with 'request' and 'set'.\n" +
 		"- **set**: (Map, Conditional) Inline variable assignment / override map. Mutually exclusive with 'request' and 'use'.\n" +
 		"- **expect**: (Object, Optional) Response assertions.\n" +
@@ -391,6 +400,3 @@ func patchTimingSchema(schema *jsonschema.Schema) {
 		timingSchema.Description = timingDesc
 	}
 }
-
-
-

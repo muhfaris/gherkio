@@ -156,6 +156,7 @@ All string values in request fields support variable substitution:
 - **${var}** — Explicit braces syntax (e.g. ${accessToken})
 - **${var:default}** — With default fallback (e.g. ${role:user})
 - **$var[N].field** — Array element access by index (e.g. $issueTags[0].id, $items[${randomInt(0,4)}].id)
+- **${randomItem(array[,field])}** — Select from a saved array using its runtime length (e.g. ${randomItem(users,id)}). As an exact set value, omitting field preserves the selected object for nested access (e.g. $SELECTED_USER.id).
 - **$string(var)**, **$int(var)**, **$bool(var)**, **$float(var)** — Type-casting operators to cast variables in request bodies (e.g. $string(emp_id))
 - **$if(condition, then, else)** — Conditional value selection inside transform select blocks (e.g. $if(item.is_answered, item.free_text_answer, item.default_answer))
 - **$accounts.<name>.<field>** — Access any account's credentials directly from .gherkio/credentials/<env>.yaml without needing --account flag (e.g. $accounts.alice.username)
@@ -166,6 +167,7 @@ Variables are sourced from:
    - **$uuid** — UUID v4 string (e.g. a1b2c3d4-e5f6-4789-abcd-ef1234567890)
    - **$ulid** — ULID string (e.g. 01ARZ3NDEKTSV4RRFFQ69G5FAV)
    - **$randomInt** — Random integer between 0 and 999999 (e.g. 74291). Use **${randomInt(min,max)}** for custom range (e.g. ${randomInt(1,100)})
+   - **${randomItem(array[,field])}** — Random saved-array element or nested field, with no fixed index range (e.g. ${randomItem(users,id)})
    - **$randomEmail** — Random email at @example.com (e.g. user_123456@example.com)
    - **$randomPhone** — Random Indonesian-format phone number (e.g. +6281234567890). Use **${randomPhone(ISO)}** (e.g. SG, JP) or **${randomPhone(prefix)}** (e.g. +351) for global formats.
    - **$timestamp** — Current Unix timestamp in seconds (e.g. 1716942900)
@@ -182,6 +184,9 @@ Variables are sourced from:
    - **${toUpper(val)}** — Converts string to UPPERCASE (e.g. ${toUpper("hello")})
    - **${toLower(val)}** — Converts string to lowercase (e.g. ${toLower("HELLO")})
    - **${trim(val)}** — Trims leading and trailing whitespace (e.g. ${trim("  hello  ")})
+   - **${trimPrefix(value,prefix)}** — Removes a prefix when present; accepts literals or saved variable paths (e.g. ${trimPrefix(PARTNER_STATUS.value,"Lainnya::")})
+   - **${trimSuffix(value,suffix)}** — Removes a suffix when present; accepts literals or saved variable paths (e.g. ${trimSuffix(filename,".json")})
+   - **${split(value,delimiter,index)}** — Splits a string and returns the zero-based segment (e.g. ${split(PARTNER_STATUS.value,"::",1)})
 2. **Credentials** — Account fields from .gherkio/credentials/<env>.yaml (injected automatically when --account is used, or via $accounts.<name>.<field>)
 3. **Step saves** — Values extracted from previous step responses via save: blocks
 4. **Saved vars override credentials** — When a step saves a variable with the same name as a credential

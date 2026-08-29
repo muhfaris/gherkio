@@ -17,37 +17,45 @@ import (
 
 // RunConfig holds configuration for a single run.
 type RunConfig struct {
-	TestPath       string                 // Path to the test YAML file
-	EnvName        string                 // Environment name (e.g. "local", "staging")
-	ProjectDir     string                 // Root project directory (where .gherkio lives)
-	Verbose        bool                   // Show full request/response payloads
-	MaskFields     []string               // Sensitive field names to mask in output (nil = use defaults)
-	AccountName    string                 // Account name to use from credentials (optional)
-	CredentialVars map[string]interface{} // Pre-injected credential variables (optional)
-	AllAccounts    map[string]interface{} // All accounts for $accounts.<name>.<field> access (optional)
-	StepIndex      int                    // Index of step to run (0-indexed). Negative means run all steps.
-	StepSection    string                 // Section of the step ("setup", "steps", "teardown")
-	DryRun         bool                   // Preview without executing HTTP requests
-	RequestDelay   time.Duration          // Wait before each outbound HTTP request (zero disables the delay)
-	Snapshot       SnapshotConfig         // Configuration for failure snapshots
-	Until          string                 // Execute steps until a specific target, e.g. "steps:1" or "2"
-	FailFast       bool                   // Stop executing remaining steps when a step fails
-	SessionVars    map[string]interface{} // Session-persistent variables across step runs (mutated in place, may be nil)
-	SessionFile    string                 // Path to session file for CLI persistence (empty = no file persistence)
+	TestPath          string                 // Path to the test YAML file
+	EnvName           string                 // Environment name (e.g. "local", "staging")
+	ProjectDir        string                 // Root project directory (where .gherkio lives)
+	Verbose           bool                   // Show full request/response payloads
+	MaskFields        []string               // Sensitive field names to mask in output (nil = use defaults)
+	AccountName       string                 // Account name to use from credentials (optional)
+	CredentialVars    map[string]interface{} // Pre-injected credential variables (optional)
+	AllAccounts       map[string]interface{} // All accounts for $accounts.<name>.<field> access (optional)
+	StepIndex         int                    // Index of step to run (0-indexed). Negative means run all steps.
+	StepSection       string                 // Section of the step ("setup", "steps", "teardown")
+	DryRun            bool                   // Preview without executing HTTP requests
+	RequestDelay      time.Duration          // Wait before each outbound HTTP request (zero disables the delay)
+	Snapshot          SnapshotConfig         // Configuration for failure snapshots
+	Until             string                 // Execute steps until a specific target, e.g. "steps:1" or "2"
+	FailFast          bool                   // Stop executing remaining steps when a step fails
+	SessionVars       map[string]interface{} // Session-persistent variables across step runs (mutated in place, may be nil)
+	SessionFile       string                 // Path to session file for CLI persistence (empty = no file persistence)
+	VirtualUser       int                    // One-based virtual user number (zero = normal run)
+	WorkflowIteration int                    // One-based workflow iteration for this virtual user
+	IterationsPerUser int                    // Total iterations assigned to this virtual user
 }
 
 // RunResult holds the overall execution result.
 type RunResult struct {
-	Scenario     string                 `json:"scenario"`
-	Description  string                 `json:"description,omitempty"`
-	TestFile     string                 `json:"testFile,omitempty"`
-	Account      string                 `json:"account,omitempty"` // Account name used (if any)
-	Steps        []StepResult           `json:"steps"`
-	ResolvedVars map[string]interface{} `json:"resolvedVars,omitempty"` // Variables available at start of scenario
-	TotalPass    int                    `json:"totalPass"`
-	TotalFail    int                    `json:"totalFail"`
-	Duration     time.Duration          `json:"duration"`
-	Passed       bool                   `json:"passed"`
+	Scenario          string                 `json:"scenario"`
+	Description       string                 `json:"description,omitempty"`
+	TestFile          string                 `json:"testFile,omitempty"`
+	Account           string                 `json:"account,omitempty"` // Account name used (if any)
+	Steps             []StepResult           `json:"steps"`
+	ResolvedVars      map[string]interface{} `json:"resolvedVars,omitempty"` // Variables available at start of scenario
+	TotalPass         int                    `json:"totalPass"`
+	TotalFail         int                    `json:"totalFail"`
+	Duration          time.Duration          `json:"duration"`
+	Passed            bool                   `json:"passed"`
+	VirtualUser       int                    `json:"virtualUser,omitempty"`
+	Iteration         int                    `json:"iteration,omitempty"`
+	IterationsPerUser int                    `json:"iterationsPerUser,omitempty"`
+	StartedAt         time.Time              `json:"-"`
+	FinishedAt        time.Time              `json:"-"`
 }
 
 // Run executes a test file and returns the result.
@@ -94,9 +102,13 @@ func Run(cfg RunConfig) (*RunResult, error) {
 
 	// 3. Execute steps
 	result := &RunResult{
-		Scenario:    testFile.Scenario,
-		Description: testFile.Description,
-		Account:     cfg.AccountName,
+		Scenario:          testFile.Scenario,
+		Description:       testFile.Description,
+		Account:           cfg.AccountName,
+		VirtualUser:       cfg.VirtualUser,
+		Iteration:         cfg.WorkflowIteration,
+		IterationsPerUser: cfg.IterationsPerUser,
+		StartedAt:         start,
 	}
 
 	vars := make(map[string]interface{})
@@ -133,6 +145,11 @@ func Run(cfg RunConfig) (*RunResult, error) {
 				vars[key] = val
 			}
 		}
+	}
+
+	if cfg.VirtualUser > 0 {
+		vars["vu"] = cfg.VirtualUser
+		vars["iteration"] = cfg.WorkflowIteration
 	}
 
 	// Capture initial variable state for verbose output
@@ -180,7 +197,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 			for i := range setupSteps {
 				setupSteps[i].ScenarioName = testFile.Scenario
 				setupSteps[i].TestFile = cfg.TestPath
-				setupSteps[i].Iteration = iter + 1
+				setupSteps[i].Iteration = resultIteration(cfg, iter)
 			}
 			allSteps = append(allSteps, setupSteps...)
 			result.TotalPass += setupPass
@@ -197,7 +214,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 			for i := range mainSteps {
 				mainSteps[i].ScenarioName = testFile.Scenario
 				mainSteps[i].TestFile = cfg.TestPath
-				mainSteps[i].Iteration = iter + 1
+				mainSteps[i].Iteration = resultIteration(cfg, iter)
 			}
 			allSteps = append(allSteps, mainSteps...)
 			result.TotalPass += mainPass
@@ -213,7 +230,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 			for i := range teardownSteps {
 				teardownSteps[i].ScenarioName = testFile.Scenario
 				teardownSteps[i].TestFile = cfg.TestPath
-				teardownSteps[i].Iteration = iter + 1
+				teardownSteps[i].Iteration = resultIteration(cfg, iter)
 			}
 			allSteps = append(allSteps, teardownSteps...)
 		}
@@ -238,6 +255,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 	result.Steps = allSteps
 	result.TestFile = cfg.TestPath
 	result.Duration = time.Since(start)
+	result.FinishedAt = time.Now()
 
 	// Determine overall pass/fail (teardown failures don't affect this)
 	if result.TotalFail == 0 && setupFailedOverall == false && mainStepsPassedOverall == true {
@@ -257,6 +275,13 @@ func Run(cfg RunConfig) (*RunResult, error) {
 	}
 
 	return result, nil
+}
+
+func resultIteration(cfg RunConfig, exampleIndex int) int {
+	if cfg.WorkflowIteration > 0 {
+		return cfg.WorkflowIteration
+	}
+	return exampleIndex + 1
 }
 
 // executeSteps executes a list of steps. If dryRun is true, skips HTTP calls and produces preview output.
@@ -307,7 +332,7 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 			saved := make(map[string]interface{})
 			hasError := false
 			for name, rawVal := range step.Set {
-				interpolated, err := interpolateString(rawVal, vars)
+				value, err := resolveSetValue(rawVal, vars)
 				if err != nil {
 					stepResult.Error = fmt.Sprintf("Failed to interpolate set variable '%s': %v", name, err)
 					stepResults = append(stepResults, stepResult)
@@ -316,8 +341,8 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 					hasError = true
 					break
 				}
-				vars[name] = interpolated
-				saved[name] = interpolated
+				vars[name] = value
+				saved[name] = value
 			}
 			if hasError {
 				if failFast {
@@ -430,6 +455,35 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 				if failFast {
 					break
 				}
+			}
+			continue
+		}
+
+		// Redis steps use the same assertion, save, timing, and retry vocabulary
+		// as HTTP steps while keeping protocol details behind the Redis module.
+		if step.Redis != nil {
+			redisResult := runRedisStep(step, env, vars, dryRun, requestDelay)
+			redisResult.Depth = depth
+			redisResult.Role = role
+			failed := redisResult.Error != ""
+			for _, assertion := range redisResult.Assertions {
+				if assertion.Passed {
+					totalPass++
+				} else {
+					totalFail++
+					failed = true
+				}
+			}
+			if redisResult.Error != "" {
+				totalFail++
+			}
+			if failed {
+				allPassed = false
+			}
+			stepResults = append(stepResults, redisResult)
+			stepIndex++
+			if failed && failFast {
+				break
 			}
 			continue
 		}

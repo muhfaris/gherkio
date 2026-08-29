@@ -7,7 +7,7 @@ import (
 func TestGetCanonicalPaths(t *testing.T) {
 	paths := GetCanonicalPaths()
 
-	expected := []string{"body", "headers", "jwt"}
+	expected := []string{"body", "headers", "jwt", "redis"}
 	if len(paths) != len(expected) {
 		t.Errorf("GetCanonicalPaths() returned %d items, want %d", len(paths), len(expected))
 	}

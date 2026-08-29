@@ -3,7 +3,7 @@ package runner
 // GetCanonicalPaths returns the base paths supported for assertions and variables.
 // Used by the JSON schema generator to provide editor autocomplete.
 func GetCanonicalPaths() []string {
-	return []string{"body", "headers", "jwt"}
+	return []string{"body", "headers", "jwt", "redis"}
 }
 
 // GetCollectionFunctions returns the collection matchers supported for array validations.
@@ -106,6 +106,7 @@ func GetVariableInfo() []VariableInfo {
 		{Name: "$uuid", Description: "UUID v4 string", Example: "a1b2c3d4-e5f6-4789-abcd-ef1234567890"},
 		{Name: "$ulid", Description: "ULID (timestamp + random)", Example: "01ARZ3NDEKTSV4RRFFQ69G5FAV"},
 		{Name: "$randomInt", Description: "Random integer 0-999999; use ${randomInt(min,max)} for custom range", Example: "74291"},
+		{Name: "${randomItem(array[,field])}", Description: "Select a random element from a saved response array, optionally returning a nested field", Example: "${randomItem(users,id)}"},
 		{Name: "$randomEmail", Description: "Random email at @example.com", Example: "user_123456@example.com"},
 		{Name: "$randomPhone", Description: "Random Indonesian-format phone number; use ${randomPhone(ISO)} or ${randomPhone(prefix)} for global formats", Example: "+6281234567890"},
 		{Name: "$accounts.<name>.<field>", Description: "Access specific account fields from credentials", Example: "$accounts.alpha.username"},
@@ -123,6 +124,9 @@ func GetVariableInfo() []VariableInfo {
 		{Name: "${toUpper(string)}", Description: "Converts a string value to uppercase", Example: "${toUpper(\"hello\")}"},
 		{Name: "${toLower(string)}", Description: "Converts a string value to lowercase", Example: "${toLower(\"HELLO\")}"},
 		{Name: "${trim(string)}", Description: "Trims whitespace from both ends of a string value", Example: "${trim(\"  hello  \")}"},
+		{Name: "${trimPrefix(value,prefix)}", Description: "Removes a prefix when present; arguments may be literals or saved variables", Example: "${trimPrefix(PARTNER_STATUS.value,\"Lainnya::\")}"},
+		{Name: "${trimSuffix(value,suffix)}", Description: "Removes a suffix when present; arguments may be literals or saved variables", Example: "${trimSuffix(filename,\".json\")}"},
+		{Name: "${split(value,delimiter,index)}", Description: "Splits a string and returns the zero-based segment at index; value and delimiter may be literals or saved variables", Example: "${split(PARTNER_STATUS.value,\"::\",1)}"},
 		{Name: "$if(condition, thenValue, elseValue)", Description: "Conditional value selection inside transform select blocks. Returns thenValue if condition is truthy, elseValue otherwise. Supports type casting and variable references in arguments.", Example: "$if(item.is_answered, item.free_text_answer, item.default_answer)"},
 	}
 }
@@ -138,9 +142,10 @@ type PathInfo struct {
 // This is the single source of truth — used by MCP resources and documentation.
 func GetPathInfo() []PathInfo {
 	info := []PathInfo{
-{Path: "body.<field>", Description: "Response JSON body field — use bracket notation for array indexing (e.g. body.items[0].name, body.data[2].id)", Usage: "body.token, body.items[0].name"},
+		{Path: "body.<field>", Description: "Response JSON body field — use bracket notation for array indexing (e.g. body.items[0].name, body.data[2].id)", Usage: "body.token, body.items[0].name"},
 		{Path: "headers.<name>", Description: "Response header", Usage: "headers.content-type"},
 		{Path: "jwt.<claim>", Description: "Decoded JWT claim (auto-decoded from body.token or body.access_token)", Usage: "jwt.role, jwt.sub"},
+		{Path: "redis.<field>", Description: "Redis result field from a redis step", Usage: "redis.exists, redis.value.id, redis.ttl"},
 		{Path: "status", Description: "HTTP status code", Usage: "status"},
 		{Path: "schema", Description: "Validate full response body against a YAML schema", Usage: "schema: <name> or schema: not <name>"},
 	}

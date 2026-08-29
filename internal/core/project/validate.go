@@ -151,7 +151,9 @@ func validateVariableReferences(test *model.TestFile, creds *model.Credentials) 
 
 	// Add built-in variable names
 	builtinVars := map[string]bool{
-		"uuid": true, "ulid": true, "randomInt": true, "randomEmail": true, "randomPhone": true,
+		"uuid": true, "ulid": true, "randomInt": true, "randomItem": true, "randomEmail": true, "randomPhone": true,
+		"trimPrefix": true, "trimSuffix": true,
+		"split": true,
 	}
 
 	for _, step := range allSteps {
@@ -219,6 +221,13 @@ func extractVariables(step *model.Step, pattern *regexp.Regexp) []string {
 
 	// Check request fields
 	req := step.Request
+	if step.Redis != nil {
+		for _, raw := range []string{step.Redis.Connection, step.Redis.Key} {
+			for _, match := range pattern.FindAllString(raw, -1) {
+				vars = append(vars, extract(match))
+			}
+		}
+	}
 
 	// URL
 	for _, match := range pattern.FindAllString(req.URL, -1) {

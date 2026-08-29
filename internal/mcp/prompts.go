@@ -74,6 +74,7 @@ Ask: will other tests need this same flow (e.g. auth, resource creation pattern)
 - Prefix all saved variables with the step number (e.g. '1-authToken', '2-userId')
 - Use '$accounts.<name>.<field>' for cross-account credential access
 - Use canonical dot-paths: 'body.<field>', 'headers.<name>', 'jwt.<claim>'
+- When selecting randomly from a saved response array, use '${randomItem(array,field)}' so the range follows the runtime response length
 - Validate YAML via validate_test before creating the file
 - Dry-run (run_test with dryRun=true) before executing for real
 - Always show the variant plan and get explicit QA confirmation before create_test/run_test`

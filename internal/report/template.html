@@ -631,6 +631,80 @@
       }
       .summary-ratio.has-fail { color: var(--fail-text); }
 
+      /* ── Load run overview ── */
+      .load-overview {
+        background: var(--bg);
+        border: 0.5px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 18px 24px;
+        margin-bottom: 16px;
+      }
+      .load-equation {
+        font-size: 17px;
+        font-weight: 600;
+        margin-bottom: 12px;
+      }
+      .load-equation span { color: var(--info-text); }
+      .load-metrics {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 8px;
+      }
+      .load-metric {
+        background: var(--bg-secondary);
+        border-radius: var(--radius);
+        padding: 10px 12px;
+      }
+      .load-metric-value {
+        display: block;
+        font-size: 17px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+      .load-metric-label {
+        display: block;
+        color: var(--text-secondary);
+        font-size: 11px;
+        margin-top: 1px;
+      }
+
+      /* ── Collapsible workflows ── */
+      details.scenario-block {
+        margin-bottom: 12px;
+      }
+      details.scenario-block > summary {
+        list-style: none;
+        cursor: pointer;
+        user-select: none;
+      }
+      details.scenario-block > summary::-webkit-details-marker { display: none; }
+      .workflow-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .workflow-chevron {
+        color: var(--text-tertiary);
+        font-size: 11px;
+        transition: transform 0.15s ease;
+      }
+      details[open] .workflow-chevron { transform: rotate(90deg); }
+      .workflow-status {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 999px;
+      }
+      .workflow-status.pass { color: var(--pass-text); background: var(--pass-bg); }
+      .workflow-status.fail { color: var(--fail-text); background: var(--fail-bg); }
+      .workflow-file {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-tertiary);
+        margin-top: 3px;
+      }
+      details.scenario-block > .steps { margin: 0 0 24px; }
+
       /* ── Token warning ── */
       .token-warning {
         display: inline-flex;
@@ -651,6 +725,7 @@
         .step { page-break-inside: avoid; }
         .step-body { display: block !important; }
         .section-content { display: block !important; }
+        details.scenario-block > .steps { display: flex !important; }
         body { background: white; }
       }
     </style>
@@ -674,11 +749,32 @@
             ><strong>Duration:</strong> {{.TotalDuration}}</span
           >
           <span class="meta-item"><strong>Steps:</strong> {{.TotalSteps}}</span>
-          {{if .Scenarios}}
+          {{if .LoadMode}}
+          <span class="meta-item"><strong>Workflows:</strong> {{.WorkflowCount}}</span>
+          {{else if .Scenarios}}
           <span class="meta-item"><strong>Scenarios:</strong> {{len .Scenarios}}</span>
           {{end}}
         </div>
       </div>
+
+      {{if .LoadMode}}
+      <!-- ── Load run overview ── -->
+      <div class="load-overview">
+        <div class="load-equation">
+          <span>{{.VirtualUsers}} virtual users</span> ×
+          <span>{{.IterationsPerUser}} iterations each</span> =
+          {{.WorkflowCount}} workflow executions
+        </div>
+        <div class="load-metrics">
+          <div class="load-metric"><span class="load-metric-value">{{.PassedWorkflows}}</span><span class="load-metric-label">workflows passed</span></div>
+          <div class="load-metric"><span class="load-metric-value">{{.FailedWorkflows}}</span><span class="load-metric-label">workflows failed</span></div>
+          <div class="load-metric"><span class="load-metric-value">{{.RequestCount}}</span><span class="load-metric-label">requests</span></div>
+          <div class="load-metric"><span class="load-metric-value">{{.AverageResponseTime}}</span><span class="load-metric-label">average latency</span></div>
+          <div class="load-metric"><span class="load-metric-value">{{.P95ResponseTime}}</span><span class="load-metric-label">p95 latency</span></div>
+          <div class="load-metric"><span class="load-metric-value">{{.RequestsPerSecond}}</span><span class="load-metric-label">requests / second</span></div>
+        </div>
+      </div>
+      {{end}}
 
       <!-- ── Summary bar ── -->
       <div class="summary">
@@ -725,13 +821,19 @@
       {{if .Scenarios}}
         {{range $sIdx, $scenario := .Scenarios}}
         <!-- Scenario: {{$scenario.Name}} -->
-        <div class="scenario-block" style="margin-bottom: 24px;">
+        <details class="scenario-block" {{if not $scenario.Passed}}open{{end}}>
           <!-- Scenario header -->
-          <div class="header" style="margin-bottom: 8px;">
+          <summary class="header" style="margin-bottom: 8px;">
             <div class="header-top">
-              <span class="scenario-name" style="font-size: 16px;">{{$scenario.Name}}</span>
-              <span class="env-badge">{{$scenario.TestFile}}</span>
+              <span class="workflow-title">
+                <span class="workflow-chevron">▶</span>
+                <span class="scenario-name" style="font-size: 16px;">
+                  {{if $scenario.VirtualUser}}VU {{$scenario.VirtualUser}} · iteration {{$scenario.Iteration}}/{{$scenario.IterationsPerUser}}{{else}}{{$scenario.Name}}{{end}}
+                </span>
+              </span>
+              <span class="workflow-status {{if $scenario.Passed}}pass{{else}}fail{{end}}">{{if $scenario.Passed}}PASS{{else}}FAIL{{end}}</span>
             </div>
+            {{if $scenario.VirtualUser}}<div class="workflow-file">{{$scenario.Name}} · {{$scenario.TestFile}}</div>{{end}}
             {{if $scenario.Description}}
             <div class="header-description">{{$scenario.Description}}</div>
             {{end}}
@@ -747,7 +849,7 @@
               <span class="meta-item"><strong>Account:</strong> {{$scenario.Account}}</span>
               {{end}}
             </div>
-          </div>
+          </summary>
           <!-- Scenario steps -->
           <div class="steps" id="steps-{{$sIdx}}">
             {{range $i, $step := $scenario.Steps}}
@@ -1009,7 +1111,7 @@
         {{end}}
         {{end}}
           </div>
-        </div>
+        </details>
         {{end}}
       {{else}}
       <!-- ── Steps (single scenario) ── -->
@@ -1304,7 +1406,11 @@
 
       function toggleAll() {
         var steps = document.querySelectorAll(".step");
+        var workflows = document.querySelectorAll("details.scenario-block");
         allExpanded = !allExpanded;
+        workflows.forEach(function (workflow) {
+          workflow.open = allExpanded;
+        });
         steps.forEach(function (s) {
           if (allExpanded) s.classList.add("open");
           else s.classList.remove("open");
@@ -1378,6 +1484,8 @@
         updateFailCounter();
         var el = document.getElementById(failIds[failIdx]);
         if (el) {
+          var workflow = el.closest("details.scenario-block");
+          if (workflow) workflow.open = true;
           el.classList.add("open");
           el.scrollIntoView({ behavior: "smooth", block: "start" });
         }

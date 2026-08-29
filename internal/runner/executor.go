@@ -32,10 +32,11 @@ type StepResult struct {
 	ScenarioName string                 `json:"scenarioName,omitempty"`
 	TestFile     string                 `json:"testFile,omitempty"`
 	Request      *RequestInfo           `json:"request"`
+	Redis        *RedisInfo             `json:"redis,omitempty"`
 	Response     *ResponseInfo          `json:"response"`
 	Assertions   []AssertionResult      `json:"assertions"`
 	SavedVars    map[string]interface{} `json:"savedVars,omitempty"`
-	Warnings     []string                     `json:"warnings,omitempty"`
+	Warnings     []string               `json:"warnings,omitempty"`
 	Duration     time.Duration          `json:"duration"`
 	Error        string                 `json:"error,omitempty"`
 	Skipped      bool                   `json:"skipped,omitempty"`
@@ -43,6 +44,13 @@ type StepResult struct {
 	RetryHistory []RetryEntry           `json:"retryHistory,omitempty"`
 	Role         string                 `json:"role,omitempty"` // "setup", "steps", "teardown"
 	Iteration    int                    `json:"iteration,omitempty"`
+}
+
+// RedisInfo captures a Redis operation without exposing connection secrets.
+type RedisInfo struct {
+	Connection string `json:"connection"`
+	Command    string `json:"command"`
+	Key        string `json:"key"`
 }
 
 // RetryEntry captures the outcome of a single retry attempt.
@@ -429,6 +437,24 @@ func runAssertions(status int, resp *ResponseInfo, jwtClaims map[string]interfac
 func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jwtClaims map[string]interface{}, projectDir string, requestBody interface{}) AssertionResult {
 	expectedStr := fmt.Sprintf("%v", expected)
 
+	// Redis assertions resolve against the structured result returned by a
+	// redis step (redis.exists, redis.value.<field>, redis.ttl).
+	if strings.HasPrefix(path, "redis.") {
+		redisPath := strings.TrimPrefix(path, "redis.")
+		actualVal, found := resolvePath(resp.Parsed, redisPath)
+		if !found {
+			return AssertionResult{Path: path, Expected: expectedStr, Actual: "(not found)", Passed: expectedStr == "not exists"}
+		}
+		if expectedStr == "not exists" {
+			return AssertionResult{Path: path, Expected: expectedStr, Actual: fmt.Sprintf("%v", actualVal), Passed: false}
+		}
+		if result, used := evaluateMatcher(path, expectedStr, actualVal); used {
+			return result
+		}
+		actualStr := fmt.Sprintf("%v", actualVal)
+		return AssertionResult{Path: path, Expected: expectedStr, Actual: actualStr, Passed: actualStr == expectedStr}
+	}
+
 	// Resolve request.body.<field> references in the expected value
 	// e.g. expect: body.data.name: request.body.name
 	// This resolves the request body field and uses its value as the expected value.
@@ -799,7 +825,7 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 					formattedActuals = append(formattedActuals, fmt.Sprintf("%v", elem))
 					break
 				}
-			val, valFound := resolveNestedField(mapVal, fieldName)
+				val, valFound := resolveNestedField(mapVal, fieldName)
 				if !valFound {
 					// not exists — field absent means all elements satisfy "not exists"
 					if expectedStr == "not exists" {
@@ -940,7 +966,7 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 
 		var formattedActuals []string
 		var expectedDesc string
-	passed := false // any() starts false — at least one must match
+		passed := false // any() starts false — at least one must match
 
 		if expectedStr == "not exists" {
 			expectedDesc = "not exists"
@@ -954,7 +980,7 @@ func evaluateAssertion(path string, expected interface{}, resp *ResponseInfo, jw
 					formattedActuals = append(formattedActuals, fmt.Sprintf("%v", elem))
 					continue
 				}
-			val, valFound := resolveNestedField(mapVal, fieldName)
+				val, valFound := resolveNestedField(mapVal, fieldName)
 				if !valFound {
 					// not exists — field absent on any element satisfies "not exists"
 					if expectedStr == "not exists" {
@@ -1385,6 +1411,16 @@ func extractValues(vars map[string]interface{}, save map[string]string, resp *Re
 		var resolved bool
 
 		switch {
+		case strings.HasPrefix(path, "redis."):
+			redisPath := strings.TrimPrefix(path, "redis.")
+			if resp.Parsed != nil {
+				val, found := resolvePath(resp.Parsed, redisPath)
+				if found {
+					vars[name] = val
+					resolved = true
+				}
+			}
+
 		case strings.HasPrefix(path, "jwt."):
 			claimPath := strings.TrimPrefix(path, "jwt.")
 			val, found := resolvePath(jwtClaims, claimPath)
