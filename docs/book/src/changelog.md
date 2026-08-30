@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-alpha.9] - 2026-08-30
+
 ### Added
 - **Redis Cache Assertions**: Added controlled, read-only Redis steps for `GET`, `EXISTS`, `TTL`, and `HGETALL`, including `redis.*` assertions, saved values, retries, timing checks, authentication, TLS, database selection, and Redis Sentinel primary discovery.
 - **Virtual-User Load Runs**: Added `--virtual-users` and `--iterations-per-user` for concurrent isolated users running complete workflows sequentially, with virtual-user and iteration metadata included in reports.
