@@ -25,6 +25,13 @@ type TimingConfig struct {
 	Max string `yaml:"max" json:"max" jsonschema:"required,description=Maximum duration the step is allowed to take (e.g. 500ms, 1s)"` // e.g. "500ms", "1s", "250ms"
 }
 
+// RepeatConfig executes a bounded block until its condition becomes true.
+type RepeatConfig struct {
+	Attempts int    `yaml:"attempts" json:"attempts" jsonschema:"required,minimum=1,description=Maximum number of block executions"`
+	Until    string `yaml:"until" json:"until" jsonschema:"required,description=Condition evaluated after each successful block execution"`
+	Steps    []Step `yaml:"steps" json:"steps" jsonschema:"required,minItems=1,description=Steps executed on every attempt"`
+}
+
 // Step represents a single step in a scenario.
 type Step struct {
 	Name    string            `yaml:"name,omitempty" json:"name,omitempty" jsonschema:"description=Human-readable name for this step (shown in output instead of method+URL)"`
@@ -32,6 +39,7 @@ type Step struct {
 	Use     string            `yaml:"use,omitempty" json:"use,omitempty" jsonschema:"description=References another scenario file to execute"`
 	With    map[string]string `yaml:"with,omitempty" json:"with,omitempty" jsonschema:"description=Variable overrides passed into a 'use' step (e.g. with: {username: $accounts.alpha.email})"`
 	Set     map[string]string `yaml:"set,omitempty" json:"set,omitempty" jsonschema:"description=Set or override variables inline without making a request (e.g. set: {TICKET_ID: 01KRXW3WT8V5X0JP6QSHS96YJD})"`
+	Repeat  *RepeatConfig     `yaml:"repeat,omitempty" json:"repeat,omitempty" jsonschema:"description=Execute a bounded group of steps until a condition becomes true"`
 	Request Request           `yaml:"request,omitempty" json:"request,omitempty" jsonschema:"description=HTTP request definition"`
 	Redis   *RedisStep        `yaml:"redis,omitempty" json:"redis,omitempty" jsonschema:"description=Read-only Redis operation"`
 	Retry   *RetryConfig      `yaml:"retry,omitempty" json:"retry,omitempty" jsonschema:"description=Retry configuration for the step"`

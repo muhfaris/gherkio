@@ -23,27 +23,29 @@ import (
 
 // StepResult holds the result of a single step execution.
 type StepResult struct {
-	Name         string                 `json:"name,omitempty"`
-	Original     model.Step             `json:"original"`
-	Depth        int                    `json:"depth"`
-	IsUseStart   bool                   `json:"isUseStart"`
-	IsUseEnd     bool                   `json:"isUseEnd"`
-	UseFile      string                 `json:"useFile,omitempty"`
-	ScenarioName string                 `json:"scenarioName,omitempty"`
-	TestFile     string                 `json:"testFile,omitempty"`
-	Request      *RequestInfo           `json:"request"`
-	Redis        *RedisInfo             `json:"redis,omitempty"`
-	Response     *ResponseInfo          `json:"response"`
-	Assertions   []AssertionResult      `json:"assertions"`
-	SavedVars    map[string]interface{} `json:"savedVars,omitempty"`
-	Warnings     []string               `json:"warnings,omitempty"`
-	Duration     time.Duration          `json:"duration"`
-	Error        string                 `json:"error,omitempty"`
-	Skipped      bool                   `json:"skipped,omitempty"`
-	RetryCount   int                    `json:"retryCount,omitempty"`
-	RetryHistory []RetryEntry           `json:"retryHistory,omitempty"`
-	Role         string                 `json:"role,omitempty"` // "setup", "steps", "teardown"
-	Iteration    int                    `json:"iteration,omitempty"`
+	Name           string                 `json:"name,omitempty"`
+	Original       model.Step             `json:"original"`
+	Depth          int                    `json:"depth"`
+	IsUseStart     bool                   `json:"isUseStart"`
+	IsUseEnd       bool                   `json:"isUseEnd"`
+	UseFile        string                 `json:"useFile,omitempty"`
+	ScenarioName   string                 `json:"scenarioName,omitempty"`
+	TestFile       string                 `json:"testFile,omitempty"`
+	Request        *RequestInfo           `json:"request"`
+	Redis          *RedisInfo             `json:"redis,omitempty"`
+	Response       *ResponseInfo          `json:"response"`
+	Assertions     []AssertionResult      `json:"assertions"`
+	SavedVars      map[string]interface{} `json:"savedVars,omitempty"`
+	Warnings       []string               `json:"warnings,omitempty"`
+	Duration       time.Duration          `json:"duration"`
+	Error          string                 `json:"error,omitempty"`
+	Skipped        bool                   `json:"skipped,omitempty"`
+	RetryCount     int                    `json:"retryCount,omitempty"`
+	RetryHistory   []RetryEntry           `json:"retryHistory,omitempty"`
+	Role           string                 `json:"role,omitempty"` // "setup", "steps", "teardown"
+	Iteration      int                    `json:"iteration,omitempty"`
+	RepeatAttempt  int                    `json:"repeatAttempt,omitempty"`
+	RepeatAttempts int                    `json:"repeatAttempts,omitempty"`
 }
 
 // RedisInfo captures a Redis operation without exposing connection secrets.
@@ -1428,8 +1430,28 @@ func extractValues(vars map[string]interface{}, save map[string]string, resp *Re
 		}
 		// If interpolation fails (e.g. undefined var), fall back to the original path
 		var resolved bool
+		var warning string
 
 		switch {
+		case strings.HasPrefix(path, "count(") && strings.HasSuffix(path, ")"):
+			countPath := strings.TrimSuffix(strings.TrimPrefix(path, "count("), ")")
+			bodyPath := strings.TrimPrefix(countPath, "body.")
+			val, found := resolvePath(resp.Parsed, bodyPath)
+			if !found {
+				warning = fmt.Sprintf("save: %s — path %q not found in response", name, countPath)
+			} else {
+				switch items := val.(type) {
+				case []interface{}:
+					vars[name] = len(items)
+					resolved = true
+				case nil:
+					vars[name] = 0
+					resolved = true
+				default:
+					warning = fmt.Sprintf("save: %s — count(%s) requires an array or null, got %T", name, countPath, val)
+				}
+			}
+
 		case strings.HasPrefix(path, "redis."):
 			redisPath := strings.TrimPrefix(path, "redis.")
 			if resp.Parsed != nil {
@@ -1496,7 +1518,10 @@ func extractValues(vars map[string]interface{}, save map[string]string, resp *Re
 		}
 
 		if !resolved {
-			warnings = append(warnings, fmt.Sprintf("save: %s — path %q not found in response", name, path))
+			if warning == "" {
+				warning = fmt.Sprintf("save: %s — path %q not found in response", name, path)
+			}
+			warnings = append(warnings, warning)
 		}
 	}
 

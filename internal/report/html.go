@@ -54,6 +54,8 @@ func MapResultsToSuiteReportData(results []*runner.RunResult, env string, maskFi
 			VirtualUser:       result.VirtualUser,
 			Iteration:         result.Iteration,
 			IterationsPerUser: result.IterationsPerUser,
+			InitialVars:       result.ResolvedVars,
+			FinalVars:         result.FinalVars,
 		}
 		if scData.TotalSteps > 0 {
 			scenario.PassPercent = float64(scData.PassCount) / float64(scData.TotalSteps) * 100
@@ -352,6 +354,8 @@ func MapResultToReportData(result *runner.RunResult, env string, maskFields []st
 		FailPercent:   failPercent,
 		SkipPercent:   skipPercent,
 		Steps:         reportSteps,
+		InitialVars:   result.ResolvedVars,
+		FinalVars:     result.FinalVars,
 	}
 }
 

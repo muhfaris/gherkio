@@ -1,0 +1,53 @@
+scenario: Showcase Contract Matcher Matrix
+description: Covers the complete matcher catalog and both positive and negated conditional guards with one mocked contract payload.
+tags: [showcase, matchers]
+
+steps:
+  - name: Enable guarded contract check
+    set:
+      RUN_CONTRACT_CHECK: "true"
+
+  - name: Validate all matcher families
+    if: $RUN_CONTRACT_CHECK
+    request:
+      method: GET
+      url: /matcher-lab
+    expect:
+      status: 200
+      body.id: uuid
+      body.email: email
+      body.created_at: datetime
+      body.homepage: uri
+      body.text: string
+      body.count: number
+      body.enabled_boolean: boolean
+      body.items: array
+      body.metadata: object
+      body.nullable: null
+      body.enabled_true: true
+      body.disabled: false
+      body.text_contains: contains completed
+      body.text_prefix: startsWith item-
+      body.text_suffix: endsWith completed
+      body.text_regex: regex ^item-[a-z]+$
+      body.text_one_of: oneOf item-completed, item-pending
+      body.text_in: in item-completed, item-failed
+      body.count_gt: gt 40
+      body.count_gte: gte 42
+      body.count_lt: lt 50
+      body.count_lte: lte 42
+      body.empty_text: empty
+      body.ipv4: ipv4
+      body.ipv6: ipv6
+      body.encoded: base64
+      body.mac: mac
+      body.missing: not exists
+
+  - name: Run when an optional variable is absent
+    if: "!$DO_NOT_DEFINE"
+    request:
+      method: GET
+      url: /matcher-lab
+    expect:
+      status: 200
+      body.id: exists

@@ -43,8 +43,30 @@ A step performs one primary operation:
 - `redis:` runs one controlled read-only Redis command.
 - `set:` assigns variables without I/O.
 - `use:` composes another scenario; `with:` supplies local overrides.
+- `repeat:` runs nested `steps` up to `attempts` times and checks `until` after each successful block.
 
 All operation types support `name` and `if`. Request and Redis steps also support `expect`, `save`, `timing`, and `retry` where applicable.
+
+For a multi-step polling cycle, use a bounded repeat block:
+
+```yaml
+- name: Find unused candidate
+  repeat:
+    attempts: 20
+    until: $existingCount == 0
+    steps:
+      - set:
+          candidate: ${randomItem(candidates)}
+      - request:
+          method: GET
+          url: /items
+          query: { candidate_id: $candidate.id }
+        expect: { status: 200 }
+        save: { existingCount: count(body.data) }
+```
+
+Variables written by nested steps remain available after success. Any nested
+failure stops the loop, and unmet `until` after the final attempt fails it.
 
 Negate a simple condition by quoting it:
 
@@ -121,9 +143,12 @@ timing:
   max: 500ms
 save:
   userId: body.id
+  itemCount: count(body.items)
 ```
 
 Canonical paths include `body.<field>`, `headers.<name>`, `jwt.<claim>`, and `redis.<field>`. Supported matchers include `exists`, `not exists`, `uuid`, `email`, `datetime`, `uri`, `string`, `number`, `boolean`, `array`, `object`, `null`, `true`, `false`, `contains`, `startsWith`, `endsWith`, `regex`, `oneOf`, `in`, `gt`, `gte`, `lt`, `lte`, `empty`, `ipv4`, `ipv6`, `base64`, and `mac`.
+
+In `save:`, `count(body.<path>)` stores an array length. Empty arrays and explicit `null` values store `0`; missing paths and non-array values warn and are not stored.
 
 ## Retry
 

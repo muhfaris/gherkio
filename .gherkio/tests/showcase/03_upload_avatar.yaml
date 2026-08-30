@@ -20,7 +20,7 @@ steps:
           userId: "1001"
         files:
           avatar:
-            path: shared/login.yaml
+            path: login.yaml
             contentType: text/yaml
             filename: avatar.yaml
     expect:

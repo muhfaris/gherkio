@@ -61,8 +61,10 @@ Ask: does this operation depend on data created by a previous request?
   - NO (single standalone operation) →
     * 'steps' block only. No setup/teardown needed.
 
-Use 'save:' to extract ids/tokens and 'with:' to pass them into 'use:' steps. Use 'retry:' for
-polling status transitions and 'if:' for conditional steps.
+Use 'save:' to extract ids/tokens and 'with:' to pass them into 'use:' steps. Use 'retry:' when
+one request must be polled. Use bounded 'repeat: {attempts, until, steps}' when every polling
+attempt needs multiple operations such as selecting a candidate and fetching its current state.
+Use 'if:' for conditional steps.
 
 ## STEP 4 — REUSABILITY CHECK
 Ask: will other tests need this same flow (e.g. auth, resource creation pattern)?
@@ -234,6 +236,7 @@ func (s *Server) buildSpecifyAssertionsPrompt(endpoint, method, responseStructur
 ## LEVEL 4 — CHAIN ASSERTIONS (multi-step flows)
   - All of LEVEL 3 on the primary response
   - Save intermediate values: 'save: { <name>: body.<path> }'
+  - Save collection sizes when needed: 'save: { <name>: count(body.<array-path>) }' (empty or null saves 0)
   - Downstream assertions using saved variables
   Use when: endpoint is part of a multi-step workflow
 

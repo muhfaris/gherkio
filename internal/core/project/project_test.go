@@ -180,3 +180,41 @@ steps:
 		}
 	})
 }
+
+func TestValidateProjectAcceptsExampleAndComposedOutputVariables(t *testing.T) {
+	projectDir := t.TempDir()
+	testsDir := filepath.Join(projectDir, ".gherkio", "tests")
+	if err := os.MkdirAll(filepath.Join(testsDir, "shared"), 0755); err != nil {
+		t.Fatalf("create tests: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, ".gherkio", "config.yaml"), []byte("environments:\n  default: local\n"), 0644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(testsDir, "shared", "login.yaml"), []byte(`scenario: Login
+steps:
+  - request: {method: POST, url: /login}
+    save: {authToken: body.token}
+`), 0644); err != nil {
+		t.Fatalf("write shared test: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(testsDir, "main.yaml"), []byte(`scenario: Profiles
+examples:
+  - role: admin
+steps:
+  - use: shared/login.yaml
+  - request:
+      method: GET
+      url: /profile/$role
+      headers: {Authorization: "Bearer $authToken"}
+`), 0644); err != nil {
+		t.Fatalf("write main test: %v", err)
+	}
+
+	results, err := ValidateProject(projectDir, projectDir, "main.yaml", "")
+	if err != nil {
+		t.Fatalf("ValidateProject: %v", err)
+	}
+	if len(results) != 1 || len(results[0].Issues) != 0 {
+		t.Fatalf("validation issues = %+v, want none", results)
+	}
+}

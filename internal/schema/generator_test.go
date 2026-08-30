@@ -17,6 +17,28 @@ func TestGenerateJSONSchema(t *testing.T) {
 	}
 }
 
+func TestGenerateJSONSchemaIncludesRepeatStepOperation(t *testing.T) {
+	b, err := GenerateJSONSchema()
+	if err != nil {
+		t.Fatalf("GenerateJSONSchema: %v", err)
+	}
+	var schema map[string]interface{}
+	if err := json.Unmarshal(b, &schema); err != nil {
+		t.Fatalf("decode schema: %v", err)
+	}
+	defs := schema["$defs"].(map[string]interface{})
+	step := defs["Step"].(map[string]interface{})
+	oneOf := step["oneOf"].([]interface{})
+	for _, raw := range oneOf {
+		entry := raw.(map[string]interface{})
+		required, _ := entry["required"].([]interface{})
+		if len(required) == 1 && required[0] == "repeat" {
+			return
+		}
+	}
+	t.Fatal("Step oneOf does not include repeat")
+}
+
 func TestGenerateAllSchemas(t *testing.T) {
 	b, err := GenerateAllSchemas()
 	if err != nil {
@@ -612,7 +634,3 @@ func TestTimingAndExpectDescriptionsContainOptions(t *testing.T) {
 		t.Errorf("Expected Expect description to contain options and matchers, got: %q", expectDesc2)
 	}
 }
-
-
-
-

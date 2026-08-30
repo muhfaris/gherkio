@@ -1,0 +1,41 @@
+scenario: Verify API cache through Redis
+description: |
+  Calls a real API, then polls its Redis cache until the expected JSON value is
+  visible. Use application-cache for direct Redis or sentinel-cache for Sentinel.
+
+steps:
+  - name: Fetch product from API
+    request:
+      method: GET
+      url: /v1/products/42
+    expect:
+      status: 200
+      body.data.id: exists
+    save:
+      productId: body.data.id
+      productName: body.data.name
+
+  - name: Wait for product cache
+    redis:
+      connection: application-cache
+      command: get
+      key: "product:$productId"
+    expect:
+      redis.exists: true
+      redis.value.id: "$productId"
+      redis.value.name: "$productName"
+    save:
+      cachedProduct: redis.value
+    retry:
+      attempts: 10
+      interval: 200
+      backoff: constant
+      maxDuration: 5s
+
+  - name: Verify cache expiry
+    redis:
+      connection: application-cache
+      command: ttl
+      key: "product:$productId"
+    expect:
+      redis.ttl: gt 0

@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -607,6 +608,216 @@ mocks:
 	// Check iterations are marked correctly
 	if res.Steps[0].Iteration != 1 {
 		t.Errorf("Expected first step iteration to be 1, got %d", res.Steps[0].Iteration)
+	}
+}
+
+func TestRun_SaveCountExpressionStoresArrayLength(t *testing.T) {
+	projectDir := t.TempDir()
+	envDir := filepath.Join(projectDir, ".gherkio", "environments")
+	if err := os.MkdirAll(envDir, 0755); err != nil {
+		t.Fatalf("create environment directory: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(envDir, "local.yaml"), []byte(`
+baseUrl: https://api.example.com
+mocks:
+  - request:
+      method: GET
+      url: /notes
+    response:
+      status: 200
+      body:
+        data:
+          - id: note-1
+          - id: note-2
+        nullable_data: null
+        scalar_data: not-an-array
+`), 0644); err != nil {
+		t.Fatalf("write environment: %v", err)
+	}
+
+	testPath := filepath.Join(projectDir, "count-save.yaml")
+	if err := os.WriteFile(testPath, []byte(`
+scenario: Save response count
+steps:
+  - request:
+      method: GET
+      url: /notes
+    expect:
+      status: 200
+    save:
+      4-notesBeforeConflict: count(body.data)
+      nullableCount: count(body.nullable_data)
+      missingCount: count(body.missing_data)
+      scalarCount: count(body.scalar_data)
+`), 0644); err != nil {
+		t.Fatalf("write test: %v", err)
+	}
+
+	sessionVars := map[string]interface{}{}
+	result, err := Run(RunConfig{
+		TestPath:    testPath,
+		EnvName:     "local",
+		ProjectDir:  projectDir,
+		StepIndex:   -1,
+		SessionVars: sessionVars,
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if got := sessionVars["4-notesBeforeConflict"]; got != 2 {
+		t.Fatalf("saved count = %#v, want 2", got)
+	}
+	if got := sessionVars["nullableCount"]; got != 0 {
+		t.Fatalf("saved null count = %#v, want 0", got)
+	}
+	if _, exists := sessionVars["missingCount"]; exists {
+		t.Fatal("missing path count must not be saved")
+	}
+	if _, exists := sessionVars["scalarCount"]; exists {
+		t.Fatal("scalar count must not be saved")
+	}
+	warnings := strings.Join(result.Steps[0].Warnings, "\n")
+	if !strings.Contains(warnings, `path "body.missing_data" not found`) {
+		t.Fatalf("missing path warning not found: %s", warnings)
+	}
+	if !strings.Contains(warnings, `count(body.scalar_data) requires an array or null`) {
+		t.Fatalf("scalar type warning not found: %s", warnings)
+	}
+}
+
+func TestRun_RepeatUntilPreservesSuccessfulVariables(t *testing.T) {
+	projectDir := t.TempDir()
+	envDir := filepath.Join(projectDir, ".gherkio", "environments")
+	if err := os.MkdirAll(envDir, 0755); err != nil {
+		t.Fatalf("create environment directory: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(envDir, "local.yaml"), []byte("baseUrl: https://api.example.com\n"), 0644); err != nil {
+		t.Fatalf("write environment: %v", err)
+	}
+
+	testPath := filepath.Join(projectDir, "repeat.yaml")
+	if err := os.WriteFile(testPath, []byte(`
+scenario: Select an unused candidate
+steps:
+  - name: Find candidate
+    repeat:
+      attempts: 3
+      until: $candidate == unused
+      steps:
+        - set:
+            candidate: unused
+`), 0644); err != nil {
+		t.Fatalf("write test: %v", err)
+	}
+
+	sessionVars := map[string]interface{}{}
+	result, err := Run(RunConfig{
+		TestPath:    testPath,
+		EnvName:     "local",
+		ProjectDir:  projectDir,
+		StepIndex:   -1,
+		SessionVars: sessionVars,
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if !result.Passed {
+		t.Fatalf("repeat scenario failed: %+v", result.Steps)
+	}
+	if got := sessionVars["candidate"]; got != "unused" {
+		t.Fatalf("candidate = %#v, want unused", got)
+	}
+	if got := result.FinalVars["candidate"]; got != "unused" {
+		t.Fatalf("final candidate = %#v, want unused", got)
+	}
+}
+
+func TestRun_RepeatUntilFailsAfterBoundedAttempts(t *testing.T) {
+	projectDir := t.TempDir()
+	envDir := filepath.Join(projectDir, ".gherkio", "environments")
+	if err := os.MkdirAll(envDir, 0755); err != nil {
+		t.Fatalf("create environment directory: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(envDir, "local.yaml"), []byte("baseUrl: https://api.example.com\n"), 0644); err != nil {
+		t.Fatalf("write environment: %v", err)
+	}
+	testPath := filepath.Join(projectDir, "repeat.yaml")
+	if err := os.WriteFile(testPath, []byte(`scenario: Exhaust repeat attempts
+steps:
+  - name: Find candidate
+    repeat:
+      attempts: 3
+      until: $candidate == unused
+      steps:
+        - set:
+            candidate: occupied
+`), 0644); err != nil {
+		t.Fatalf("write test: %v", err)
+	}
+
+	sessionVars := map[string]interface{}{}
+	result, err := Run(RunConfig{
+		TestPath:    testPath,
+		EnvName:     "local",
+		ProjectDir:  projectDir,
+		StepIndex:   -1,
+		SessionVars: sessionVars,
+	})
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if result.Passed {
+		t.Fatal("Run() passed, want exhausted repeat to fail")
+	}
+	if got := sessionVars["candidate"]; got != "occupied" {
+		t.Fatalf("candidate = %#v, want occupied", got)
+	}
+
+	var repeated, exhausted int
+	for _, step := range result.Steps {
+		if step.SavedVars["candidate"] == "occupied" {
+			repeated++
+		}
+		if strings.Contains(step.Error, `was not met after 3 attempts`) {
+			exhausted++
+		}
+	}
+	if repeated != 3 {
+		t.Fatalf("repeated executions = %d, want 3", repeated)
+	}
+	if exhausted != 1 {
+		t.Fatalf("exhaustion errors = %d, want 1", exhausted)
+	}
+}
+
+func TestRun_TransportErrorFailsScenario(t *testing.T) {
+	projectDir := t.TempDir()
+	envDir := filepath.Join(projectDir, ".gherkio", "environments")
+	if err := os.MkdirAll(envDir, 0755); err != nil {
+		t.Fatalf("create environment directory: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(envDir, "local.yaml"), []byte("baseUrl: https://api.example.com\n"), 0644); err != nil {
+		t.Fatalf("write environment: %v", err)
+	}
+	testPath := filepath.Join(projectDir, "transport-error.yaml")
+	if err := os.WriteFile(testPath, []byte(`scenario: Transport errors fail
+steps:
+  - request:
+      method: GET
+      url: "http://[::1"
+`), 0644); err != nil {
+		t.Fatalf("write test: %v", err)
+	}
+
+	result, err := Run(RunConfig{TestPath: testPath, EnvName: "local", ProjectDir: projectDir, StepIndex: -1})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if result.Passed {
+		t.Fatal("transport error scenario passed, want failure")
+	}
+	if result.TotalFail != 1 {
+		t.Fatalf("TotalFail = %d, want 1", result.TotalFail)
 	}
 }
 

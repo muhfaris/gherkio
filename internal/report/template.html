@@ -852,6 +852,18 @@
           </summary>
           <!-- Scenario steps -->
           <div class="steps" id="steps-{{$sIdx}}">
+            {{if $scenario.InitialVars}}
+            <div class="section" id="initial-vars-s{{$sIdx}}">
+              <div class="section-title" onclick="toggleSection('initial-vars-s{{$sIdx}}')"><span class="section-chevron">▶</span> Initial Variables ({{len $scenario.InitialVars}})</div>
+              <div class="section-content"><div class="saved-vars">{{range $k, $v := $scenario.InitialVars}}<div class="saved-var-item"><span class="saved-var-key">{{$k}}</span><span class="saved-var-val">{{$v}}</span></div>{{end}}</div></div>
+            </div>
+            {{end}}
+            {{if $scenario.FinalVars}}
+            <div class="section open" id="final-vars-s{{$sIdx}}">
+              <div class="section-title" onclick="toggleSection('final-vars-s{{$sIdx}}')"><span class="section-chevron">▶</span> Final Variables ({{len $scenario.FinalVars}})</div>
+              <div class="section-content"><div class="saved-vars">{{range $k, $v := $scenario.FinalVars}}<div class="saved-var-item"><span class="saved-var-key">{{$k}}</span><span class="saved-var-val">{{$v}}</span></div>{{end}}</div></div>
+            </div>
+            {{end}}
             {{range $i, $step := $scenario.Steps}}
             {{if $step.Original.IsUseStart}}
             <div class="step-compose-start" style="margin-left: calc({{$step.Original.Depth}} * 20px); padding: 12px 16px; background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); margin-top: 12px; margin-bottom: 8px;">
@@ -905,6 +917,9 @@
             <span class="step-url" title="{{$step.URL}}">{{$step.URL}}</span>
 
             <div class="step-badges">
+              {{if gt $step.Original.RepeatAttempt 0}}
+              <span class="badge" title="Repeat block attempt">repeat {{$step.Original.RepeatAttempt}}/{{$step.Original.RepeatAttempts}}</span>
+              {{end}}
               <!-- Status code -->
               <span class="status-badge {{statusClass $step.StatusCode}}"
                 >{{$step.StatusCode}}</span
@@ -1116,6 +1131,18 @@
       {{else}}
       <!-- ── Steps (single scenario) ── -->
       <div class="steps" id="steps">
+        {{if .InitialVars}}
+        <div class="section" id="initial-vars">
+          <div class="section-title" onclick="toggleSection('initial-vars')"><span class="section-chevron">▶</span> Initial Variables ({{len .InitialVars}})</div>
+          <div class="section-content"><div class="saved-vars">{{range $k, $v := .InitialVars}}<div class="saved-var-item"><span class="saved-var-key">{{$k}}</span><span class="saved-var-val">{{$v}}</span></div>{{end}}</div></div>
+        </div>
+        {{end}}
+        {{if .FinalVars}}
+        <div class="section open" id="final-vars">
+          <div class="section-title" onclick="toggleSection('final-vars')"><span class="section-chevron">▶</span> Final Variables ({{len .FinalVars}})</div>
+          <div class="section-content"><div class="saved-vars">{{range $k, $v := .FinalVars}}<div class="saved-var-item"><span class="saved-var-key">{{$k}}</span><span class="saved-var-val">{{$v}}</span></div>{{end}}</div></div>
+        </div>
+        {{end}}
         {{range $i, $step := .Steps}}
         {{if $step.Original.IsUseStart}}
         <div class="step-compose-start" style="margin-left: calc({{$step.Original.Depth}} * 20px); padding: 12px 16px; background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); margin-top: 12px; margin-bottom: 8px;">
@@ -1169,6 +1196,9 @@
             <span class="step-url" title="{{$step.URL}}">{{$step.URL}}</span>
 
             <div class="step-badges">
+              {{if gt $step.Original.RepeatAttempt 0}}
+              <span class="badge" title="Repeat block attempt">repeat {{$step.Original.RepeatAttempt}}/{{$step.Original.RepeatAttempts}}</span>
+              {{end}}
               <!-- Status code -->
               <span class="status-badge {{statusClass $step.StatusCode}}"
                 >{{$step.StatusCode}}</span

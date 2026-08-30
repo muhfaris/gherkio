@@ -1,0 +1,72 @@
+scenario: Showcase Dynamic Data Pipeline
+description: Exercises generators, date helpers, encoders, string transforms, hashing, and HMAC through a mocked request echo.
+tags: [showcase, helpers]
+
+steps:
+  - name: Generate and transform dynamic values
+    set:
+      RANDOM_INT: ${randomInt(10,20)}
+      RANDOM_STRING: ${randomString(12,"alphanumeric")}
+      SINGAPORE_PHONE: ${randomPhone("SG")}
+      UNIX_SECONDS: ${timestamp()}
+      UNIX_MILLISECONDS: ${timestampMs()}
+      TODAY: ${dateNow("2006-01-02")}
+      TOMORROW: ${dateOffset("+1d","2006-01-02")}
+      ENCODED: ${base64("hello")}
+      DECODED: ${base64Decode("aGVsbG8=")}
+      URL_ENCODED: ${urlencode("hello world!")}
+      URL_DECODED: ${urldecode("hello+world%21")}
+      UPPER: ${toUpper("gherkio")}
+      LOWER: ${toLower("GHERKIO")}
+      TRIMMED: ${trim("  value  ")}
+      WITHOUT_PREFIX: ${trimPrefix("Lainnya::Gramedia","Lainnya::")}
+      WITHOUT_SUFFIX: ${trimSuffix("report.json",".json")}
+      SPLIT_VALUE: ${split("abc::yyy","::",1)}
+      DIGEST: ${hash(sha256,"gherkio")}
+      SIGNATURE: ${hmac(sha256,"secret","message")}
+
+  - name: Submit dynamic values to mock echo
+    request:
+      method: POST
+      url: /feature-lab
+      body:
+        random_int: $int(RANDOM_INT)
+        random_string: $RANDOM_STRING
+        singapore_phone: $SINGAPORE_PHONE
+        timestamp: $UNIX_SECONDS
+        timestamp_ms: $UNIX_MILLISECONDS
+        today: $TODAY
+        tomorrow: $TOMORROW
+        encoded: $ENCODED
+        decoded: $DECODED
+        url_encoded: $URL_ENCODED
+        url_decoded: $URL_DECODED
+        upper: $UPPER
+        lower: $LOWER
+        trimmed: $TRIMMED
+        without_prefix: $WITHOUT_PREFIX
+        without_suffix: $WITHOUT_SUFFIX
+        split_value: $SPLIT_VALUE
+        digest: $DIGEST
+        signature: $SIGNATURE
+    expect:
+      status: 200
+      body.random_int: number
+      body.random_string: regex ^[A-Za-z0-9]{12}$
+      body.singapore_phone: startsWith +658
+      body.timestamp: regex ^[0-9]{10}$
+      body.timestamp_ms: regex ^[0-9]{13}$
+      body.today: regex ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
+      body.tomorrow: regex ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
+      body.encoded: aGVsbG8=
+      body.decoded: hello
+      body.url_encoded: hello+world%21
+      body.url_decoded: hello world!
+      body.upper: GHERKIO
+      body.lower: gherkio
+      body.trimmed: value
+      body.without_prefix: Gramedia
+      body.without_suffix: report
+      body.split_value: yyy
+      body.digest: regex ^[a-f0-9]{64}$
+      body.signature: regex ^[a-f0-9]{64}$

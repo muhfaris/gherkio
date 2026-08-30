@@ -37,6 +37,10 @@ schemas:
   # Directory containing validation files for schema matchers.
   path: .gherkio/schemas
 
+# Multipart files can be referenced relative to this directory.
+assets:
+  path: .gherkio/tests/showcase/shared
+
 # ----------------------------------------------------------------------
 # 5. Reports & Core Failure Snapshots
 # ----------------------------------------------------------------------
