@@ -17,6 +17,7 @@ Gherkio is a declarative integration testing platform that lets teams write API 
 - Rich assertion engine (status codes, field types, existence, JWT, schema)
 - Request retries with configurable backoff
 - Conditional steps and reusable scenario composition
+- Bounded multi-step repeat/until loops for response-driven selection and polling
 - Read-only Redis cache assertions with direct and Sentinel connections
 - Service mocking and response virtualization
 - Multipart uploads with configurable asset directories

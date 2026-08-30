@@ -142,3 +142,55 @@ func TestValidate_TransformConfig(t *testing.T) {
 	}
 }
 
+func TestValidate_RepeatAndNestedSteps(t *testing.T) {
+	test := &model.TestFile{
+		Scenario: "Repeated lookup",
+		Steps: []model.Step{{
+			Repeat: &model.RepeatConfig{
+				Attempts: 3,
+				Until:    "$count == 0",
+				Steps: []model.Step{{
+					Request: model.Request{Method: "GET", URL: "/items"},
+				}},
+			},
+		}},
+	}
+
+	result, err := Validate(test, "")
+	if err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if !result.Valid {
+		t.Fatalf("repeat validation failed: %+v", result.Errors)
+	}
+
+	test.Steps[0].Repeat.Steps[0].Request.Method = "INVALID"
+	result, err = Validate(test, "")
+	if err != nil {
+		t.Fatalf("Validate nested invalid request: %v", err)
+	}
+	if result.Valid {
+		t.Fatal("invalid nested request unexpectedly passed validation")
+	}
+}
+
+func TestValidateAcceptsNegatedSchemaReference(t *testing.T) {
+	schemasDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(schemasDir, "error.yaml"), []byte("type: object\n"), 0644); err != nil {
+		t.Fatalf("write schema: %v", err)
+	}
+	test := &model.TestFile{
+		Scenario: "Reject error schema",
+		Steps: []model.Step{{
+			Request: model.Request{Method: "GET", URL: "/items"},
+			Expect:  model.Expect{Extra: map[string]interface{}{"schema": "not error"}},
+		}},
+	}
+	result, err := Validate(test, schemasDir)
+	if err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if !result.Valid {
+		t.Fatalf("negated schema validation failed: %+v", result.Errors)
+	}
+}

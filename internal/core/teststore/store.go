@@ -185,6 +185,9 @@ func Validate(test *model.TestFile, schemasDir string) (*ValidationResult, error
 		if step.Redis != nil {
 			operationCount++
 		}
+		if step.Repeat != nil {
+			operationCount++
+		}
 		if step.Request.Method != "" || step.Request.URL != "" {
 			operationCount++
 		}
@@ -192,7 +195,7 @@ func Validate(test *model.TestFile, schemasDir string) (*ValidationResult, error
 			result.Valid = false
 			result.Errors = append(result.Errors, ValidationError{
 				Field:   prefix,
-				Message: "Step must define one of 'request', 'redis', 'use', or 'set'",
+				Message: "Step must define one of 'request', 'redis', 'use', 'set', or 'repeat'",
 				Code:    "invalid_step",
 			})
 			continue
@@ -202,9 +205,23 @@ func Validate(test *model.TestFile, schemasDir string) (*ValidationResult, error
 			result.Valid = false
 			result.Errors = append(result.Errors, ValidationError{
 				Field:   prefix,
-				Message: "Step operations 'request', 'redis', 'use', and 'set' are mutually exclusive",
+				Message: "Step operations 'request', 'redis', 'use', 'set', and 'repeat' are mutually exclusive",
 				Code:    "mutually_exclusive",
 			})
+		}
+
+		if step.Repeat != nil && len(step.Repeat.Steps) > 0 {
+			nested, err := Validate(&model.TestFile{Scenario: "repeat block", Steps: step.Repeat.Steps}, schemasDir)
+			if err != nil {
+				return nil, err
+			}
+			if !nested.Valid {
+				result.Valid = false
+				for _, nestedError := range nested.Errors {
+					nestedError.Field = prefix + ".repeat." + nestedError.Field
+					result.Errors = append(result.Errors, nestedError)
+				}
+			}
 		}
 
 		if step.Redis != nil {
@@ -264,6 +281,7 @@ func Validate(test *model.TestFile, schemasDir string) (*ValidationResult, error
 		// Validate referenced schema file if it exists
 		if schemaNameVal, ok := step.Expect.Extra["schema"]; ok && schemasDir != "" {
 			if schemaName, ok := schemaNameVal.(string); ok && schemaName != "" {
+				schemaName = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(schemaName), "not "))
 				schemaFile := filepath.Join(schemasDir, schemaName+".yaml")
 				if _, err := os.Stat(schemaFile); os.IsNotExist(err) {
 					// Also check .yml

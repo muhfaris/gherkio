@@ -27,7 +27,7 @@ func TestMapResultToReportData(t *testing.T) {
 				Request: &runner.RequestInfo{
 					Method:  "POST",
 					URL:     "/api/login",
-					Headers: map[string]string{"Content-Type": "application/json"},
+					Headers: map[string]string{"Content-Type": "application/json", "Authorization": "Bearer live-secret"},
 					Body:    `{"username":"test","password":"pwd"}`,
 				},
 				Response: &runner.ResponseInfo{
@@ -73,7 +73,7 @@ func TestMapResultToReportData(t *testing.T) {
 	}
 
 	// Check masking in cURL
-	if !strings.Contains(step.CurlCommand, "***masked***") || strings.Contains(step.CurlCommand, "pwd") {
+	if !strings.Contains(step.CurlCommand, "***masked***") || strings.Contains(step.CurlCommand, "pwd") || strings.Contains(step.CurlCommand, "live-secret") {
 		t.Errorf("expected password to be masked in curl command, got: %s", step.CurlCommand)
 	}
 
@@ -137,6 +137,45 @@ func TestRenderHTML(t *testing.T) {
 	}
 	if !strings.Contains(html, "Test HTML Render") {
 		t.Errorf("expected HTML to contain scenario name")
+	}
+}
+
+func TestRenderHTMLShowsRepeatAttempt(t *testing.T) {
+	result := &runner.RunResult{
+		Scenario: "Repeated lookup",
+		Passed:   true,
+		Steps: []runner.StepResult{{
+			Name:           "Check candidate",
+			Request:        &runner.RequestInfo{Method: "GET", URL: "/items"},
+			Response:       &runner.ResponseInfo{Status: 200},
+			RepeatAttempt:  2,
+			RepeatAttempts: 20,
+		}},
+	}
+	html, err := RenderHTML(result, ReportConfig{}, "local")
+	if err != nil {
+		t.Fatalf("RenderHTML: %v", err)
+	}
+	if !strings.Contains(html, "repeat 2/20") {
+		t.Fatal("rendered report does not show repeat attempt")
+	}
+}
+
+func TestRenderHTMLDistinguishesInitialAndFinalVariables(t *testing.T) {
+	result := &runner.RunResult{
+		Scenario:     "Repeated selection",
+		Passed:       true,
+		ResolvedVars: map[string]interface{}{"ISSUE_TAG_L3": "initial-tag"},
+		FinalVars:    map[string]interface{}{"ISSUE_TAG_L3": "selected-tag"},
+	}
+	html, err := RenderHTML(result, ReportConfig{}, "local")
+	if err != nil {
+		t.Fatalf("RenderHTML: %v", err)
+	}
+	for _, expected := range []string{"Initial Variables", "initial-tag", "Final Variables", "selected-tag"} {
+		if !strings.Contains(html, expected) {
+			t.Errorf("rendered report does not contain %q", expected)
+		}
 	}
 }
 

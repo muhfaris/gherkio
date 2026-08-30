@@ -37,6 +37,7 @@ Each step in a scenario sequence supports the following top-level keys:
 | `redis` | `object` | Conditional | Controlled read-only Redis operation. Mutually exclusive with other step operations. | `redis: { connection: local-cache, command: get, key: "product:42" }` |
 | `use` | `string` | Conditional | Scenario composition. Imports and executes another scenario YAML file inline. | `use: shared/login.yaml` |
 | `set` | `map[string]string`| Conditional | Inline variable assignment. Explicitly assigns or overrides variables. | `set: { QUEUE_ID: "01KT4EBA37Y" }` |
+| `repeat` | `object` | Conditional | Repeats a group of steps until a condition is true or the attempt limit is exhausted. | `repeat: { attempts: 20, until: "$count == 0", steps: [...] }` |
 | `with` | `map[string]string`| No | Variable overrides injected into a `use:` step. Values interpolated before injection; original values restored after completion. | `with: { PARENT_CLAIM_ISSUE_ID: $STATUS_APPROVED_ID }` |
 | `expect` | `object` | No | Assertions mapping target dot-notation paths to expected formats or matchers. | `expect: { status: 200 }` |
 | `save` | `map[string]string`| No | Context extraction map. Binds response parameters to dynamic variables. | `save: { token: body.accessToken }` |
@@ -88,6 +89,40 @@ the `redis.*` path: `redis.exists`, `redis.value`, `redis.value.<field>`, and
 
 See [Redis Cache Checks](redis.md) for complete API-plus-cache scenarios,
 command-specific result paths, TTL and hash examples, polling, and Sentinel use.
+
+## Bounded Multi-Step Loops (`repeat`)
+
+Use `repeat` when one polling attempt needs multiple operations. The nested
+`steps` run sequentially, then `until` is evaluated against the updated
+variables. A true condition preserves those variables for following steps and
+ends the loop. An inner failure stops immediately; if the condition remains
+false after every attempt, the repeat step fails.
+
+```yaml
+- name: Find an unused issue tag
+  repeat:
+    attempts: 20
+    until: $existingTicketCount == 0
+    steps:
+      - name: Select candidate issue tag
+        set:
+          ISSUE_TAG_L3: ${randomItem(respIssueTagL3)}
+
+      - name: Check tickets using candidate
+        request:
+          method: GET
+          url: /v1/tickets
+          query:
+            issue_tag_id: $ISSUE_TAG_L3.id
+        expect:
+          status: 200
+        save:
+          existingTicketCount: count(body.data)
+```
+
+This is a bounded loop, not unbounded recursion. Reports label every nested
+execution as `repeat N/M`. A dry run previews the block once because no live
+response exists for evaluating response-dependent exit conditions.
 
 ---
 
@@ -164,6 +199,14 @@ save:
     *   *Example*: `rateLimit: headers.X-Rate-Limit`
 *   **`jwt.<claim>`**: Automatically decodes response JWT keys (looks for `token`, `accessToken`, `access_token`) and extracts claims.
     *   *Example*: `adminRole: jwt.role`
+*   **`count(body.<path>)`**: Saves the length of a response array as an integer. An explicitly present `null` value saves `0`; an empty array also saves `0`. Missing paths and non-array values produce a save warning and are not stored.
+    *   *Example*: `4-notesBeforeConflict: count(body.data)`
+
+```yaml
+save:
+  notes: body.data
+  notesCount: count(body.data)
+```
 
 ---
 

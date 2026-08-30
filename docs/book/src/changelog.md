@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Response-Aware Random Selection**: Added `${randomItem(array[,field])}` using the runtime collection length, including typed object preservation when the expression is used as an exact `set:` value.
 - **String Helpers**: Added `${trimPrefix(...)}`, `${trimSuffix(...)}`, and `${split(...,delimiter,index)}` interpolation helpers.
 - **Configurable Multipart Assets**: Added `assets.path` to `.gherkio/config.yaml` while retaining the existing project-root and fixtures fallbacks when it is omitted.
+- **Bounded Multi-Step Loops**: Added `repeat.attempts`, `repeat.until`, and nested `repeat.steps` for workflows that must reselect data and refetch an API until a response-derived condition succeeds, with attempt labels in terminal and HTML reports.
+- **Executable Feature Catalog**: Expanded the built-in `.gherkio` project into consolidated, self-contained mocked workflows covering composition, multipart uploads, collections, repeat loops, runtime helpers, matchers, and load execution, plus opt-in direct Redis and Sentinel examples.
 
 ### Changed
 - **Request Pacing**: Added `--request-delay` with sensible defaults for individual files and directory runs.
@@ -22,8 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Load-Test Reporting**: HTML reports now present load-run summaries and virtual-user workflow executions with clearer expandable details.
 - **Documentation Theme**: Set Navy as the default mdBook theme and placed Mermaid diagrams on a light canvas for readable labels across Light, Navy, Ayu, and Coal.
 - **AI Documentation Reliability**: Added a compact machine-readable reference, refreshed `llms.txt`, corrected stale runtime claims, and introduced consistency tests for CLI flags, book links, MCP request fields, matchers, and built-in functions.
+- **Saved Collection Counts**: `save:` now accepts `count(body.<path>)`; arrays save their length and explicit `null` values save `0` without hiding missing or incorrectly typed paths.
+- **Variable Snapshot Reporting**: Reports now distinguish variables available before execution from final variables preserved after repeat blocks; generated cURL commands mask authorization headers, and `authToken` variables use built-in masking.
 
 ### Fixed
+- **Transport Failure Accounting**: Request construction and transport errors now fail the scenario and contribute to failure totals instead of allowing a false-green result.
+- **Composed Variable Validation**: Project validation now recognizes example variables and outputs saved or set by nested `use` workflows, and accepts negated schema assertions.
 - **Strict MCP Schemas**: MCP tool input schemas now emit explicit object properties and strict validation metadata required by stricter clients.
 - **Deterministic Query Parameters**: Request URLs now serialize query parameters in a stable order.
 

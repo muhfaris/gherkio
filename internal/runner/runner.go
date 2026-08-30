@@ -47,6 +47,7 @@ type RunResult struct {
 	Account           string                 `json:"account,omitempty"` // Account name used (if any)
 	Steps             []StepResult           `json:"steps"`
 	ResolvedVars      map[string]interface{} `json:"resolvedVars,omitempty"` // Variables available at start of scenario
+	FinalVars         map[string]interface{} `json:"finalVars,omitempty"`    // Variables remaining after scenario execution
 	TotalPass         int                    `json:"totalPass"`
 	TotalFail         int                    `json:"totalFail"`
 	Duration          time.Duration          `json:"duration"`
@@ -256,6 +257,7 @@ func Run(cfg RunConfig) (*RunResult, error) {
 	result.TestFile = cfg.TestPath
 	result.Duration = time.Since(start)
 	result.FinishedAt = time.Now()
+	result.FinalVars = snapshotVars(vars, cfg.MaskFields)
 
 	// Determine overall pass/fail (teardown failures don't affect this)
 	if result.TotalFail == 0 && setupFailedOverall == false && mainStepsPassedOverall == true {
@@ -325,6 +327,76 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 				stepResults = append(stepResults, stepResult)
 				continue
 			}
+		}
+
+		// Handle a bounded multi-step repeat block. Variables intentionally remain
+		// in the caller's scope so the successful attempt can feed later steps.
+		if step.Repeat != nil {
+			repeat := step.Repeat
+			if step.Use != "" || step.Set != nil || step.Redis != nil || step.Request.Method != "" || step.Request.URL != "" || step.Retry != nil || len(step.Save) > 0 || step.Expect.Status != 0 || len(step.Expect.Extra) > 0 || step.Timing.Max != "" || len(step.With) > 0 {
+				stepResult.Error = "validation error: repeat is a primary operation and cannot be combined with request, redis, use, set, with, expect, save, timing, or retry"
+				stepResults = append(stepResults, stepResult)
+				totalFail++
+				allPassed = false
+				continue
+			}
+			if repeat.Attempts < 1 || strings.TrimSpace(repeat.Until) == "" || len(repeat.Steps) == 0 {
+				stepResult.Error = "validation error: repeat requires attempts >= 1, until, and at least one step"
+				stepResults = append(stepResults, stepResult)
+				totalFail++
+				allPassed = false
+				continue
+			}
+
+			completed := false
+			aborted := false
+			for attempt := 1; attempt <= repeat.Attempts; attempt++ {
+				nestedSteps, nestedPass, nestedFail, nestedPassed := executeSteps(
+					repeat.Steps, env, vars, projectDir, currentDir, depth+1, role,
+					dryRun, requestDelay, true, sandbox, snapCfg, scenario, testFile,
+				)
+				for i := range nestedSteps {
+					if nestedSteps[i].RepeatAttempt == 0 {
+						nestedSteps[i].RepeatAttempt = attempt
+						nestedSteps[i].RepeatAttempts = repeat.Attempts
+					}
+				}
+				stepResults = append(stepResults, nestedSteps...)
+				totalPass += nestedPass
+				totalFail += nestedFail
+				if !nestedPassed {
+					allPassed = false
+					aborted = true
+					break
+				}
+				if dryRun {
+					completed = true
+					break
+				}
+
+				conditionMet, err := EvaluateCondition(repeat.Until, vars)
+				if err != nil {
+					stepResult.Error = fmt.Sprintf("repeat until condition failed: %v", err)
+					stepResults = append(stepResults, stepResult)
+					totalFail++
+					allPassed = false
+					aborted = true
+					break
+				}
+				if conditionMet {
+					completed = true
+					break
+				}
+			}
+
+			if !completed && !aborted {
+				stepResult.Error = fmt.Sprintf("repeat condition %q was not met after %d attempts", repeat.Until, repeat.Attempts)
+				stepResult.Duration = time.Since(stepStart)
+				stepResults = append(stepResults, stepResult)
+				totalFail++
+				allPassed = false
+			}
+			continue
 		}
 
 		// Handle 'set' step
@@ -792,6 +864,8 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 
 		if stepErr != nil {
 			stepResult.Error = stepErr.Error()
+			totalFail++
+			allPassed = false
 			if hasRetry && len(retryHistory) > 0 {
 				stepResult.RetryCount = len(retryHistory) - 1
 				stepResult.RetryHistory = retryHistory
@@ -807,8 +881,6 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 						}
 					}
 				}
-			} else {
-				allPassed = false
 			}
 			stepResult.Duration = time.Since(stepStart)
 			if stepResult.Response == nil {
@@ -1197,6 +1269,7 @@ func RunSingleStep(cfg RunConfig, env *model.Environment, testFile *model.TestFi
 		Account:      cfg.AccountName,
 		Steps:        runSteps,
 		ResolvedVars: initialVars,
+		FinalVars:    snapshotVars(vars, cfg.MaskFields),
 		TotalPass:    pass,
 		TotalFail:    fail,
 		Duration:     time.Since(start),

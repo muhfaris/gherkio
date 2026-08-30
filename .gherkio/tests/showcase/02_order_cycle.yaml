@@ -91,9 +91,14 @@ steps:
         orderItems:
           from: "$savedItems"
           as: "item"
+          where:
+            item.enabled: true
+          limit: 1
           select:
+            id: "$int(item.id)"
             name: "$if(item.name, item.name, 'Fallback Item')"
             price: "$if(item.price, $float(item.price), 0.0)"
+            enabled: "$bool(item.enabled)"
     expect:
       status: 201
       body.itemsCount: 1

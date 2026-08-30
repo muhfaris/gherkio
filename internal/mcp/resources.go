@@ -127,8 +127,9 @@ Use setup, steps, and teardown blocks strategically:
 - **with**: (Map of string:string, Optional) Variable overrides injected into a 'use:' step. Values are interpolated against current context before injection. The used scenario sees these as local variables; original values are restored after the 'use:' completes. Only valid with 'use:'. Example: 'with: { PARENT_CLAIM_ISSUE_ID: $STATUS_APPROVED_ID }'
 - **request**: (Request object, Conditional) HTTP Request config. Mutually exclusive with use and set.
 - **set**: (Map of string:string, Conditional) Inline variable assignment / override map. Mutually exclusive with request and use.
+- **repeat**: (Object, Conditional) Bounded multi-step loop. Requires attempts >= 1, an until condition evaluated after each block, and a non-empty steps list. Nested variables remain available after success; inner failure or exhausted attempts fails the block.
 - **expect**: (Expect object, Optional) Response assertions.
-- **save**: (Map of name:path, Optional) Extract dynamic values to context variables. Paths support variable interpolation (e.g. 'body.data[$randomInt(0,9)].id') and **bracket notation** for array indexing (e.g. 'body.users[0].id').
+- **save**: (Map of name:path, Optional) Extract dynamic values to context variables. Paths support variable interpolation and bracket notation. Use 'count(body.<path>)' to save an array length; empty arrays and explicit null save 0, while missing/non-array paths warn and are not stored.
 - **timing**: (TimingConfig, Optional) Execution latency check.
 
 ### Request Config

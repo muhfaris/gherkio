@@ -1,0 +1,22 @@
+baseUrl: http://localhost:8080
+
+connections:
+  application-cache:
+    type: redis
+    address: localhost:6379
+    database: 0
+    password: $GHERKIO_REDIS_PASSWORD
+    timeout: 5s
+
+  sentinel-cache:
+    type: redis
+    sentinel:
+      master: mymaster
+      addresses:
+        - localhost:26379
+      username: $GHERKIO_SENTINEL_USERNAME
+      password: $GHERKIO_SENTINEL_PASSWORD
+    username: $GHERKIO_REDIS_USERNAME
+    password: $GHERKIO_REDIS_PASSWORD
+    database: 0
+    timeout: 5s

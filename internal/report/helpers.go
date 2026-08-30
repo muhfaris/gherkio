@@ -18,6 +18,9 @@ func generateCurl(req *runner.RequestInfo, maskFields []string) string {
 	sb.WriteString(fmt.Sprintf("curl -X %s '%s'", req.Method, req.URL))
 
 	for k, v := range req.Headers {
+		if containsFold(maskFields, k) {
+			v = "***masked***"
+		}
 		sb.WriteString(fmt.Sprintf(" -H '%s: %s'", k, v))
 	}
 
@@ -35,6 +38,15 @@ func generateCurl(req *runner.RequestInfo, maskFields []string) string {
 	}
 
 	return sb.String()
+}
+
+func containsFold(values []string, target string) bool {
+	for _, value := range values {
+		if strings.EqualFold(value, target) {
+			return true
+		}
+	}
+	return false
 }
 
 // extractRequestId scans headers for common request tracing IDs.

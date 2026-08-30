@@ -11,6 +11,8 @@ import (
 // defaultSensitiveFields are built-in field names whose values are masked in output.
 var defaultSensitiveFields = []string{
 	"token",
+	"authToken",
+	"auth_token",
 	"accessToken",
 	"access_token",
 	"refreshToken",
@@ -139,11 +141,16 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 
 	// Print resolved variables in verbose mode
 	if verbose && result.ResolvedVars != nil && len(result.ResolvedVars) > 0 {
-		fmt.Println("── Resolved Variables ──")
+		fmt.Println("── Initial Variables ──")
 		printVariables(result.ResolvedVars, maskFields)
 		fmt.Println()
 	} else {
 		// Blank line between scenario name and first step (when no variables section)
+		fmt.Println()
+	}
+	if verbose && len(result.FinalVars) > 0 {
+		fmt.Println("── Final Variables ──")
+		printVariables(result.FinalVars, maskFields)
 		fmt.Println()
 	}
 
@@ -237,6 +244,9 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 			} else {
 				stepLabel = "Unknown Step"
 			}
+		}
+		if step.RepeatAttempt > 0 {
+			stepLabel = fmt.Sprintf("[repeat %d/%d] %s", step.RepeatAttempt, step.RepeatAttempts, stepLabel)
 		}
 
 		prefix := fmt.Sprintf("%d. ", stepCounter)

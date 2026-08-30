@@ -26,5 +26,13 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      - name: Validate Gherkio Showcase
+        run: ./gherkio validate
+
       - name: Run Gherkio Showcase Suite
         run: ./gherkio run --env mocked
+
+      - name: Run Gherkio Load Showcase
+        run: >-
+          ./gherkio run .gherkio/tests/showcase/05_repeat_until.yaml
+          --env mocked --virtual-users 2 --iterations-per-user 2

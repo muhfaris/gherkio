@@ -18,18 +18,20 @@ type ReportData struct {
 	PassPercent         float64
 	FailPercent         float64
 	SkipPercent         float64
-	Steps               []ReportStep   // populated for single-scenario runs
-	Scenarios           []ScenarioData // populated for multi-scenario runs
-	LoadMode            bool           `json:"loadMode,omitempty"`
-	VirtualUsers        int            `json:"virtualUsers,omitempty"`
-	IterationsPerUser   int            `json:"iterationsPerUser,omitempty"`
-	WorkflowCount       int            `json:"workflowCount,omitempty"`
-	PassedWorkflows     int            `json:"passedWorkflows,omitempty"`
-	FailedWorkflows     int            `json:"failedWorkflows,omitempty"`
-	RequestCount        int            `json:"requestCount,omitempty"`
-	AverageResponseTime string         `json:"averageResponseTime,omitempty"`
-	P95ResponseTime     string         `json:"p95ResponseTime,omitempty"`
-	RequestsPerSecond   string         `json:"requestsPerSecond,omitempty"`
+	Steps               []ReportStep           // populated for single-scenario runs
+	Scenarios           []ScenarioData         // populated for multi-scenario runs
+	LoadMode            bool                   `json:"loadMode,omitempty"`
+	VirtualUsers        int                    `json:"virtualUsers,omitempty"`
+	IterationsPerUser   int                    `json:"iterationsPerUser,omitempty"`
+	WorkflowCount       int                    `json:"workflowCount,omitempty"`
+	PassedWorkflows     int                    `json:"passedWorkflows,omitempty"`
+	FailedWorkflows     int                    `json:"failedWorkflows,omitempty"`
+	RequestCount        int                    `json:"requestCount,omitempty"`
+	AverageResponseTime string                 `json:"averageResponseTime,omitempty"`
+	P95ResponseTime     string                 `json:"p95ResponseTime,omitempty"`
+	RequestsPerSecond   string                 `json:"requestsPerSecond,omitempty"`
+	InitialVars         map[string]interface{} `json:"initialVars,omitempty"`
+	FinalVars           map[string]interface{} `json:"finalVars,omitempty"`
 }
 
 // ScenarioData holds the report data for a single scenario within a suite run.
@@ -48,9 +50,11 @@ type ScenarioData struct {
 	SkipPercent       float64
 	Steps             []ReportStep
 	Passed            bool
-	VirtualUser       int `json:"virtualUser,omitempty"`
-	Iteration         int `json:"iteration,omitempty"`
-	IterationsPerUser int `json:"iterationsPerUser,omitempty"`
+	VirtualUser       int                    `json:"virtualUser,omitempty"`
+	Iteration         int                    `json:"iteration,omitempty"`
+	IterationsPerUser int                    `json:"iterationsPerUser,omitempty"`
+	InitialVars       map[string]interface{} `json:"initialVars,omitempty"`
+	FinalVars         map[string]interface{} `json:"finalVars,omitempty"`
 }
 
 // ReportStep represents a single step in the report.

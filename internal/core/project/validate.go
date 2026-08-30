@@ -126,8 +126,9 @@ func ValidateFile(filePath, projectDir string, creds *model.Credentials, schemas
 	}
 
 	// Extended validations
-	result.Issues = append(result.Issues, validateVariableReferences(test, creds)...)
+	result.Issues = append(result.Issues, validateVariableReferences(test, creds, projectDir, filePath)...)
 	result.Issues = append(result.Issues, validateRetryConfig(test)...)
+	result.Issues = append(result.Issues, validateRepeatConfig(test)...)
 	result.Issues = append(result.Issues, validateUseFiles(test, projectDir, filePath)...)
 	result.Issues = append(result.Issues, validateSchemaReferences(test, schemas)...)
 	result.Issues = append(result.Issues, validateBodyPaths(test)...)
@@ -137,7 +138,7 @@ func ValidateFile(filePath, projectDir string, creds *model.Credentials, schemas
 	return result
 }
 
-func validateVariableReferences(test *model.TestFile, creds *model.Credentials) []ValidationIssue {
+func validateVariableReferences(test *model.TestFile, creds *model.Credentials, projectDir, currentFile string) []ValidationIssue {
 	var issues []ValidationIssue
 
 	// Regex to match variable references: $accounts.name.field, $var,
@@ -146,6 +147,11 @@ func validateVariableReferences(test *model.TestFile, creds *model.Credentials) 
 
 	// Collect variable sources
 	savedVars := make(map[string]bool)
+	for _, example := range test.Examples {
+		for name := range example {
+			savedVars[name] = true
+		}
+	}
 	setupSteps, stepsSteps, teardownSteps := collectAllSteps(test)
 	allSteps := append(append(setupSteps, stepsSteps...), teardownSteps...)
 
@@ -157,6 +163,11 @@ func validateVariableReferences(test *model.TestFile, creds *model.Credentials) 
 	}
 
 	for _, step := range allSteps {
+		// The exit condition runs after the nested block, so variables assigned
+		// anywhere in that block are valid inputs to repeat.until.
+		if step.Repeat != nil {
+			collectAssignedVariables(step.Repeat.Steps, savedVars)
+		}
 		// Collect variables used in this step
 		usedVars := extractVariables(&step, varPattern)
 
@@ -201,9 +212,69 @@ func validateVariableReferences(test *model.TestFile, creds *model.Credentials) 
 				savedVars[name] = true
 			}
 		}
+		for name := range step.Set {
+			savedVars[name] = true
+		}
+		if step.Use != "" {
+			collectComposedOutputVariables(step.Use, projectDir, currentFile, savedVars, map[string]bool{})
+		}
 	}
 
 	return issues
+}
+
+func collectComposedOutputVariables(usePath, projectDir, currentFile string, assigned map[string]bool, visiting map[string]bool) {
+	path := usePath
+	if !filepath.IsAbs(path) && filepath.Ext(path) == "" {
+		path += ".yaml"
+	}
+	candidates := []string{path}
+	if !filepath.IsAbs(path) {
+		candidates = []string{filepath.Join(filepath.Dir(currentFile), path), filepath.Join(projectDir, ".gherkio", "tests", path)}
+	}
+	var resolved string
+	for _, candidate := range candidates {
+		if _, err := os.Stat(candidate); err == nil {
+			resolved = candidate
+			break
+		}
+	}
+	if resolved == "" || visiting[resolved] {
+		return
+	}
+	visiting[resolved] = true
+	defer delete(visiting, resolved)
+
+	composed, err := runner.LoadTestFile(resolved)
+	if err != nil {
+		return
+	}
+	setup, steps, teardown := collectAllSteps(composed)
+	for _, nested := range append(append(setup, steps...), teardown...) {
+		for name := range nested.Set {
+			assigned[name] = true
+		}
+		for name := range nested.Save {
+			assigned[name] = true
+		}
+		if nested.Use != "" {
+			collectComposedOutputVariables(nested.Use, projectDir, resolved, assigned, visiting)
+		}
+	}
+}
+
+func collectAssignedVariables(steps []model.Step, assigned map[string]bool) {
+	for _, step := range steps {
+		for name := range step.Set {
+			assigned[name] = true
+		}
+		for name := range step.Save {
+			assigned[name] = true
+		}
+		if step.Repeat != nil {
+			collectAssignedVariables(step.Repeat.Steps, assigned)
+		}
+	}
 }
 
 func extractVariables(step *model.Step, pattern *regexp.Regexp) []string {
@@ -220,6 +291,12 @@ func extractVariables(step *model.Step, pattern *regexp.Regexp) []string {
 	}
 
 	// Check request fields
+	if step.Repeat != nil {
+		for _, match := range pattern.FindAllString(step.Repeat.Until, -1) {
+			vars = append(vars, extract(match))
+		}
+	}
+
 	req := step.Request
 	if step.Redis != nil {
 		for _, raw := range []string{step.Redis.Connection, step.Redis.Key} {
@@ -269,7 +346,8 @@ func validateRetryConfig(test *model.TestFile) []ValidationIssue {
 		"constant": true, "linear": true, "exponential": true,
 	}
 
-	allSteps := append(append(test.Setup, test.Steps...), test.Teardown...)
+	setup, steps, teardown := collectAllSteps(test)
+	allSteps := append(append(setup, steps...), teardown...)
 	for i, step := range allSteps {
 		if step.Retry != nil {
 			if step.Retry.Backoff != "" {
@@ -291,6 +369,27 @@ func validateRetryConfig(test *model.TestFile) []ValidationIssue {
 		}
 	}
 
+	return issues
+}
+
+func validateRepeatConfig(test *model.TestFile) []ValidationIssue {
+	var issues []ValidationIssue
+	setup, steps, teardown := collectAllSteps(test)
+	allSteps := append(append(setup, steps...), teardown...)
+	for i, step := range allSteps {
+		if step.Repeat == nil {
+			continue
+		}
+		if step.Repeat.Attempts < 1 {
+			issues = append(issues, ValidationIssue{Field: fmt.Sprintf("steps[%d].repeat.attempts", i), Code: "invalid_attempts", Msg: "repeat attempts must be >= 1"})
+		}
+		if strings.TrimSpace(step.Repeat.Until) == "" {
+			issues = append(issues, ValidationIssue{Field: fmt.Sprintf("steps[%d].repeat.until", i), Code: "missing_until", Msg: "repeat until condition is required"})
+		}
+		if len(step.Repeat.Steps) == 0 {
+			issues = append(issues, ValidationIssue{Field: fmt.Sprintf("steps[%d].repeat.steps", i), Code: "missing_steps", Msg: "repeat requires at least one nested step"})
+		}
+	}
 	return issues
 }
 
@@ -352,6 +451,7 @@ func validateSchemaReferences(test *model.TestFile, schemas []string) []Validati
 	for i, step := range allSteps {
 		if schemaVal, ok := step.Expect.Extra["schema"]; ok {
 			if schemaName, ok := schemaVal.(string); ok {
+				schemaName = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(schemaName), "not "))
 				if !schemaSet[schemaName] {
 					issues = append(issues, ValidationIssue{
 						Field: fmt.Sprintf("steps[%d].expect.schema", i),
@@ -575,7 +675,18 @@ func resolveMultipartValidationPath(filePath, projectDir, testFilePath string) s
 }
 
 func collectAllSteps(test *model.TestFile) (setup, steps, teardown []model.Step) {
-	return test.Setup, test.Steps, test.Teardown
+	var flatten func([]model.Step) []model.Step
+	flatten = func(source []model.Step) []model.Step {
+		var result []model.Step
+		for _, step := range source {
+			result = append(result, step)
+			if step.Repeat != nil {
+				result = append(result, flatten(step.Repeat.Steps)...)
+			}
+		}
+		return result
+	}
+	return flatten(test.Setup), flatten(test.Steps), flatten(test.Teardown)
 }
 
 func discoverTestFilesForValidate(dir string) ([]string, error) {

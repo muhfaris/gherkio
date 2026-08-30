@@ -299,6 +299,12 @@ func TestMaskSensitiveData(t *testing.T) {
 			want:   map[string]interface{}{"token": "***masked***", "name": "Emily"},
 		},
 		{
+			name:   "auth token variable masked",
+			data:   map[string]interface{}{"authToken": "live-token"},
+			fields: defaultSensitiveFields,
+			want:   map[string]interface{}{"authToken": "***masked***"},
+		},
+		{
 			name:   "empty fields no masking",
 			data:   map[string]interface{}{"token": "abc123"},
 			fields: []string{},

@@ -1,0 +1,41 @@
+scenario: Showcase Bounded Multi-Step Repeat
+description: |
+  Selects a candidate object, checks whether it is already used, and preserves
+  the successful object after a response-derived repeat condition becomes true.
+
+steps:
+  - name: Discover candidate issue tags
+    request:
+      method: GET
+      url: /issue-tags
+    expect:
+      status: 200
+      body.data: array
+      count(body.data).gte: 1
+    save:
+      respIssueTagL3: body.data
+
+  - name: Find an unused issue tag
+    repeat:
+      attempts: 5
+      until: $existingTicketCount == 0
+      steps:
+        - name: Select candidate issue tag
+          set:
+            ISSUE_TAG_L3: ${randomItem(respIssueTagL3)}
+
+        - name: Check tickets using candidate
+          request:
+            method: GET
+            url: /tickets
+            query:
+              issue_tag_id: $ISSUE_TAG_L3.id
+          expect:
+            status: 200
+            body.data: array
+          save:
+            existingTicketCount: count(body.data)
+
+  - name: Preserve selected object for following requests
+    set:
+      SELECTED_ISSUE_TAG_ID: $ISSUE_TAG_L3.id

@@ -276,10 +276,11 @@ func patchStepOneOf(schema *jsonschema.Schema) {
 			"- **if**: (String, Optional) Conditional guard expression (e.g. '$status == 200').\n" +
 			"- **request**: (Object, Conditional) HTTP Request config.\n" +
 			"- **redis**: (Object, Conditional) Controlled read-only Redis operation.\n" +
+			"- **repeat**: (Object, Conditional) Bounded multi-step loop with attempts, until, and steps.\n" +
 			"- **use**: (String, Conditional) Path to compose/execute another scenario. Mutually exclusive with 'request' and 'set'.\n" +
 			"- **set**: (Map, Conditional) Inline variable assignment / override map. Mutually exclusive with 'request' and 'use'.\n" +
 			"- **expect**: (Object, Optional) Response assertions.\n" +
-			"- **save**: (Map, Optional) Extract dynamic values to context variables.\n" +
+			"- **save**: (Map, Optional) Extract values or array lengths with count(body.<path>); empty arrays and null save 0.\n" +
 			"- **timing**: (Object, Optional) Execution latency check.\n" +
 			"- **retry**: (Object, Optional) Retry configuration for transient failures."
 
@@ -300,6 +301,10 @@ func patchStepOneOf(schema *jsonschema.Schema) {
 			{
 				Required:    []string{"redis"},
 				Description: "Step executing a read-only Redis operation",
+			},
+			{
+				Required:    []string{"repeat"},
+				Description: "Step repeating a bounded group until its condition is true",
 			},
 		}
 	}
@@ -335,10 +340,11 @@ func patchStepsProperties(schema *jsonschema.Schema) {
 		"- **if**: (String, Optional) Conditional guard expression (e.g. '$status == 200').\n" +
 		"- **request**: (Object, Conditional) HTTP Request config. Mutually exclusive with 'use' and 'set'.\n" +
 		"- **redis**: (Object, Conditional) Read-only Redis operation. Mutually exclusive with other operations.\n" +
+		"- **repeat**: (Object, Conditional) Bounded multi-step loop with attempts, until, and steps. Mutually exclusive with other operations.\n" +
 		"- **use**: (String, Conditional) Path to compose/execute another scenario. Mutually exclusive with 'request' and 'set'.\n" +
 		"- **set**: (Map, Conditional) Inline variable assignment / override map. Mutually exclusive with 'request' and 'use'.\n" +
 		"- **expect**: (Object, Optional) Response assertions.\n" +
-		"- **save**: (Map, Optional) Extract dynamic values to context variables.\n" +
+		"- **save**: (Map, Optional) Extract values or array lengths with count(body.<path>); empty arrays and null save 0.\n" +
 		"- **timing**: (Object, Optional) Execution latency check.\n" +
 		"- **retry**: (Object, Optional) Retry configuration for transient failures."
 
