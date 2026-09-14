@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/muhfaris/gherkio/internal/export"
 	"github.com/muhfaris/gherkio/internal/model"
 	"gopkg.in/yaml.v3"
 )
@@ -333,8 +334,8 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 		// in the caller's scope so the successful attempt can feed later steps.
 		if step.Repeat != nil {
 			repeat := step.Repeat
-			if step.Use != "" || step.Set != nil || step.Redis != nil || step.Request.Method != "" || step.Request.URL != "" || step.Retry != nil || len(step.Save) > 0 || step.Expect.Status != 0 || len(step.Expect.Extra) > 0 || step.Timing.Max != "" || len(step.With) > 0 {
-				stepResult.Error = "validation error: repeat is a primary operation and cannot be combined with request, redis, use, set, with, expect, save, timing, or retry"
+			if step.Use != "" || step.Set != nil || step.Redis != nil || step.ForEach != nil || step.Request.Method != "" || step.Request.URL != "" || step.Retry != nil || len(step.Save) > 0 || step.Expect.Status != 0 || len(step.Expect.Extra) > 0 || step.Timing.Max != "" || len(step.With) > 0 {
+				stepResult.Error = "validation error: repeat is a primary operation and cannot be combined with request, redis, use, set, for_each, with, expect, save, timing, or retry"
 				stepResults = append(stepResults, stepResult)
 				totalFail++
 				allPassed = false
@@ -399,6 +400,80 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 			continue
 		}
 
+		// Handle a sequential collection loop. The item alias is local to the
+		// block; variables saved by nested steps intentionally remain available.
+		if step.ForEach != nil {
+			loop := step.ForEach
+			if step.Use != "" || step.Set != nil || step.Redis != nil || step.Repeat != nil || step.Request.Method != "" || step.Request.URL != "" || step.Retry != nil || len(step.Save) > 0 || step.Expect.Status != 0 || len(step.Expect.Extra) > 0 || step.Timing.Max != "" || len(step.With) > 0 {
+				stepResult.Error = "validation error: for_each is a primary operation and cannot be combined with request, redis, use, set, repeat, with, expect, save, timing, or retry"
+				stepResults = append(stepResults, stepResult)
+				totalFail++
+				allPassed = false
+				continue
+			}
+			from := strings.TrimPrefix(strings.TrimSpace(loop.From), "$")
+			alias := strings.TrimSpace(loop.As)
+			if alias == "" {
+				alias = "item"
+			}
+			if from == "" || len(loop.Steps) == 0 {
+				stepResult.Error = "validation error: for_each requires from and at least one step"
+				stepResults = append(stepResults, stepResult)
+				totalFail++
+				allPassed = false
+				continue
+			}
+			source, found := resolveNestedVar(from, vars)
+			if !found {
+				stepResult.Error = fmt.Sprintf("for_each source %q was not found", loop.From)
+				stepResults = append(stepResults, stepResult)
+				totalFail++
+				allPassed = false
+				continue
+			}
+			items, ok := source.([]interface{})
+			if !ok {
+				stepResult.Error = fmt.Sprintf("for_each source %q is not an array, got %T", loop.From, source)
+				stepResults = append(stepResults, stepResult)
+				totalFail++
+				allPassed = false
+				continue
+			}
+
+			oldAlias, aliasExisted := vars[alias]
+			failed := false
+			for index, item := range items {
+				vars[alias] = item
+				nestedSteps, nestedPass, nestedFail, nestedPassed := executeSteps(
+					loop.Steps, env, vars, projectDir, currentDir, depth+1, role,
+					dryRun, requestDelay, true, sandbox, snapCfg, scenario, testFile,
+				)
+				for i := range nestedSteps {
+					if nestedSteps[i].ForEachIndex == 0 {
+						nestedSteps[i].ForEachIndex = index + 1
+						nestedSteps[i].ForEachCount = len(items)
+					}
+				}
+				stepResults = append(stepResults, nestedSteps...)
+				totalPass += nestedPass
+				totalFail += nestedFail
+				if !nestedPassed {
+					allPassed = false
+					failed = true
+					break
+				}
+			}
+			if aliasExisted {
+				vars[alias] = oldAlias
+			} else {
+				delete(vars, alias)
+			}
+			if failed && failFast {
+				break
+			}
+			continue
+		}
+
 		// Handle 'set' step
 		if step.Set != nil {
 			saved := make(map[string]interface{})
@@ -423,6 +498,186 @@ func executeSteps(steps []model.Step, env *model.Environment, vars map[string]in
 				continue
 			}
 			stepResult.SavedVars = saved
+			stepResult.Duration = time.Since(stepStart)
+			stepResults = append(stepResults, stepResult)
+			totalPass++
+			continue
+		}
+
+		// Handle 'import' step — read an Excel file into runtime variables.
+		if step.Import != nil {
+			imp := step.Import
+			if step.Use != "" || step.Set != nil || step.Redis != nil || step.Repeat != nil || step.ForEach != nil || step.Export != nil || step.Request.Method != "" || step.Request.URL != "" || step.Retry != nil || len(step.Save) > 0 || step.Expect.Status != 0 || len(step.Expect.Extra) > 0 || step.Timing.Max != "" || len(step.With) > 0 {
+				stepResult.Error = "validation error: import is a primary operation and cannot be combined with request, redis, use, set, repeat, for_each, export, with, expect, save, timing, or retry"
+				stepResults = append(stepResults, stepResult)
+				totalFail++
+				allPassed = false
+				continue
+			}
+
+			targetVar := strings.TrimPrefix(strings.TrimSpace(imp.As), "$")
+			if targetVar == "" {
+				stepResult.Error = "validation error: import requires a non-empty target variable 'as'"
+				stepResults = append(stepResults, stepResult)
+				totalFail++
+				allPassed = false
+				continue
+			}
+			if strings.TrimSpace(imp.File) == "" {
+				stepResult.Error = "validation error: import requires a non-empty 'file' path"
+				stepResults = append(stepResults, stepResult)
+				totalFail++
+				allPassed = false
+				continue
+			}
+
+			// Resolve input path. Priority: absolute path > configured export.path > project root relative.
+			inPath := imp.File
+			if !filepath.IsAbs(inPath) && projectDir != "" {
+				cfg, cfgErr := LoadConfig(projectDir)
+				if cfgErr == nil && cfg.Export.Path != "" {
+					exportDir := cfg.Export.Path
+					if !filepath.IsAbs(exportDir) {
+						exportDir = filepath.Join(projectDir, exportDir)
+					}
+					candidate := filepath.Join(exportDir, inPath)
+					if _, statErr := os.Stat(candidate); statErr == nil {
+						inPath = candidate
+					} else {
+						inPath = filepath.Join(projectDir, inPath)
+					}
+				} else {
+					inPath = filepath.Join(projectDir, inPath)
+				}
+			}
+
+			rows, err := export.ReadXLSX(inPath, imp.Sheet, imp.HeaderRow, imp.DataStartRow, imp.Columns)
+			if err != nil {
+				stepResult.Error = fmt.Sprintf("import failed: %v", err)
+				stepResults = append(stepResults, stepResult)
+				totalFail++
+				allPassed = false
+				continue
+			}
+
+			rowSlice := make([]interface{}, len(rows))
+			for i, r := range rows {
+				rowSlice[i] = r
+			}
+			vars[targetVar] = rowSlice
+
+			stepResult.Duration = time.Since(stepStart)
+			stepResults = append(stepResults, stepResult)
+			totalPass++
+			continue
+		}
+
+		// Handle 'export' step — materialize a saved collection into an Excel file.
+		if step.Export != nil {
+			exp := step.Export
+			if step.Use != "" || step.Set != nil || step.Redis != nil || step.Repeat != nil || step.ForEach != nil || step.Import != nil || step.Request.Method != "" || step.Request.URL != "" || step.Retry != nil || len(step.Save) > 0 || step.Expect.Status != 0 || len(step.Expect.Extra) > 0 || step.Timing.Max != "" || len(step.With) > 0 {
+				stepResult.Error = "validation error: export is a primary operation and cannot be combined with request, redis, use, set, repeat, for_each, import, with, expect, save, timing, or retry"
+				stepResults = append(stepResults, stepResult)
+				totalFail++
+				allPassed = false
+				continue
+			}
+
+			from := strings.TrimPrefix(strings.TrimSpace(exp.From), "$")
+			if from == "" {
+				stepResult.Error = "validation error: export requires a non-empty 'from' collection variable"
+				stepResults = append(stepResults, stepResult)
+				totalFail++
+				allPassed = false
+				continue
+			}
+			if len(exp.Columns) == 0 {
+				stepResult.Error = "validation error: export requires at least one column"
+				stepResults = append(stepResults, stepResult)
+				totalFail++
+				allPassed = false
+				continue
+			}
+
+			source, found := resolveNestedVar(from, vars)
+			if !found {
+				stepResult.Error = fmt.Sprintf("export source %q was not found", exp.From)
+				stepResults = append(stepResults, stepResult)
+				totalFail++
+				allPassed = false
+				continue
+			}
+			items, ok := source.([]interface{})
+			if !ok {
+				stepResult.Error = fmt.Sprintf("export source %q is not an array, got %T", exp.From, source)
+				stepResults = append(stepResults, stepResult)
+				totalFail++
+				allPassed = false
+				continue
+			}
+
+			// Build headers and evaluate each column expression per row.
+			headers := make([]string, len(exp.Columns))
+			for i, col := range exp.Columns {
+				headers[i] = col.Header
+			}
+
+			rows := make([][]interface{}, 0, len(items))
+			for _, item := range items {
+				localVars := make(map[string]interface{}, len(vars)+1)
+				for k, v := range vars {
+					localVars[k] = v
+				}
+				localVars["item"] = item
+
+				row := make([]interface{}, len(exp.Columns))
+				for i, col := range exp.Columns {
+					val, err := resolveTypePreserving(col.Value, localVars)
+					if err != nil {
+						stepResult.Error = fmt.Sprintf("export column %q failed: %v", col.Header, err)
+						stepResults = append(stepResults, stepResult)
+						totalFail++
+						allPassed = false
+						break
+					}
+					row[i] = val
+				}
+				if stepResult.Error != "" {
+					break
+				}
+				rows = append(rows, row)
+			}
+			if stepResult.Error != "" {
+				if failFast {
+					break
+				}
+				continue
+			}
+
+			// Resolve output path. Priority: absolute path > configured export.path
+			// > project root relative.
+			outPath := exp.File
+			if !filepath.IsAbs(outPath) && projectDir != "" {
+				cfg, cfgErr := LoadConfig(projectDir)
+				if cfgErr == nil && cfg.Export.Path != "" {
+					exportDir := cfg.Export.Path
+					if !filepath.IsAbs(exportDir) {
+						exportDir = filepath.Join(projectDir, exportDir)
+					}
+					outPath = filepath.Join(exportDir, outPath)
+				} else {
+					outPath = filepath.Join(projectDir, outPath)
+				}
+			}
+
+			if err := export.WriteXLSX(outPath, exp.Sheet, headers, rows); err != nil {
+				stepResult.Error = fmt.Sprintf("export failed: %v", err)
+				stepResults = append(stepResults, stepResult)
+				totalFail++
+				allPassed = false
+				continue
+			}
+
 			stepResult.Duration = time.Since(stepStart)
 			stepResults = append(stepResults, stepResult)
 			totalPass++

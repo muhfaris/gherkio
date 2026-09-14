@@ -32,20 +32,30 @@ type RepeatConfig struct {
 	Steps    []Step `yaml:"steps" json:"steps" jsonschema:"required,minItems=1,description=Steps executed on every attempt"`
 }
 
+// ForEachConfig executes a group of steps once for every item in a collection.
+type ForEachConfig struct {
+	From  string `yaml:"from" json:"from" jsonschema:"required,description=Source collection variable (for example $items)"`
+	As    string `yaml:"as,omitempty" json:"as,omitempty" jsonschema:"description=Scoped variable name for the current item; defaults to item"`
+	Steps []Step `yaml:"steps" json:"steps" jsonschema:"required,minItems=1,description=Steps executed sequentially for every collection item"`
+}
+
 // Step represents a single step in a scenario.
 type Step struct {
 	Name    string            `yaml:"name,omitempty" json:"name,omitempty" jsonschema:"description=Human-readable name for this step (shown in output instead of method+URL)"`
-	If      string            `yaml:"if,omitempty" json:"if,omitempty" jsonschema:"description=Conditional guard condition for executing this step"`
+	If      string            `yaml:"if,omitempty" json:"if,omitempty" jsonschema:"description=Conditional guard condition supporting truthiness comparisons && || ! and parentheses"`
 	Use     string            `yaml:"use,omitempty" json:"use,omitempty" jsonschema:"description=References another scenario file to execute"`
 	With    map[string]string `yaml:"with,omitempty" json:"with,omitempty" jsonschema:"description=Variable overrides passed into a 'use' step (e.g. with: {username: $accounts.alpha.email})"`
 	Set     map[string]string `yaml:"set,omitempty" json:"set,omitempty" jsonschema:"description=Set or override variables inline without making a request (e.g. set: {TICKET_ID: 01KRXW3WT8V5X0JP6QSHS96YJD})"`
 	Repeat  *RepeatConfig     `yaml:"repeat,omitempty" json:"repeat,omitempty" jsonschema:"description=Execute a bounded group of steps until a condition becomes true"`
+	ForEach *ForEachConfig    `yaml:"for_each,omitempty" json:"for_each,omitempty" jsonschema:"description=Execute a group of steps sequentially for every item in a collection"`
 	Request Request           `yaml:"request,omitempty" json:"request,omitempty" jsonschema:"description=HTTP request definition"`
 	Redis   *RedisStep        `yaml:"redis,omitempty" json:"redis,omitempty" jsonschema:"description=Read-only Redis operation"`
 	Retry   *RetryConfig      `yaml:"retry,omitempty" json:"retry,omitempty" jsonschema:"description=Retry configuration for the step"`
 	Expect  Expect            `yaml:"expect,omitempty" json:"expect,omitempty" jsonschema:"description=Assertions for the step response"`
 	Save    map[string]string `yaml:"save,omitempty" json:"save,omitempty" jsonschema:"description=Variable extractions mapped from response paths"`
 	Timing  TimingConfig      `yaml:"timing,omitempty" json:"timing,omitempty" jsonschema:"description=Timing expectations for the step"`
+	Export  *Export           `yaml:"export,omitempty" json:"export,omitempty" jsonschema:"description=Export a collection to an Excel file"`
+	Import  *Import           `yaml:"import,omitempty" json:"import,omitempty" jsonschema:"description=Import data from an Excel file into runtime variables"`
 }
 
 // RedisStep is a controlled, read-only Redis operation. Command is limited to
@@ -67,6 +77,32 @@ type Request struct {
 	Multipart *MultipartConfig             `yaml:"multipart,omitempty" json:"multipart,omitempty" jsonschema:"description=Multipart form-data configuration for file uploads and form fields"`
 	Transform map[string]*ProjectionConfig `yaml:"transform,omitempty" json:"transform,omitempty" jsonschema:"description=Declarative projections reshaped into request payload paths"`
 	Timeout   string                       `yaml:"timeout,omitempty" json:"timeout,omitempty" jsonschema:"description=HTTP client timeout for this request (e.g. 5s 30s 1m)"` // e.g. "5s", "30s", "1m"
+}
+
+type Export struct {
+	File    string   `yaml:"file" json:"file" jsonschema:"required,description=Output path for the Excel file (relative to project root or absolute)"`
+	From    string   `yaml:"from" json:"from" jsonschema:"required,description=Source collection array variable name (must start with $)"`
+	Sheet   string   `yaml:"sheet,omitempty" json:"sheet,omitempty" jsonschema:"description=Worksheet name (default Sheet1)"`
+	Columns []Column `yaml:"columns" json:"columns" jsonschema:"required,description=Ordered column definitions for the Excel file"`
+}
+
+type Column struct {
+	Header string `yaml:"header" json:"header" jsonschema:"required,description=Column header text"`
+	Value  string `yaml:"value" json:"value" jsonschema:"required,description=Per-cell expression for the column value, supports interpolation, casting, and references to saved variables"`
+}
+
+type Import struct {
+	File          string         `yaml:"file" json:"file" jsonschema:"required,description=Path to the Excel file to read"`
+	Sheet         string         `yaml:"sheet,omitempty" json:"sheet,omitempty" jsonschema:"description=Worksheet name to read (defaults to the first/active sheet)"`
+	As            string         `yaml:"as" json:"as" jsonschema:"required,description=Variable name to store the parsed array of row objects"`
+	HeaderRow     int            `yaml:"header_row,omitempty" json:"header_row,omitempty" jsonschema:"description=1-based row index for column headers (default 1)"`
+	DataStartRow  int            `yaml:"data_start_row,omitempty" json:"data_start_row,omitempty" jsonschema:"description=1-based row index where data begins (default 2)"`
+	Columns       []ImportColumn `yaml:"columns,omitempty" json:"columns,omitempty" jsonschema:"description=Optional explicit column mappings from header titles to field aliases"`
+}
+
+type ImportColumn struct {
+	Header string `yaml:"header" json:"header" jsonschema:"required,description=Header name in the Excel worksheet"`
+	As     string `yaml:"as" json:"as" jsonschema:"required,description=Field name to alias this column in the output row object"`
 }
 
 // MultipartConfig holds the configuration for a multipart/form-data request.

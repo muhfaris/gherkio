@@ -6,10 +6,10 @@ import (
 
 func TestEvaluateCondition(t *testing.T) {
 	vars := map[string]interface{}{
-		"x":      123,
-		"y":      "345",
-		"flag":   true,
-		"empty":  "",
+		"x":     123,
+		"y":     "345",
+		"flag":  true,
+		"empty": "",
 		"nested": map[string]interface{}{
 			"val": 42,
 		},
@@ -56,6 +56,21 @@ func TestEvaluateCondition(t *testing.T) {
 
 		// Negation with comparison (error cases)
 		{"!$x == 123", false, true},
+
+		// Compound Boolean expressions (&& binds tighter than ||)
+		{"$flag && $nested.val == 42", true, false},
+		{"$flag && $empty", false, false},
+		{"$empty || $nested.val == 42", true, false},
+		{"$flag || $undef && $empty", true, false},
+		{"($flag || $undef) && $nested.val == 42", true, false},
+		{"!($x == 345) && !$empty", true, false},
+		{"$y == \"a && b\" || $flag", true, false},
+		{"$flag || $undef > 1", true, false},   // OR short-circuits invalid RHS
+		{"$empty && $undef > 1", false, false}, // AND short-circuits invalid RHS
+
+		// Malformed compound expressions
+		{"$flag &&", false, true},
+		{"($flag || $empty", false, true},
 	}
 
 	for _, tt := range tests {

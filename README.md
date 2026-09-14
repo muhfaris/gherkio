@@ -28,7 +28,7 @@ Gherkio is built on a simple, uncompromising core principle:
 *   **Declarative-First**: Scenarios describe high-level API workflows rather than writing hundreds of lines of custom Javascript/Go scripts.
 *   **Readability Matters**: Integration tests are written to be easily read, audited, and maintained by anyone on the team (including Product Managers and QA).
 *   **Deep Observability**: Every execution outputs high-precision terminal assertions and structured tracebacks so failures are debugged instantly.
-*   **Constrained DSL**: No arbitrary loops or complex branching inside test files—forcing tests to stay clean, predictable, and robust.
+*   **Constrained DSL**: Bounded declarative control flow (`repeat`, `for_each`) without arbitrary scripting or complex branching—keeping tests predictable and auditable.
 
 ---
 

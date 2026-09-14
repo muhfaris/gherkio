@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/muhfaris/gherkio/internal/model"
+	"github.com/xuri/excelize/v2"
 )
 
 func TestParseUntil(t *testing.T) {
@@ -790,6 +792,98 @@ steps:
 	}
 }
 
+func TestRun_ForEachExecutesNestedStepsAndScopesAlias(t *testing.T) {
+	projectDir := t.TempDir()
+	envDir := filepath.Join(projectDir, ".gherkio", "environments")
+	if err := os.MkdirAll(envDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(envDir, "local.yaml"), []byte(`baseUrl: https://api.example.com
+mocks:
+  - request: {method: POST, url: /api-b/items}
+    response: {status: 201}
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	testPath := filepath.Join(projectDir, "for-each.yaml")
+	if err := os.WriteFile(testPath, []byte(`scenario: Process every item
+steps:
+  - for_each:
+      from: $items
+      as: sourceItem
+      steps:
+        - set:
+            processedId: $sourceItem.id
+        - request:
+            method: POST
+            url: /api-b/items
+            body:
+              id: $sourceItem.id
+          expect:
+            status: 201
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	sessionVars := map[string]interface{}{
+		"items": []interface{}{
+			map[string]interface{}{"id": 10},
+			map[string]interface{}{"id": 20},
+		},
+		"sourceItem": "original",
+	}
+	result, err := Run(RunConfig{TestPath: testPath, EnvName: "local", ProjectDir: projectDir, StepIndex: -1, SessionVars: sessionVars})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if !result.Passed {
+		t.Fatalf("for_each failed: %+v", result.Steps)
+	}
+	if got := sessionVars["processedId"]; got != "20" {
+		t.Fatalf("processedId = %#v, want 20", got)
+	}
+	if got := sessionVars["sourceItem"]; got != "original" {
+		t.Fatalf("alias leaked: %#v", got)
+	}
+	if len(result.Steps) != 4 {
+		t.Fatalf("nested executions = %d, want 4", len(result.Steps))
+	}
+	for i, step := range result.Steps {
+		wantIteration := i/2 + 1
+		if step.ForEachIndex != wantIteration || step.ForEachCount != 2 {
+			t.Fatalf("iteration metadata = %d/%d, want %d/2", step.ForEachIndex, step.ForEachCount, wantIteration)
+		}
+	}
+	if got := result.Steps[1].Request.Body; got != `{"id":10}` {
+		t.Fatalf("first request body = %s", got)
+	}
+	if got := result.Steps[3].Request.Body; got != `{"id":20}` {
+		t.Fatalf("second request body = %s", got)
+	}
+}
+
+func TestRun_ForEachRejectsNonArraySource(t *testing.T) {
+	projectDir := t.TempDir()
+	envDir := filepath.Join(projectDir, ".gherkio", "environments")
+	if err := os.MkdirAll(envDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(envDir, "local.yaml"), []byte("baseUrl: https://api.example.com\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	testPath := filepath.Join(projectDir, "for-each.yaml")
+	if err := os.WriteFile(testPath, []byte("scenario: Invalid loop\nsteps:\n  - for_each:\n      from: $items\n      steps:\n        - set: {seen: yes}\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	result, err := Run(RunConfig{TestPath: testPath, EnvName: "local", ProjectDir: projectDir, StepIndex: -1, SessionVars: map[string]interface{}{"items": "not-an-array"}})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if result.Passed || len(result.Steps) != 1 || !strings.Contains(result.Steps[0].Error, "is not an array") {
+		t.Fatalf("expected non-array failure, got %+v", result.Steps)
+	}
+}
+
 func TestRun_TransportErrorFailsScenario(t *testing.T) {
 	projectDir := t.TempDir()
 	envDir := filepath.Join(projectDir, ".gherkio", "environments")
@@ -920,5 +1014,298 @@ func TestFlattenQueryMap(t *testing.T) {
 				t.Errorf("flattenQueryMap() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestExecuteSteps_Export(t *testing.T) {
+	projectDir := t.TempDir()
+	outPath := filepath.Join(projectDir, "fixtures", "bulk.xlsx")
+
+	items := []interface{}{
+		map[string]interface{}{"title": "Keyboard", "price": 149.99},
+		map[string]interface{}{"title": "Phone", "price": 699},
+	}
+
+	steps := []model.Step{
+		{
+			Export: &model.Export{
+				File:  "fixtures/bulk.xlsx",
+				From:  "$items",
+				Sheet: "BulkData",
+				Columns: []model.Column{
+					{Header: "title", Value: "$string(item.title)"},
+					{Header: "price", Value: "$float(item.price)"},
+					{Header: "priority", Value: "$if(item.price > 500, 'priority', 'normal')"},
+				},
+			},
+		},
+	}
+
+	vars := map[string]interface{}{"items": items}
+	results, pass, fail, ok := executeSteps(
+		steps, nil, vars, projectDir, "", 0, "steps", false, 0, false, nil,
+		SnapshotConfig{}, "scenario", "testfile.yaml",
+	)
+
+	if !ok || pass != 1 || fail != 0 {
+		t.Fatalf("executeSteps() = ok %v, pass %d, fail %d, results %+v", ok, pass, fail, results)
+	}
+
+	if _, err := os.Stat(outPath); err != nil {
+		t.Fatalf("expected exported file to exist: %v", err)
+	}
+
+	f, err := excelize.OpenFile(outPath)
+	if err != nil {
+		t.Fatalf("failed to open exported workbook: %v", err)
+	}
+	defer f.Close()
+
+	// Header row.
+	for i, h := range []string{"title", "price", "priority"} {
+		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
+		got, _ := f.GetCellValue("BulkData", cell)
+		if got != h {
+			t.Errorf("header cell %s = %q, want %q", cell, got, h)
+		}
+	}
+
+	// Data rows.
+	checks := map[string]string{
+		"A2": "Keyboard",
+		"B2": "149.99",
+		"C2": "normal",
+		"A3": "Phone",
+		"B3": "699",
+		"C3": "priority",
+	}
+	for cell, want := range checks {
+		got, _ := f.GetCellValue("BulkData", cell)
+		if got != want {
+			t.Errorf("cell %s = %q, want %q", cell, got, want)
+		}
+	}
+}
+
+func TestExecuteSteps_Export_MissingSource(t *testing.T) {
+	projectDir := t.TempDir()
+	steps := []model.Step{
+		{
+			Export: &model.Export{
+				File:    "fixtures/bulk.xlsx",
+				From:    "$missing",
+				Columns: []model.Column{{Header: "a", Value: "$string(item.a)"}},
+			},
+		},
+	}
+
+	vars := map[string]interface{}{}
+	results, pass, fail, ok := executeSteps(
+		steps, nil, vars, projectDir, "", 0, "steps", false, 0, false, nil,
+		SnapshotConfig{}, "scenario", "testfile.yaml",
+	)
+
+	if ok {
+		t.Fatal("expected execution to fail for missing export source")
+	}
+	if pass != 0 || fail != 1 {
+		t.Fatalf("pass = %d, fail = %d, want 0/1", pass, fail)
+	}
+	if len(results) != 1 || results[0].Error == "" {
+		t.Fatalf("expected an error result, got %+v", results)
+	}
+}
+
+func TestExecuteSteps_Export_LargeDataset(t *testing.T) {
+	projectDir := t.TempDir()
+
+	const rowCount = 120
+	items := make([]interface{}, rowCount)
+	for i := 0; i < rowCount; i++ {
+		items[i] = map[string]interface{}{
+			"id":         i + 1,
+			"code":       fmt.Sprintf("CODE-%03d", i+1),
+			"name":       fmt.Sprintf("Item %d", i+1),
+			"qty":        (i % 10) + 1,
+			"price":      19.99 + float64(i)*2.5,
+			"is_active":  i%2 == 0,
+			"rating":     (i % 5) + 1,
+			"city":       "Jakarta",
+			"discount":   0.15,
+			"created_at": "2026-09-14",
+		}
+	}
+
+	steps := []model.Step{
+		{
+			Export: &model.Export{
+				File: "fixtures/large_catalog.xlsx",
+				From: "$items",
+				Sheet: "Catalog",
+				Columns: []model.Column{
+					{Header: "Item ID", Value: "$int(item.id)"},
+					{Header: "Item Code", Value: "$string(item.code)"},
+					{Header: "Item Name", Value: "$string(item.name)"},
+					{Header: "Stock Qty", Value: "$int(item.qty)"},
+					{Header: "Unit Price", Value: "$float(item.price)"},
+					{Header: "Active Flag", Value: "$bool(item.is_active)"},
+					{Header: "Status Label", Value: "$if(item.is_active == true, 'AVAILABLE', 'OUT_OF_STOCK')"},
+					{Header: "City", Value: "$string(item.city)"},
+					{Header: "Discount", Value: "$float(item.discount)"},
+					{Header: "Date", Value: "$string(item.created_at)"},
+				},
+			},
+		},
+	}
+
+	vars := map[string]interface{}{
+		"items": items,
+	}
+
+	results, pass, fail, ok := executeSteps(
+		steps, nil, vars, projectDir, "", 0, "steps", false, 0, false, nil,
+		SnapshotConfig{}, "large_export_scenario", "testfile.yaml",
+	)
+
+	if !ok || fail > 0 || pass != 1 {
+		t.Fatalf("export step failed: pass=%d, fail=%d, results=%+v", pass, fail, results)
+	}
+
+	outPath := filepath.Join(projectDir, "fixtures", "large_catalog.xlsx")
+	f, err := excelize.OpenFile(outPath)
+	if err != nil {
+		t.Fatalf("failed to open generated excel file: %v", err)
+	}
+	defer f.Close()
+
+	sheetRows, err := f.GetRows("Catalog")
+	if err != nil {
+		t.Fatalf("failed to get sheet rows: %v", err)
+	}
+
+	// 1 header + 120 data rows = 121
+	if len(sheetRows) != 121 {
+		t.Fatalf("expected 121 rows, got %d", len(sheetRows))
+	}
+	if len(sheetRows[0]) != 10 {
+		t.Fatalf("expected 10 columns, got %d", len(sheetRows[0]))
+	}
+
+	// Check row 50
+	row50 := sheetRows[50] // index 50 is item 50 (i=49)
+	if row50[0] != "50" {
+		t.Errorf("expected item id '50', got %q", row50[0])
+	}
+	if row50[1] != "CODE-050" {
+		t.Errorf("expected item code 'CODE-050', got %q", row50[1])
+	}
+	if row50[6] != "OUT_OF_STOCK" { // i=49 -> 49%2 != 0 -> is_active = false -> OUT_OF_STOCK
+		t.Errorf("expected status 'OUT_OF_STOCK', got %q", row50[6])
+	}
+}
+
+func TestExecuteSteps_Import(t *testing.T) {
+	projectDir := t.TempDir()
+
+	// 1. First create an Excel file via Export step
+	exportSteps := []model.Step{
+		{
+			Export: &model.Export{
+				File:  "fixtures/customers.xlsx",
+				From:  "$raw_customers",
+				Sheet: "Customers",
+				Columns: []model.Column{
+					{Header: "Customer Full Name", Value: "$string(item.name)"},
+					{Header: "Contact Email", Value: "$string(item.email)"},
+					{Header: "Account Balance", Value: "$float(item.balance)"},
+					{Header: "Is VIP", Value: "$bool(item.vip)"},
+				},
+			},
+		},
+	}
+
+	vars := map[string]interface{}{
+		"raw_customers": []interface{}{
+			map[string]interface{}{"name": "Alice Wonderland", "email": "alice@example.com", "balance": 150.75, "vip": true},
+			map[string]interface{}{"name": "Bob Builder", "email": "bob@example.com", "balance": 20.0, "vip": false},
+		},
+	}
+
+	_, pass, fail, ok := executeSteps(
+		exportSteps, nil, vars, projectDir, "", 0, "steps", false, 0, false, nil,
+		SnapshotConfig{}, "export_scenario", "testfile.yaml",
+	)
+	if !ok || fail > 0 || pass != 1 {
+		t.Fatalf("export step failed: pass=%d, fail=%d", pass, fail)
+	}
+
+	// 2. Test importing with auto-normalized snake_case headers
+	importSteps := []model.Step{
+		{
+			Import: &model.Import{
+				File:  "fixtures/customers.xlsx",
+				Sheet: "Customers",
+				As:    "imported_customers",
+			},
+		},
+	}
+
+	importVars := map[string]interface{}{}
+	_, pass, fail, ok = executeSteps(
+		importSteps, nil, importVars, projectDir, "", 0, "steps", false, 0, false, nil,
+		SnapshotConfig{}, "import_scenario", "testfile.yaml",
+	)
+	if !ok || fail > 0 || pass != 1 {
+		t.Fatalf("import step failed: pass=%d, fail=%d", pass, fail)
+	}
+
+	imported, ok := importVars["imported_customers"].([]interface{})
+	if !ok || len(imported) != 2 {
+		t.Fatalf("expected imported_customers to have 2 rows, got %T %+v", importVars["imported_customers"], importVars["imported_customers"])
+	}
+
+	row0 := imported[0].(map[string]interface{})
+	if row0["customer_full_name"] != "Alice Wonderland" {
+		t.Errorf("row0 customer_full_name = %v, want Alice Wonderland", row0["customer_full_name"])
+	}
+	if row0["contact_email"] != "alice@example.com" {
+		t.Errorf("row0 contact_email = %v, want alice@example.com", row0["contact_email"])
+	}
+	if row0["account_balance"] != 150.75 {
+		t.Errorf("row0 account_balance = %v, want 150.75", row0["account_balance"])
+	}
+	if row0["is_vip"] != true {
+		t.Errorf("row0 is_vip = %v, want true", row0["is_vip"])
+	}
+
+	// 3. Test importing with explicit column alias mappings
+	importAliasedSteps := []model.Step{
+		{
+			Import: &model.Import{
+				File: "fixtures/customers.xlsx",
+				As:   "aliased_customers",
+				Columns: []model.ImportColumn{
+					{Header: "Customer Full Name", As: "name"},
+					{Header: "Contact Email", As: "email"},
+				},
+			},
+		},
+	}
+
+	_, pass, fail, ok = executeSteps(
+		importAliasedSteps, nil, importVars, projectDir, "", 0, "steps", false, 0, false, nil,
+		SnapshotConfig{}, "import_alias_scenario", "testfile.yaml",
+	)
+	if !ok || fail > 0 || pass != 1 {
+		t.Fatalf("import with aliases failed: pass=%d, fail=%d", pass, fail)
+	}
+
+	aliased := importVars["aliased_customers"].([]interface{})
+	row1 := aliased[1].(map[string]interface{})
+	if row1["name"] != "Bob Builder" {
+		t.Errorf("row1 name = %v, want Bob Builder", row1["name"])
+	}
+	if row1["email"] != "bob@example.com" {
+		t.Errorf("row1 email = %v, want bob@example.com", row1["email"])
 	}
 }

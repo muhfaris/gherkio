@@ -273,10 +273,13 @@ func patchStepOneOf(schema *jsonschema.Schema) {
 		stepSchema.Description = "A single test execution step.\n\n" +
 			"Available options:\n" +
 			"- **name**: (String, Optional) Human-readable label for the step.\n" +
-			"- **if**: (String, Optional) Conditional guard expression (e.g. '$status == 200').\n" +
+			"- **if**: (String, Optional) Conditional guard with comparisons, &&, ||, !, and parentheses.\n" +
 			"- **request**: (Object, Conditional) HTTP Request config.\n" +
 			"- **redis**: (Object, Conditional) Controlled read-only Redis operation.\n" +
 			"- **repeat**: (Object, Conditional) Bounded multi-step loop with attempts, until, and steps.\n" +
+			"- **for_each**: (Object, Conditional) Sequential collection loop with from, as, and steps.\n" +
+			"- **export**: (Object, Conditional) Materialize saved collection into an Excel (.xlsx) file.\n" +
+			"- **import**: (Object, Conditional) Read data from an Excel (.xlsx) file into runtime variables.\n" +
 			"- **use**: (String, Conditional) Path to compose/execute another scenario. Mutually exclusive with 'request' and 'set'.\n" +
 			"- **set**: (Map, Conditional) Inline variable assignment / override map. Mutually exclusive with 'request' and 'use'.\n" +
 			"- **expect**: (Object, Optional) Response assertions.\n" +
@@ -305,6 +308,18 @@ func patchStepOneOf(schema *jsonschema.Schema) {
 			{
 				Required:    []string{"repeat"},
 				Description: "Step repeating a bounded group until its condition is true",
+			},
+			{
+				Required:    []string{"for_each"},
+				Description: "Step executing a group once for every collection item",
+			},
+			{
+				Required:    []string{"export"},
+				Description: "Step exporting a collection into an Excel (.xlsx) file",
+			},
+			{
+				Required:    []string{"import"},
+				Description: "Step importing data from an Excel (.xlsx) file into variables",
 			},
 		}
 	}
@@ -337,10 +352,13 @@ func patchRequestSchema(schema *jsonschema.Schema) {
 func patchStepsProperties(schema *jsonschema.Schema) {
 	stepsDesc := "Each step supports the following options:\n" +
 		"- **name**: (String, Optional) Human-readable label for the step.\n" +
-		"- **if**: (String, Optional) Conditional guard expression (e.g. '$status == 200').\n" +
+		"- **if**: (String, Optional) Conditional guard with comparisons, &&, ||, !, and parentheses.\n" +
 		"- **request**: (Object, Conditional) HTTP Request config. Mutually exclusive with 'use' and 'set'.\n" +
 		"- **redis**: (Object, Conditional) Read-only Redis operation. Mutually exclusive with other operations.\n" +
 		"- **repeat**: (Object, Conditional) Bounded multi-step loop with attempts, until, and steps. Mutually exclusive with other operations.\n" +
+		"- **for_each**: (Object, Conditional) Sequential collection loop with from, as, and steps. Mutually exclusive with other operations.\n" +
+		"- **export**: (Object, Conditional) Materialize saved collection into an Excel (.xlsx) file. Mutually exclusive with other operations.\n" +
+		"- **import**: (Object, Conditional) Read data from an Excel (.xlsx) file into runtime variables. Mutually exclusive with other operations.\n" +
 		"- **use**: (String, Conditional) Path to compose/execute another scenario. Mutually exclusive with 'request' and 'set'.\n" +
 		"- **set**: (Map, Conditional) Inline variable assignment / override map. Mutually exclusive with 'request' and 'use'.\n" +
 		"- **expect**: (Object, Optional) Response assertions.\n" +

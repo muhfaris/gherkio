@@ -41,6 +41,10 @@ schemas:
 assets:
   path: .gherkio/tests/showcase/shared
 
+# Default output directory for the export step's generated Excel files.
+export:
+  path: .gherkio/fixtures
+
 # ----------------------------------------------------------------------
 # 5. Reports & Core Failure Snapshots
 # ----------------------------------------------------------------------

@@ -1,8 +1,27 @@
-authToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTAwMSwidXNlcm5hbWUiOiJzaG9wcGVyX2pvZSIsImVtYWlsIjoic2hvcHBlckBleGFtcGxlLmNvbSIsInJvbGUiOiJidXllciJ9.signature
-orderId: order-999
-productId: 42
-savedItems:
-    - name: Keycap Set
+importedOrders:
+    - available: true
+      name: Keycap Set
       price: 50
-    - name: Coiled Cable
+      tier: Standard
+    - available: false
+      name: Coiled Cable
       price: 100
+      tier: High Priority
+orderItems:
+    - enabled: true
+      id: "101"
+      name: Keycap Set
+      price: 50
+    - enabled: false
+      id: "102"
+      name: Coiled Cable
+      price: 100
+products:
+    - category: Accessories
+      price: 149.99
+      rating: 4.7
+      title: Mechanical Keyboard
+    - category: Electronics
+      price: 699
+      rating: 4.8
+      title: Smart Phone

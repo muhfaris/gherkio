@@ -1,0 +1,42 @@
+scenario: Showcase Bulk Excel Export
+description: Fetches a product catalog, materializes it into an Excel fixture via the export step, then uploads it through multipart.
+tags: [showcase, export, bulk]
+
+steps:
+  - name: Fetch product catalog
+    request:
+      method: GET
+      url: /products
+    expect:
+      status: 200
+    save:
+      products: body.products
+
+  - name: Generate bulk upload Excel fixture
+    export:
+      file: bulk_upload.xlsx
+      from: $products
+      sheet: "BulkData"
+      columns:
+        - header: "product_title"
+          value: "$string(item.title)"
+        - header: "category"
+          value: "$string(item.category)"
+        - header: "price"
+          value: "$float(item.price)"
+        - header: "rating"
+          value: "$float(item.rating)"
+        - header: "priority"
+          value: "$if(item.price > 500, 'priority', 'normal')"
+        - header: "generated_at"
+          value: '${dateNow("2006-01-02")}'
+
+  - name: Upload generated Excel fixture
+    request:
+      method: POST
+      url: /profile/avatar
+      multipart:
+        files:
+          bulk: .gherkio/fixtures/bulk_upload.xlsx
+    expect:
+      status: 200

@@ -209,6 +209,10 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 			stepLabel = fmt.Sprintf("%s %s", step.Request.Method, step.Request.URL)
 		} else if step.Redis != nil {
 			stepLabel = fmt.Sprintf("redis %s %s", strings.ToUpper(step.Redis.Command), step.Redis.Key)
+		} else if step.Original.Export != nil {
+			stepLabel = fmt.Sprintf("export %s", step.Original.Export.File)
+		} else if step.Original.Import != nil {
+			stepLabel = fmt.Sprintf("import %s", step.Original.Import.File)
 		} else if len(step.Original.Set) > 0 {
 			var keys []string
 			for k := range step.Original.Set {
@@ -221,6 +225,10 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 				stepLabel = fmt.Sprintf("%s %s", step.Original.Request.Method, step.Original.Request.URL)
 			} else if step.Original.Use != "" {
 				stepLabel = fmt.Sprintf("use: %s", step.Original.Use)
+			} else if step.Original.Export != nil {
+				stepLabel = fmt.Sprintf("export %s", step.Original.Export.File)
+			} else if step.Original.Import != nil {
+				stepLabel = fmt.Sprintf("import %s", step.Original.Import.File)
 			} else if len(step.Original.Set) > 0 {
 				var keys []string
 				for k := range step.Original.Set {
@@ -234,6 +242,10 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 		} else {
 			if step.Original.Request.URL != "" {
 				stepLabel = fmt.Sprintf("%s %s (failed before execution)", step.Original.Request.Method, step.Original.Request.URL)
+			} else if step.Original.Export != nil {
+				stepLabel = fmt.Sprintf("export %s (failed)", step.Original.Export.File)
+			} else if step.Original.Import != nil {
+				stepLabel = fmt.Sprintf("import %s (failed)", step.Original.Import.File)
 			} else if len(step.Original.Set) > 0 {
 				var keys []string
 				for k := range step.Original.Set {
@@ -247,6 +259,9 @@ func PrintResult(result *RunResult, verbose bool, maskFields []string) {
 		}
 		if step.RepeatAttempt > 0 {
 			stepLabel = fmt.Sprintf("[repeat %d/%d] %s", step.RepeatAttempt, step.RepeatAttempts, stepLabel)
+		}
+		if step.ForEachIndex > 0 {
+			stepLabel = fmt.Sprintf("[for_each %d/%d] %s", step.ForEachIndex, step.ForEachCount, stepLabel)
 		}
 
 		prefix := fmt.Sprintf("%d. ", stepCounter)

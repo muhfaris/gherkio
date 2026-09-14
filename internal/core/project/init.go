@@ -225,6 +225,14 @@ assets:
   path: assets
 
 # ----------------------------------------------------------------------
+# 5b. Excel Export Configuration
+# ----------------------------------------------------------------------
+export:
+  # Default output directory for the export step's generated Excel files.
+  # Relative paths resolve from the project root; absolute paths are used as-is.
+  path: fixtures
+
+# ----------------------------------------------------------------------
 # 6. Reports & Core Failure Snapshots
 # ----------------------------------------------------------------------
 reports:

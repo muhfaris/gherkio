@@ -129,6 +129,7 @@ func ValidateFile(filePath, projectDir string, creds *model.Credentials, schemas
 	result.Issues = append(result.Issues, validateVariableReferences(test, creds, projectDir, filePath)...)
 	result.Issues = append(result.Issues, validateRetryConfig(test)...)
 	result.Issues = append(result.Issues, validateRepeatConfig(test)...)
+	result.Issues = append(result.Issues, validateForEachConfig(test)...)
 	result.Issues = append(result.Issues, validateUseFiles(test, projectDir, filePath)...)
 	result.Issues = append(result.Issues, validateSchemaReferences(test, schemas)...)
 	result.Issues = append(result.Issues, validateBodyPaths(test)...)
@@ -167,6 +168,13 @@ func validateVariableReferences(test *model.TestFile, creds *model.Credentials, 
 		// anywhere in that block are valid inputs to repeat.until.
 		if step.Repeat != nil {
 			collectAssignedVariables(step.Repeat.Steps, savedVars)
+		}
+		if step.ForEach != nil {
+			alias := strings.TrimSpace(step.ForEach.As)
+			if alias == "" {
+				alias = "item"
+			}
+			savedVars[alias] = true
 		}
 		// Collect variables used in this step
 		usedVars := extractVariables(&step, varPattern)
@@ -207,6 +215,9 @@ func validateVariableReferences(test *model.TestFile, creds *model.Credentials, 
 		}
 
 		// Now add this step's saved variables
+		if step.Import != nil && step.Import.As != "" {
+			savedVars[step.Import.As] = true
+		}
 		if step.Save != nil {
 			for name := range step.Save {
 				savedVars[name] = true
@@ -273,6 +284,9 @@ func collectAssignedVariables(steps []model.Step, assigned map[string]bool) {
 		}
 		if step.Repeat != nil {
 			collectAssignedVariables(step.Repeat.Steps, assigned)
+		}
+		if step.ForEach != nil {
+			collectAssignedVariables(step.ForEach.Steps, assigned)
 		}
 	}
 }
@@ -388,6 +402,24 @@ func validateRepeatConfig(test *model.TestFile) []ValidationIssue {
 		}
 		if len(step.Repeat.Steps) == 0 {
 			issues = append(issues, ValidationIssue{Field: fmt.Sprintf("steps[%d].repeat.steps", i), Code: "missing_steps", Msg: "repeat requires at least one nested step"})
+		}
+	}
+	return issues
+}
+
+func validateForEachConfig(test *model.TestFile) []ValidationIssue {
+	var issues []ValidationIssue
+	setup, steps, teardown := collectAllSteps(test)
+	allSteps := append(append(setup, steps...), teardown...)
+	for i, step := range allSteps {
+		if step.ForEach == nil {
+			continue
+		}
+		if strings.TrimSpace(step.ForEach.From) == "" {
+			issues = append(issues, ValidationIssue{Field: fmt.Sprintf("steps[%d].for_each.from", i), Code: "missing_from", Msg: "for_each source is required"})
+		}
+		if len(step.ForEach.Steps) == 0 {
+			issues = append(issues, ValidationIssue{Field: fmt.Sprintf("steps[%d].for_each.steps", i), Code: "missing_steps", Msg: "for_each requires at least one nested step"})
 		}
 	}
 	return issues
@@ -682,6 +714,9 @@ func collectAllSteps(test *model.TestFile) (setup, steps, teardown []model.Step)
 			result = append(result, step)
 			if step.Repeat != nil {
 				result = append(result, flatten(step.Repeat.Steps)...)
+			}
+			if step.ForEach != nil {
+				result = append(result, flatten(step.ForEach.Steps)...)
 			}
 		}
 		return result

@@ -1,3 +1,1410 @@
 password: alpha-secret
+products:
+    - availabilityStatus: In Stock
+      brand: Essence
+      category: beauty
+      description: The Essence Mascara Lash Princess is a popular mascara known for its volumizing and lengthening effects. Achieve dramatic lashes with this long-lasting and cruelty-free formula.
+      dimensions:
+        depth: "22.99"
+        height: "13.08"
+        width: "15.14"
+      discountPercentage: "10.48"
+      id: "1"
+      images:
+        - https://cdn.dummyjson.com/product-images/beauty/essence-mascara-lash-princess/1.webp
+      meta:
+        barcode: "5784719087687"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "48"
+      price: "9.99"
+      rating: "2.56"
+      returnPolicy: No return policy
+      reviews:
+        - comment: Would not recommend!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "3"
+          reviewerEmail: eleanor.collins@x.dummyjson.com
+          reviewerName: Eleanor Collins
+        - comment: Very satisfied!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: lucas.gordon@x.dummyjson.com
+          reviewerName: Lucas Gordon
+        - comment: Highly impressed!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: eleanor.collins@x.dummyjson.com
+          reviewerName: Eleanor Collins
+      shippingInformation: Ships in 3-5 business days
+      sku: BEA-ESS-ESS-001
+      stock: "99"
+      tags:
+        - beauty
+        - mascara
+      thumbnail: https://cdn.dummyjson.com/product-images/beauty/essence-mascara-lash-princess/thumbnail.webp
+      title: Essence Mascara Lash Princess
+      warrantyInformation: 1 week warranty
+      weight: "4"
+    - availabilityStatus: In Stock
+      brand: Glamour Beauty
+      category: beauty
+      description: The Eyeshadow Palette with Mirror offers a versatile range of eyeshadow shades for creating stunning eye looks. With a built-in mirror, it's convenient for on-the-go makeup application.
+      dimensions:
+        depth: "27.67"
+        height: "22.47"
+        width: "9.26"
+      discountPercentage: "18.19"
+      id: "2"
+      images:
+        - https://cdn.dummyjson.com/product-images/beauty/eyeshadow-palette-with-mirror/1.webp
+      meta:
+        barcode: "9170275171413"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "20"
+      price: "19.99"
+      rating: "2.86"
+      returnPolicy: 7 days return policy
+      reviews:
+        - comment: Great product!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: savannah.gomez@x.dummyjson.com
+          reviewerName: Savannah Gomez
+        - comment: Awesome product!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: christian.perez@x.dummyjson.com
+          reviewerName: Christian Perez
+        - comment: Poor quality!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "1"
+          reviewerEmail: nicholas.bailey@x.dummyjson.com
+          reviewerName: Nicholas Bailey
+      shippingInformation: Ships in 2 weeks
+      sku: BEA-GLA-EYE-002
+      stock: "34"
+      tags:
+        - beauty
+        - eyeshadow
+      thumbnail: https://cdn.dummyjson.com/product-images/beauty/eyeshadow-palette-with-mirror/thumbnail.webp
+      title: Eyeshadow Palette with Mirror
+      warrantyInformation: 1 year warranty
+      weight: "9"
+    - availabilityStatus: In Stock
+      brand: Velvet Touch
+      category: beauty
+      description: The Powder Canister is a finely milled setting powder designed to set makeup and control shine. With a lightweight and translucent formula, it provides a smooth and matte finish.
+      dimensions:
+        depth: "20.59"
+        height: "27.93"
+        width: "29.27"
+      discountPercentage: "9.84"
+      id: "3"
+      images:
+        - https://cdn.dummyjson.com/product-images/beauty/powder-canister/1.webp
+      meta:
+        barcode: "8418883906837"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "22"
+      price: "14.99"
+      rating: "4.64"
+      returnPolicy: No return policy
+      reviews:
+        - comment: Would buy again!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: alexander.jones@x.dummyjson.com
+          reviewerName: Alexander Jones
+        - comment: Highly impressed!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: elijah.cruz@x.dummyjson.com
+          reviewerName: Elijah Cruz
+        - comment: Very dissatisfied!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "1"
+          reviewerEmail: avery.perez@x.dummyjson.com
+          reviewerName: Avery Perez
+      shippingInformation: Ships in 1-2 business days
+      sku: BEA-VEL-POW-003
+      stock: "89"
+      tags:
+        - beauty
+        - face powder
+      thumbnail: https://cdn.dummyjson.com/product-images/beauty/powder-canister/thumbnail.webp
+      title: Powder Canister
+      warrantyInformation: 3 months warranty
+      weight: "8"
+    - availabilityStatus: In Stock
+      brand: Chic Cosmetics
+      category: beauty
+      description: The Red Lipstick is a classic and bold choice for adding a pop of color to your lips. With a creamy and pigmented formula, it provides a vibrant and long-lasting finish.
+      dimensions:
+        depth: "22.17"
+        height: "28.38"
+        width: "18.11"
+      discountPercentage: "12.16"
+      id: "4"
+      images:
+        - https://cdn.dummyjson.com/product-images/beauty/red-lipstick/1.webp
+      meta:
+        barcode: "9467746727219"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "40"
+      price: "12.99"
+      rating: "4.36"
+      returnPolicy: 7 days return policy
+      reviews:
+        - comment: Great product!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: liam.garcia@x.dummyjson.com
+          reviewerName: Liam Garcia
+        - comment: Great product!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: ruby.andrews@x.dummyjson.com
+          reviewerName: Ruby Andrews
+        - comment: Would buy again!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: clara.berry@x.dummyjson.com
+          reviewerName: Clara Berry
+      shippingInformation: Ships in 1 week
+      sku: BEA-CHI-LIP-004
+      stock: "91"
+      tags:
+        - beauty
+        - lipstick
+      thumbnail: https://cdn.dummyjson.com/product-images/beauty/red-lipstick/thumbnail.webp
+      title: Red Lipstick
+      warrantyInformation: 3 year warranty
+      weight: "1"
+    - availabilityStatus: In Stock
+      brand: Nail Couture
+      category: beauty
+      description: The Red Nail Polish offers a rich and glossy red hue for vibrant and polished nails. With a quick-drying formula, it provides a salon-quality finish at home.
+      dimensions:
+        depth: "29.84"
+        height: "16.48"
+        width: "21.63"
+      discountPercentage: "11.44"
+      id: "5"
+      images:
+        - https://cdn.dummyjson.com/product-images/beauty/red-nail-polish/1.webp
+      meta:
+        barcode: "4063010628104"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "22"
+      price: "8.99"
+      rating: "4.32"
+      returnPolicy: No return policy
+      reviews:
+        - comment: Poor quality!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "2"
+          reviewerEmail: benjamin.wilson@x.dummyjson.com
+          reviewerName: Benjamin Wilson
+        - comment: Great product!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: liam.smith@x.dummyjson.com
+          reviewerName: Liam Smith
+        - comment: Very unhappy with my purchase!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "1"
+          reviewerEmail: clara.berry@x.dummyjson.com
+          reviewerName: Clara Berry
+      shippingInformation: Ships overnight
+      sku: BEA-NAI-NAI-005
+      stock: "79"
+      tags:
+        - beauty
+        - nail polish
+      thumbnail: https://cdn.dummyjson.com/product-images/beauty/red-nail-polish/thumbnail.webp
+      title: Red Nail Polish
+      warrantyInformation: 1 month warranty
+      weight: "8"
+    - availabilityStatus: In Stock
+      brand: Calvin Klein
+      category: fragrances
+      description: CK One by Calvin Klein is a classic unisex fragrance, known for its fresh and clean scent. It's a versatile fragrance suitable for everyday wear.
+      dimensions:
+        depth: "20.72"
+        height: "27.76"
+        width: "29.36"
+      discountPercentage: "1.89"
+      id: "6"
+      images:
+        - https://cdn.dummyjson.com/product-images/fragrances/calvin-klein-ck-one/1.webp
+        - https://cdn.dummyjson.com/product-images/fragrances/calvin-klein-ck-one/2.webp
+        - https://cdn.dummyjson.com/product-images/fragrances/calvin-klein-ck-one/3.webp
+      meta:
+        barcode: "2451534060749"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "9"
+      price: "49.99"
+      rating: "4.37"
+      returnPolicy: 90 days return policy
+      reviews:
+        - comment: Very disappointed!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "2"
+          reviewerEmail: layla.young@x.dummyjson.com
+          reviewerName: Layla Young
+        - comment: Fast shipping!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: daniel.cook@x.dummyjson.com
+          reviewerName: Daniel Cook
+        - comment: Not as described!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "3"
+          reviewerEmail: jacob.cooper@x.dummyjson.com
+          reviewerName: Jacob Cooper
+      shippingInformation: Ships overnight
+      sku: FRA-CAL-CAL-006
+      stock: "29"
+      tags:
+        - fragrances
+        - perfumes
+      thumbnail: https://cdn.dummyjson.com/product-images/fragrances/calvin-klein-ck-one/thumbnail.webp
+      title: Calvin Klein CK One
+      warrantyInformation: 1 week warranty
+      weight: "7"
+    - availabilityStatus: In Stock
+      brand: Chanel
+      category: fragrances
+      description: Coco Noir by Chanel is an elegant and mysterious fragrance, featuring notes of grapefruit, rose, and sandalwood. Perfect for evening occasions.
+      dimensions:
+        depth: "25.98"
+        height: "25.7"
+        width: "24.5"
+      discountPercentage: "16.51"
+      id: "7"
+      images:
+        - https://cdn.dummyjson.com/product-images/fragrances/chanel-coco-noir-eau-de/1.webp
+        - https://cdn.dummyjson.com/product-images/fragrances/chanel-coco-noir-eau-de/2.webp
+        - https://cdn.dummyjson.com/product-images/fragrances/chanel-coco-noir-eau-de/3.webp
+      meta:
+        barcode: "4091737746820"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "1"
+      price: "129.99"
+      rating: "4.26"
+      returnPolicy: No return policy
+      reviews:
+        - comment: Highly impressed!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: ruby.andrews@x.dummyjson.com
+          reviewerName: Ruby Andrews
+        - comment: Awesome product!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: leah.henderson@x.dummyjson.com
+          reviewerName: Leah Henderson
+        - comment: Very happy with my purchase!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: xavier.wright@x.dummyjson.com
+          reviewerName: Xavier Wright
+      shippingInformation: Ships overnight
+      sku: FRA-CHA-CHA-007
+      stock: "58"
+      tags:
+        - fragrances
+        - perfumes
+      thumbnail: https://cdn.dummyjson.com/product-images/fragrances/chanel-coco-noir-eau-de/thumbnail.webp
+      title: Chanel Coco Noir Eau De
+      warrantyInformation: 3 year warranty
+      weight: "7"
+    - availabilityStatus: In Stock
+      brand: Dior
+      category: fragrances
+      description: J'adore by Dior is a luxurious and floral fragrance, known for its blend of ylang-ylang, rose, and jasmine. It embodies femininity and sophistication.
+      dimensions:
+        depth: "11.83"
+        height: "28.28"
+        width: "27.67"
+      discountPercentage: "14.72"
+      id: "8"
+      images:
+        - https://cdn.dummyjson.com/product-images/fragrances/dior-j'adore/1.webp
+        - https://cdn.dummyjson.com/product-images/fragrances/dior-j'adore/2.webp
+        - https://cdn.dummyjson.com/product-images/fragrances/dior-j'adore/3.webp
+      meta:
+        barcode: "1445086097250"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "10"
+      price: "89.99"
+      rating: "3.8"
+      returnPolicy: 7 days return policy
+      reviews:
+        - comment: Great value for money!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: nicholas.bailey@x.dummyjson.com
+          reviewerName: Nicholas Bailey
+        - comment: Great value for money!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: penelope.harper@x.dummyjson.com
+          reviewerName: Penelope Harper
+        - comment: Great product!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: emma.miller@x.dummyjson.com
+          reviewerName: Emma Miller
+      shippingInformation: Ships in 2 weeks
+      sku: FRA-DIO-DIO-008
+      stock: "98"
+      tags:
+        - fragrances
+        - perfumes
+      thumbnail: https://cdn.dummyjson.com/product-images/fragrances/dior-j'adore/thumbnail.webp
+      title: Dior J'adore
+      warrantyInformation: 1 week warranty
+      weight: "4"
+    - availabilityStatus: Low Stock
+      brand: Dolce & Gabbana
+      category: fragrances
+      description: Dolce Shine by Dolce & Gabbana is a vibrant and fruity fragrance, featuring notes of mango, jasmine, and blonde woods. It's a joyful and youthful scent.
+      dimensions:
+        depth: "18.3"
+        height: "29.88"
+        width: "27.28"
+      discountPercentage: "0.62"
+      id: "9"
+      images:
+        - https://cdn.dummyjson.com/product-images/fragrances/dolce-shine-eau-de/1.webp
+        - https://cdn.dummyjson.com/product-images/fragrances/dolce-shine-eau-de/2.webp
+        - https://cdn.dummyjson.com/product-images/fragrances/dolce-shine-eau-de/3.webp
+      meta:
+        barcode: "3023868210708"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "2"
+      price: "69.99"
+      rating: "3.96"
+      returnPolicy: 7 days return policy
+      reviews:
+        - comment: Would buy again!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: mateo.bennett@x.dummyjson.com
+          reviewerName: Mateo Bennett
+        - comment: Highly recommended!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: nolan.gonzalez@x.dummyjson.com
+          reviewerName: Nolan Gonzalez
+        - comment: Very happy with my purchase!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: aurora.lawson@x.dummyjson.com
+          reviewerName: Aurora Lawson
+      shippingInformation: Ships in 1 month
+      sku: FRA-DOL-DOL-009
+      stock: "4"
+      tags:
+        - fragrances
+        - perfumes
+      thumbnail: https://cdn.dummyjson.com/product-images/fragrances/dolce-shine-eau-de/thumbnail.webp
+      title: Dolce Shine Eau de
+      warrantyInformation: 3 year warranty
+      weight: "6"
+    - availabilityStatus: In Stock
+      brand: Gucci
+      category: fragrances
+      description: Gucci Bloom by Gucci is a floral and captivating fragrance, with notes of tuberose, jasmine, and Rangoon creeper. It's a modern and romantic scent.
+      dimensions:
+        depth: "11.2"
+        height: "21.68"
+        width: "20.92"
+      discountPercentage: "14.39"
+      id: "10"
+      images:
+        - https://cdn.dummyjson.com/product-images/fragrances/gucci-bloom-eau-de/1.webp
+        - https://cdn.dummyjson.com/product-images/fragrances/gucci-bloom-eau-de/2.webp
+        - https://cdn.dummyjson.com/product-images/fragrances/gucci-bloom-eau-de/3.webp
+      meta:
+        barcode: "3170832177880"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "2"
+      price: "79.99"
+      rating: "2.74"
+      returnPolicy: No return policy
+      reviews:
+        - comment: Very dissatisfied!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "1"
+          reviewerEmail: cameron.perez@x.dummyjson.com
+          reviewerName: Cameron Perez
+        - comment: Very happy with my purchase!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: daniel.cook@x.dummyjson.com
+          reviewerName: Daniel Cook
+        - comment: Highly impressed!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: addison.wright@x.dummyjson.com
+          reviewerName: Addison Wright
+      shippingInformation: Ships overnight
+      sku: FRA-GUC-GUC-010
+      stock: "91"
+      tags:
+        - fragrances
+        - perfumes
+      thumbnail: https://cdn.dummyjson.com/product-images/fragrances/gucci-bloom-eau-de/thumbnail.webp
+      title: Gucci Bloom Eau de
+      warrantyInformation: 6 months warranty
+      weight: "7"
+    - availabilityStatus: In Stock
+      brand: Annibale Colombo
+      category: furniture
+      description: The Annibale Colombo Bed is a luxurious and elegant bed frame, crafted with high-quality materials for a comfortable and stylish bedroom.
+      dimensions:
+        depth: "17.28"
+        height: "25.36"
+        width: "28.16"
+      discountPercentage: "8.57"
+      id: "11"
+      images:
+        - https://cdn.dummyjson.com/product-images/furniture/annibale-colombo-bed/1.webp
+        - https://cdn.dummyjson.com/product-images/furniture/annibale-colombo-bed/2.webp
+        - https://cdn.dummyjson.com/product-images/furniture/annibale-colombo-bed/3.webp
+      meta:
+        barcode: "3610757456581"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "1"
+      price: "1899.99"
+      rating: "4.77"
+      returnPolicy: No return policy
+      reviews:
+        - comment: Would not recommend!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "2"
+          reviewerEmail: christopher.west@x.dummyjson.com
+          reviewerName: Christopher West
+        - comment: Highly impressed!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: vivian.carter@x.dummyjson.com
+          reviewerName: Vivian Carter
+        - comment: Poor quality!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "1"
+          reviewerEmail: mason.wright@x.dummyjson.com
+          reviewerName: Mason Wright
+      shippingInformation: Ships in 1 month
+      sku: FUR-ANN-ANN-011
+      stock: "88"
+      tags:
+        - furniture
+        - beds
+      thumbnail: https://cdn.dummyjson.com/product-images/furniture/annibale-colombo-bed/thumbnail.webp
+      title: Annibale Colombo Bed
+      warrantyInformation: 1 year warranty
+      weight: "10"
+    - availabilityStatus: In Stock
+      brand: Annibale Colombo
+      category: furniture
+      description: The Annibale Colombo Sofa is a sophisticated and comfortable seating option, featuring exquisite design and premium upholstery for your living room.
+      dimensions:
+        depth: "19.06"
+        height: "20.55"
+        width: "12.75"
+      discountPercentage: "14.4"
+      id: "12"
+      images:
+        - https://cdn.dummyjson.com/product-images/furniture/annibale-colombo-sofa/1.webp
+        - https://cdn.dummyjson.com/product-images/furniture/annibale-colombo-sofa/2.webp
+        - https://cdn.dummyjson.com/product-images/furniture/annibale-colombo-sofa/3.webp
+      meta:
+        barcode: "1777662847736"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "1"
+      price: "2499.99"
+      rating: "3.92"
+      returnPolicy: 7 days return policy
+      reviews:
+        - comment: Very unhappy with my purchase!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "3"
+          reviewerEmail: christian.perez@x.dummyjson.com
+          reviewerName: Christian Perez
+        - comment: Fast shipping!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: lillian.bishop@x.dummyjson.com
+          reviewerName: Lillian Bishop
+        - comment: Poor quality!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "1"
+          reviewerEmail: lillian.simmons@x.dummyjson.com
+          reviewerName: Lillian Simmons
+      shippingInformation: Ships in 1 week
+      sku: FUR-ANN-ANN-012
+      stock: "60"
+      tags:
+        - furniture
+        - sofas
+      thumbnail: https://cdn.dummyjson.com/product-images/furniture/annibale-colombo-sofa/thumbnail.webp
+      title: Annibale Colombo Sofa
+      warrantyInformation: Lifetime warranty
+      weight: "6"
+    - availabilityStatus: In Stock
+      brand: Furniture Co.
+      category: furniture
+      description: The Bedside Table in African Cherry is a stylish and functional addition to your bedroom, providing convenient storage space and a touch of elegance.
+      dimensions:
+        depth: "27.35"
+        height: "24.99"
+        width: "13.47"
+      discountPercentage: "19.09"
+      id: "13"
+      images:
+        - https://cdn.dummyjson.com/product-images/furniture/bedside-table-african-cherry/1.webp
+        - https://cdn.dummyjson.com/product-images/furniture/bedside-table-african-cherry/2.webp
+        - https://cdn.dummyjson.com/product-images/furniture/bedside-table-african-cherry/3.webp
+      meta:
+        barcode: "6441287925979"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "3"
+      price: "299.99"
+      rating: "2.87"
+      returnPolicy: 7 days return policy
+      reviews:
+        - comment: Excellent quality!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: aaliyah.hanson@x.dummyjson.com
+          reviewerName: Aaliyah Hanson
+        - comment: Excellent quality!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: liam.smith@x.dummyjson.com
+          reviewerName: Liam Smith
+        - comment: Highly recommended!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: avery.barnes@x.dummyjson.com
+          reviewerName: Avery Barnes
+      shippingInformation: Ships overnight
+      sku: FUR-FUR-BED-013
+      stock: "64"
+      tags:
+        - furniture
+        - bedside tables
+      thumbnail: https://cdn.dummyjson.com/product-images/furniture/bedside-table-african-cherry/thumbnail.webp
+      title: Bedside Table African Cherry
+      warrantyInformation: 5 year warranty
+      weight: "2"
+    - availabilityStatus: In Stock
+      brand: Knoll
+      category: furniture
+      description: The Knoll Saarinen Executive Conference Chair is a modern and ergonomic chair, perfect for your office or conference room with its timeless design.
+      dimensions:
+        depth: "5.62"
+        height: "7.5"
+        width: "13.81"
+      discountPercentage: "2.01"
+      id: "14"
+      images:
+        - https://cdn.dummyjson.com/product-images/furniture/knoll-saarinen-executive-conference-chair/1.webp
+        - https://cdn.dummyjson.com/product-images/furniture/knoll-saarinen-executive-conference-chair/2.webp
+        - https://cdn.dummyjson.com/product-images/furniture/knoll-saarinen-executive-conference-chair/3.webp
+      meta:
+        barcode: "8919386859966"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "5"
+      price: "499.99"
+      rating: "4.88"
+      returnPolicy: 60 days return policy
+      reviews:
+        - comment: Waste of money!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "2"
+          reviewerEmail: ella.cook@x.dummyjson.com
+          reviewerName: Ella Cook
+        - comment: Very dissatisfied!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "2"
+          reviewerEmail: clara.berry@x.dummyjson.com
+          reviewerName: Clara Berry
+        - comment: Would buy again!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: elena.long@x.dummyjson.com
+          reviewerName: Elena Long
+      shippingInformation: Ships overnight
+      sku: FUR-KNO-KNO-014
+      stock: "26"
+      tags:
+        - furniture
+        - office chairs
+      thumbnail: https://cdn.dummyjson.com/product-images/furniture/knoll-saarinen-executive-conference-chair/thumbnail.webp
+      title: Knoll Saarinen Executive Conference Chair
+      warrantyInformation: 2 year warranty
+      weight: "10"
+    - availabilityStatus: Low Stock
+      brand: Bath Trends
+      category: furniture
+      description: The Wooden Bathroom Sink with Mirror is a unique and stylish addition to your bathroom, featuring a wooden sink countertop and a matching mirror.
+      dimensions:
+        depth: "28.46"
+        height: "8.88"
+        width: "7.98"
+      discountPercentage: "8.8"
+      id: "15"
+      images:
+        - https://cdn.dummyjson.com/product-images/furniture/wooden-bathroom-sink-with-mirror/1.webp
+        - https://cdn.dummyjson.com/product-images/furniture/wooden-bathroom-sink-with-mirror/2.webp
+        - https://cdn.dummyjson.com/product-images/furniture/wooden-bathroom-sink-with-mirror/3.webp
+      meta:
+        barcode: "1958104402873"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "2"
+      price: "799.99"
+      rating: "3.59"
+      returnPolicy: 60 days return policy
+      reviews:
+        - comment: Fast shipping!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: logan.torres@x.dummyjson.com
+          reviewerName: Logan Torres
+        - comment: Very pleased!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: aria.parker@x.dummyjson.com
+          reviewerName: Aria Parker
+        - comment: Poor quality!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "3"
+          reviewerEmail: dylan.wells@x.dummyjson.com
+          reviewerName: Dylan Wells
+      shippingInformation: Ships in 3-5 business days
+      sku: FUR-BAT-WOO-015
+      stock: "7"
+      tags:
+        - furniture
+        - bathroom
+      thumbnail: https://cdn.dummyjson.com/product-images/furniture/wooden-bathroom-sink-with-mirror/thumbnail.webp
+      title: Wooden Bathroom Sink With Mirror
+      warrantyInformation: 3 year warranty
+      weight: "10"
+    - availabilityStatus: In Stock
+      category: groceries
+      description: Fresh and crisp apples, perfect for snacking or incorporating into various recipes.
+      dimensions:
+        depth: "9.73"
+        height: "11.01"
+        width: "13.66"
+      discountPercentage: "12.62"
+      id: "16"
+      images:
+        - https://cdn.dummyjson.com/product-images/groceries/apple/1.webp
+      meta:
+        barcode: "7962803553314"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "7"
+      price: "1.99"
+      rating: "4.19"
+      returnPolicy: 90 days return policy
+      reviews:
+        - comment: Very satisfied!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: sophia.brown@x.dummyjson.com
+          reviewerName: Sophia Brown
+        - comment: Very dissatisfied!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "1"
+          reviewerEmail: scarlett.bowman@x.dummyjson.com
+          reviewerName: Scarlett Bowman
+        - comment: Very unhappy with my purchase!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "3"
+          reviewerEmail: william.gonzalez@x.dummyjson.com
+          reviewerName: William Gonzalez
+      shippingInformation: Ships in 2 weeks
+      sku: GRO-BRD-APP-016
+      stock: "8"
+      tags:
+        - fruits
+      thumbnail: https://cdn.dummyjson.com/product-images/groceries/apple/thumbnail.webp
+      title: Apple
+      warrantyInformation: 3 year warranty
+      weight: "9"
+    - availabilityStatus: In Stock
+      category: groceries
+      description: High-quality beef steak, great for grilling or cooking to your preferred level of doneness.
+      dimensions:
+        depth: "18.57"
+        height: "5.77"
+        width: "18.9"
+      discountPercentage: "9.61"
+      id: "17"
+      images:
+        - https://cdn.dummyjson.com/product-images/groceries/beef-steak/1.webp
+      meta:
+        barcode: "5640063409695"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "43"
+      price: "12.99"
+      rating: "4.47"
+      returnPolicy: 60 days return policy
+      reviews:
+        - comment: Would not recommend!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "3"
+          reviewerEmail: eleanor.tyler@x.dummyjson.com
+          reviewerName: Eleanor Tyler
+        - comment: Fast shipping!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: alexander.jones@x.dummyjson.com
+          reviewerName: Alexander Jones
+        - comment: Great value for money!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: natalie.harris@x.dummyjson.com
+          reviewerName: Natalie Harris
+      shippingInformation: Ships overnight
+      sku: GRO-BRD-BEE-017
+      stock: "86"
+      tags:
+        - meat
+      thumbnail: https://cdn.dummyjson.com/product-images/groceries/beef-steak/thumbnail.webp
+      title: Beef Steak
+      warrantyInformation: 3 year warranty
+      weight: "10"
+    - availabilityStatus: In Stock
+      category: groceries
+      description: Nutritious cat food formulated to meet the dietary needs of your feline friend.
+      dimensions:
+        depth: "21.86"
+        height: "9.26"
+        width: "18.08"
+      discountPercentage: "9.58"
+      id: "18"
+      images:
+        - https://cdn.dummyjson.com/product-images/groceries/cat-food/1.webp
+      meta:
+        barcode: "1483991328610"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "18"
+      price: "8.99"
+      rating: "3.13"
+      returnPolicy: No return policy
+      reviews:
+        - comment: Would not recommend!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "3"
+          reviewerEmail: noah.lewis@x.dummyjson.com
+          reviewerName: Noah Lewis
+        - comment: Very unhappy with my purchase!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "3"
+          reviewerEmail: ruby.andrews@x.dummyjson.com
+          reviewerName: Ruby Andrews
+        - comment: Very disappointed!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "2"
+          reviewerEmail: ethan.thompson@x.dummyjson.com
+          reviewerName: Ethan Thompson
+      shippingInformation: Ships overnight
+      sku: GRO-BRD-FOO-018
+      stock: "46"
+      tags:
+        - pet supplies
+        - cat food
+      thumbnail: https://cdn.dummyjson.com/product-images/groceries/cat-food/thumbnail.webp
+      title: Cat Food
+      warrantyInformation: 1 year warranty
+      weight: "10"
+    - availabilityStatus: In Stock
+      category: groceries
+      description: Fresh and tender chicken meat, suitable for various culinary preparations.
+      dimensions:
+        depth: "16.01"
+        height: "22.11"
+        width: "11.03"
+      discountPercentage: "13.7"
+      id: "19"
+      images:
+        - https://cdn.dummyjson.com/product-images/groceries/chicken-meat/1.webp
+        - https://cdn.dummyjson.com/product-images/groceries/chicken-meat/2.webp
+      meta:
+        barcode: "8829514594521"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "22"
+      price: "9.99"
+      rating: "3.19"
+      returnPolicy: 7 days return policy
+      reviews:
+        - comment: Great product!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: mateo.bennett@x.dummyjson.com
+          reviewerName: Mateo Bennett
+        - comment: Highly recommended!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: jackson.evans@x.dummyjson.com
+          reviewerName: Jackson Evans
+        - comment: Not worth the price!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "3"
+          reviewerEmail: sadie.morales@x.dummyjson.com
+          reviewerName: Sadie Morales
+      shippingInformation: Ships in 1 month
+      sku: GRO-BRD-CHI-019
+      stock: "97"
+      tags:
+        - meat
+      thumbnail: https://cdn.dummyjson.com/product-images/groceries/chicken-meat/thumbnail.webp
+      title: Chicken Meat
+      warrantyInformation: 1 year warranty
+      weight: "1"
+    - availabilityStatus: In Stock
+      category: groceries
+      description: Versatile cooking oil suitable for frying, sautéing, and various culinary applications.
+      dimensions:
+        depth: "24.86"
+        height: "27.54"
+        width: "19.95"
+      discountPercentage: "9.33"
+      id: "20"
+      images:
+        - https://cdn.dummyjson.com/product-images/groceries/cooking-oil/1.webp
+      meta:
+        barcode: "4874727824518"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "46"
+      price: "4.99"
+      rating: "4.8"
+      returnPolicy: 30 days return policy
+      reviews:
+        - comment: Very happy with my purchase!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: victoria.mcdonald@x.dummyjson.com
+          reviewerName: Victoria McDonald
+        - comment: Would not recommend!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "2"
+          reviewerEmail: hazel.evans@x.dummyjson.com
+          reviewerName: Hazel Evans
+        - comment: Would buy again!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: zoe.bennett@x.dummyjson.com
+          reviewerName: Zoe Bennett
+      shippingInformation: Ships in 1-2 business days
+      sku: GRO-BRD-COO-020
+      stock: "10"
+      tags:
+        - cooking essentials
+      thumbnail: https://cdn.dummyjson.com/product-images/groceries/cooking-oil/thumbnail.webp
+      title: Cooking Oil
+      warrantyInformation: Lifetime warranty
+      weight: "5"
+    - availabilityStatus: In Stock
+      category: groceries
+      description: Crisp and hydrating cucumbers, ideal for salads, snacks, or as a refreshing side.
+      dimensions:
+        depth: "21.34"
+        height: "28.38"
+        width: "12.8"
+      discountPercentage: "0.16"
+      id: "21"
+      images:
+        - https://cdn.dummyjson.com/product-images/groceries/cucumber/1.webp
+      meta:
+        barcode: "5300066378225"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "2"
+      price: "1.49"
+      rating: "4.07"
+      returnPolicy: 7 days return policy
+      reviews:
+        - comment: Great product!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: lincoln.kelly@x.dummyjson.com
+          reviewerName: Lincoln Kelly
+        - comment: Great value for money!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: savannah.gomez@x.dummyjson.com
+          reviewerName: Savannah Gomez
+        - comment: Poor quality!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "2"
+          reviewerEmail: james.davis@x.dummyjson.com
+          reviewerName: James Davis
+      shippingInformation: Ships in 1-2 business days
+      sku: GRO-BRD-CUC-021
+      stock: "84"
+      tags:
+        - vegetables
+      thumbnail: https://cdn.dummyjson.com/product-images/groceries/cucumber/thumbnail.webp
+      title: Cucumber
+      warrantyInformation: 2 year warranty
+      weight: "4"
+    - availabilityStatus: In Stock
+      category: groceries
+      description: Specially formulated dog food designed to provide essential nutrients for your canine companion.
+      dimensions:
+        depth: "9.29"
+        height: "27.15"
+        width: "16.93"
+      discountPercentage: "10.27"
+      id: "22"
+      images:
+        - https://cdn.dummyjson.com/product-images/groceries/dog-food/1.webp
+      meta:
+        barcode: "5906686116469"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "43"
+      price: "10.99"
+      rating: "4.55"
+      returnPolicy: 60 days return policy
+      reviews:
+        - comment: Excellent quality!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: nicholas.edwards@x.dummyjson.com
+          reviewerName: Nicholas Edwards
+        - comment: Awesome product!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: zachary.lee@x.dummyjson.com
+          reviewerName: Zachary Lee
+        - comment: Great product!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: nova.cooper@x.dummyjson.com
+          reviewerName: Nova Cooper
+      shippingInformation: Ships in 1-2 business days
+      sku: GRO-BRD-FOO-022
+      stock: "71"
+      tags:
+        - pet supplies
+        - dog food
+      thumbnail: https://cdn.dummyjson.com/product-images/groceries/dog-food/thumbnail.webp
+      title: Dog Food
+      warrantyInformation: No warranty
+      weight: "10"
+    - availabilityStatus: In Stock
+      category: groceries
+      description: Fresh eggs, a versatile ingredient for baking, cooking, or breakfast.
+      dimensions:
+        depth: "16.95"
+        height: "7.44"
+        width: "11.42"
+      discountPercentage: "11.05"
+      id: "23"
+      images:
+        - https://cdn.dummyjson.com/product-images/groceries/eggs/1.webp
+      meta:
+        barcode: "3478638588469"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "32"
+      price: "2.99"
+      rating: "2.53"
+      returnPolicy: No return policy
+      reviews:
+        - comment: Disappointing product!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "3"
+          reviewerEmail: penelope.king@x.dummyjson.com
+          reviewerName: Penelope King
+        - comment: Poor quality!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "3"
+          reviewerEmail: eleanor.tyler@x.dummyjson.com
+          reviewerName: Eleanor Tyler
+        - comment: Very pleased!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: benjamin.foster@x.dummyjson.com
+          reviewerName: Benjamin Foster
+      shippingInformation: Ships in 1 week
+      sku: GRO-BRD-EGG-023
+      stock: "9"
+      tags:
+        - dairy
+      thumbnail: https://cdn.dummyjson.com/product-images/groceries/eggs/thumbnail.webp
+      title: Eggs
+      warrantyInformation: 1 week warranty
+      weight: "2"
+    - availabilityStatus: In Stock
+      category: groceries
+      description: Quality fish steak, suitable for grilling, baking, or pan-searing.
+      dimensions:
+        depth: "11.27"
+        height: "26.31"
+        width: "14.95"
+      discountPercentage: "4.23"
+      id: "24"
+      images:
+        - https://cdn.dummyjson.com/product-images/groceries/fish-steak/1.webp
+      meta:
+        barcode: "9595036192098"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "50"
+      price: "14.99"
+      rating: "3.78"
+      returnPolicy: 60 days return policy
+      reviews:
+        - comment: Would not buy again!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "2"
+          reviewerEmail: caleb.perkins@x.dummyjson.com
+          reviewerName: Caleb Perkins
+        - comment: Excellent quality!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: isabella.jackson@x.dummyjson.com
+          reviewerName: Isabella Jackson
+        - comment: Great value for money!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: nathan.dixon@x.dummyjson.com
+          reviewerName: Nathan Dixon
+      shippingInformation: Ships in 3-5 business days
+      sku: GRO-BRD-FIS-024
+      stock: "74"
+      tags:
+        - seafood
+      thumbnail: https://cdn.dummyjson.com/product-images/groceries/fish-steak/thumbnail.webp
+      title: Fish Steak
+      warrantyInformation: 1 month warranty
+      weight: "6"
+    - availabilityStatus: In Stock
+      category: groceries
+      description: Fresh and vibrant green bell pepper, perfect for adding color and flavor to your dishes.
+      dimensions:
+        depth: "14.44"
+        height: "26.65"
+        width: "15.33"
+      discountPercentage: "0.16"
+      id: "25"
+      images:
+        - https://cdn.dummyjson.com/product-images/groceries/green-bell-pepper/1.webp
+      meta:
+        barcode: "2365227493323"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "12"
+      price: "1.29"
+      rating: "3.25"
+      returnPolicy: 30 days return policy
+      reviews:
+        - comment: Highly recommended!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: avery.carter@x.dummyjson.com
+          reviewerName: Avery Carter
+        - comment: Would not recommend!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "3"
+          reviewerEmail: henry.hill@x.dummyjson.com
+          reviewerName: Henry Hill
+        - comment: Excellent quality!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: addison.wright@x.dummyjson.com
+          reviewerName: Addison Wright
+      shippingInformation: Ships in 1 week
+      sku: GRO-BRD-GRE-025
+      stock: "33"
+      tags:
+        - vegetables
+      thumbnail: https://cdn.dummyjson.com/product-images/groceries/green-bell-pepper/thumbnail.webp
+      title: Green Bell Pepper
+      warrantyInformation: 1 month warranty
+      weight: "2"
+    - availabilityStatus: Low Stock
+      category: groceries
+      description: Spicy green chili pepper, ideal for adding heat to your favorite recipes.
+      dimensions:
+        depth: "19.92"
+        height: "18.12"
+        width: "15.38"
+      discountPercentage: "1"
+      id: "26"
+      images:
+        - https://cdn.dummyjson.com/product-images/groceries/green-chili-pepper/1.webp
+      meta:
+        barcode: "9335000538563"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "39"
+      price: "0.99"
+      rating: "3.66"
+      returnPolicy: 30 days return policy
+      reviews:
+        - comment: Great product!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: luna.russell@x.dummyjson.com
+          reviewerName: Luna Russell
+        - comment: Waste of money!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "1"
+          reviewerEmail: noah.lewis@x.dummyjson.com
+          reviewerName: Noah Lewis
+        - comment: Very disappointed!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "3"
+          reviewerEmail: clara.berry@x.dummyjson.com
+          reviewerName: Clara Berry
+      shippingInformation: Ships in 1 week
+      sku: GRO-BRD-GRE-026
+      stock: "3"
+      tags:
+        - vegetables
+      thumbnail: https://cdn.dummyjson.com/product-images/groceries/green-chili-pepper/thumbnail.webp
+      title: Green Chili Pepper
+      warrantyInformation: 2 year warranty
+      weight: "7"
+    - availabilityStatus: In Stock
+      category: groceries
+      description: Pure and natural honey in a convenient jar, perfect for sweetening beverages or drizzling over food.
+      dimensions:
+        depth: "17.74"
+        height: "21.72"
+        width: "9.28"
+      discountPercentage: "14.4"
+      id: "27"
+      images:
+        - https://cdn.dummyjson.com/product-images/groceries/honey-jar/1.webp
+      meta:
+        barcode: "6354306346329"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "47"
+      price: "6.99"
+      rating: "3.97"
+      returnPolicy: 90 days return policy
+      reviews:
+        - comment: Very disappointed!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "1"
+          reviewerEmail: autumn.gomez@x.dummyjson.com
+          reviewerName: Autumn Gomez
+        - comment: Highly impressed!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: benjamin.wilson@x.dummyjson.com
+          reviewerName: Benjamin Wilson
+        - comment: Very disappointed!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "2"
+          reviewerEmail: nicholas.edwards@x.dummyjson.com
+          reviewerName: Nicholas Edwards
+      shippingInformation: Ships in 1-2 business days
+      sku: GRO-BRD-HON-027
+      stock: "34"
+      tags:
+        - condiments
+      thumbnail: https://cdn.dummyjson.com/product-images/groceries/honey-jar/thumbnail.webp
+      title: Honey Jar
+      warrantyInformation: 1 month warranty
+      weight: "2"
+    - availabilityStatus: In Stock
+      category: groceries
+      description: Creamy and delicious ice cream, available in various flavors for a delightful treat.
+      dimensions:
+        depth: "24.2"
+        height: "15.07"
+        width: "14.83"
+      discountPercentage: "8.69"
+      id: "28"
+      images:
+        - https://cdn.dummyjson.com/product-images/groceries/ice-cream/1.webp
+        - https://cdn.dummyjson.com/product-images/groceries/ice-cream/2.webp
+        - https://cdn.dummyjson.com/product-images/groceries/ice-cream/3.webp
+        - https://cdn.dummyjson.com/product-images/groceries/ice-cream/4.webp
+      meta:
+        barcode: "0788954559076"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "42"
+      price: "5.49"
+      rating: "3.39"
+      returnPolicy: No return policy
+      reviews:
+        - comment: Very pleased!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: elijah.cruz@x.dummyjson.com
+          reviewerName: Elijah Cruz
+        - comment: Excellent quality!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: jace.smith@x.dummyjson.com
+          reviewerName: Jace Smith
+        - comment: Highly impressed!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: sadie.morales@x.dummyjson.com
+          reviewerName: Sadie Morales
+      shippingInformation: Ships in 2 weeks
+      sku: GRO-BRD-CRE-028
+      stock: "27"
+      tags:
+        - desserts
+      thumbnail: https://cdn.dummyjson.com/product-images/groceries/ice-cream/thumbnail.webp
+      title: Ice Cream
+      warrantyInformation: 1 month warranty
+      weight: "1"
+    - availabilityStatus: In Stock
+      category: groceries
+      description: Refreshing fruit juice, packed with vitamins and great for staying hydrated.
+      dimensions:
+        depth: "28.02"
+        height: "21.46"
+        width: "18.56"
+      discountPercentage: "12.06"
+      id: "29"
+      images:
+        - https://cdn.dummyjson.com/product-images/groceries/juice/1.webp
+      meta:
+        barcode: "6936112580956"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "25"
+      price: "3.99"
+      rating: "3.94"
+      returnPolicy: No return policy
+      reviews:
+        - comment: Excellent quality!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: nolan.gonzalez@x.dummyjson.com
+          reviewerName: Nolan Gonzalez
+        - comment: Would buy again!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: bella.grant@x.dummyjson.com
+          reviewerName: Bella Grant
+        - comment: Awesome product!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "5"
+          reviewerEmail: aria.flores@x.dummyjson.com
+          reviewerName: Aria Flores
+      shippingInformation: Ships in 1 week
+      sku: GRO-BRD-JUI-029
+      stock: "50"
+      tags:
+        - beverages
+      thumbnail: https://cdn.dummyjson.com/product-images/groceries/juice/thumbnail.webp
+      title: Juice
+      warrantyInformation: 6 months warranty
+      weight: "1"
+    - availabilityStatus: In Stock
+      category: groceries
+      description: Nutrient-rich kiwi, perfect for snacking or adding a tropical twist to your dishes.
+      dimensions:
+        depth: "17.13"
+        height: "18.67"
+        width: "19.4"
+      discountPercentage: "15.22"
+      id: "30"
+      images:
+        - https://cdn.dummyjson.com/product-images/groceries/kiwi/1.webp
+      meta:
+        barcode: "2530169917252"
+        createdAt: "2025-04-30T09:41:02.053Z"
+        qrCode: https://cdn.dummyjson.com/public/qr-code.png
+        updatedAt: "2025-04-30T09:41:02.053Z"
+      minimumOrderQuantity: "30"
+      price: "2.49"
+      rating: "4.93"
+      returnPolicy: 7 days return policy
+      reviews:
+        - comment: Highly recommended!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: emily.brown@x.dummyjson.com
+          reviewerName: Emily Brown
+        - comment: Would not buy again!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "2"
+          reviewerEmail: jackson.morales@x.dummyjson.com
+          reviewerName: Jackson Morales
+        - comment: Fast shipping!
+          date: "2025-04-30T09:41:02.053Z"
+          rating: "4"
+          reviewerEmail: nora.russell@x.dummyjson.com
+          reviewerName: Nora Russell
+      shippingInformation: Ships overnight
+      sku: GRO-BRD-KIW-030
+      stock: "99"
+      tags:
+        - fruits
+      thumbnail: https://cdn.dummyjson.com/product-images/groceries/kiwi/thumbnail.webp
+      title: Kiwi
+      warrantyInformation: 6 months warranty
+      weight: "5"
 role: admin
 username: alpha@test.com

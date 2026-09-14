@@ -37,7 +37,9 @@ Each step in a scenario sequence supports the following top-level keys:
 | `redis` | `object` | Conditional | Controlled read-only Redis operation. Mutually exclusive with other step operations. | `redis: { connection: local-cache, command: get, key: "product:42" }` |
 | `use` | `string` | Conditional | Scenario composition. Imports and executes another scenario YAML file inline. | `use: shared/login.yaml` |
 | `set` | `map[string]string`| Conditional | Inline variable assignment. Explicitly assigns or overrides variables. | `set: { QUEUE_ID: "01KT4EBA37Y" }` |
+| `export` | `object` | Conditional | Materializes a saved collection into an Excel (`.xlsx`) file. Mutually exclusive with other step operations. | `export: { file: fixtures/bulk.xlsx, from: "$items", columns: [...] }` |
 | `repeat` | `object` | Conditional | Repeats a group of steps until a condition is true or the attempt limit is exhausted. | `repeat: { attempts: 20, until: "$count == 0", steps: [...] }` |
+| `for_each` | `object` | Conditional | Executes nested steps sequentially once per item in a saved array. | `for_each: { from: "$items", as: item, steps: [...] }` |
 | `with` | `map[string]string`| No | Variable overrides injected into a `use:` step. Values interpolated before injection; original values restored after completion. | `with: { PARENT_CLAIM_ISSUE_ID: $STATUS_APPROVED_ID }` |
 | `expect` | `object` | No | Assertions mapping target dot-notation paths to expected formats or matchers. | `expect: { status: 200 }` |
 | `save` | `map[string]string`| No | Context extraction map. Binds response parameters to dynamic variables. | `save: { token: body.accessToken }` |
@@ -90,6 +92,41 @@ the `redis.*` path: `redis.exists`, `redis.value`, `redis.value.<field>`, and
 See [Redis Cache Checks](redis.md) for complete API-plus-cache scenarios,
 command-specific result paths, TTL and hash examples, polling, and Sentinel use.
 
+## Collection Request Loops (`for_each`)
+
+Use `for_each` when an endpoint requires one request per item rather than a
+single batch payload. `from` resolves a saved array, `as` names the scoped
+current item (default: `item`), and nested `steps` execute sequentially.
+
+```yaml
+steps:
+  - request:
+      method: GET
+      url: /api-a/items
+    save:
+      items: body.items
+
+  - name: Send every item to API B
+    for_each:
+      from: $items
+      as: item
+      steps:
+        - request:
+            method: POST
+            url: /api-b/items
+            body:
+              external_id: $item.id
+              name: $item.name
+          expect:
+            status: 201
+```
+
+The loop stops at the first failing nested step. Variables saved inside the
+loop remain available afterward, while the item alias is restored when the
+loop ends. An empty source array succeeds without executing nested steps; a
+missing or non-array source fails the loop. Terminal and report output label
+each nested execution as `for_each N/M`.
+
 ## Bounded Multi-Step Loops (`repeat`)
 
 Use `repeat` when one polling attempt needs multiple operations. The nested
@@ -126,6 +163,111 @@ response exists for evaluating response-dependent exit conditions.
 
 ---
 
+## 📤 Excel Export (`export`)
+
+The `export` step materializes a saved collection into an Excel (`.xlsx`) file.
+It is a **sink**: it writes data to disk instead of making an HTTP request, so
+it pairs naturally with `multipart.files` to generate fixtures for bulk-import
+APIs.
+
+```yaml
+steps:
+  - name: Fetch product catalog
+    request:
+      method: GET
+      url: /products
+    save:
+      products: body.products
+
+  - name: Generate bulk upload Excel fixture
+    export:
+      file: fixtures/bulk_upload.xlsx
+      from: $products
+      sheet: "BulkData"
+      columns:
+        - header: "product_title"
+          value: "$string(item.title)"
+        - header: "price"
+          value: "$float(item.price)"
+        - header: "priority"
+          value: "$if(item.price > 500, 'priority', 'normal')"
+        - header: "generated_at"
+          value: "${dateNow(\"2006-01-02\")}"
+```
+
+### Configuration Properties
+
+| Property | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `file` | `string` | **Yes** | Output path for the Excel file. Absolute paths are used as-is; relative paths resolve against the configured `export.path` (default: project root). |
+| `from` | `string` | **Yes** | Source collection array variable (must start with `$`). |
+| `sheet` | `string` | No | Worksheet name (default `Sheet1`). |
+| `columns` | `list` | **Yes** | Ordered column definitions. |
+
+Each column has:
+
+| Property | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `header` | `string` | **Yes** | Column header text. |
+| `value` | `string` | **Yes** | Per-cell expression. Supports interpolation, casting (`$string`, `$int`, `$float`, `$bool`), `$if(...)`, and references to saved variables. |
+
+### Key Behaviors
+- **Mutual Exclusion**: `export` cannot be combined with `request`, `redis`, `use`, `set`, `repeat`, `for_each`, `with`, `expect`, `save`, `timing`, or `retry`.
+- **Row Scoping**: Each row is evaluated with the current item bound to `item` (plus all saved variables).
+- **Conditional Values**: `$if(condition, then, else)` supports full boolean expressions with comparison operators (`==`, `!=`, `>`, `>=`, `<`, `<=`, `&&`, `||`, `!`).
+- **No HTTP**: The step passes when the file writes successfully.
+- **Configurable Output**: Set `export.path` in `.gherkio/config.yaml` to write relative `file` paths under a dedicated directory (e.g. `fixtures`).
+
+---
+
+## 📥 Excel Import (`import`)
+
+The `import` step reads an Excel (`.xlsx`) spreadsheet from disk and parses its rows into an array of objects saved in a runtime variable (`as: <variableName>`). This enables test scenarios to ingest external Excel fixtures, iterate through records with `for_each`, or validate uploaded spreadsheet contents.
+
+```yaml
+steps:
+  - name: Ingest customer dataset
+    import:
+      file: fixtures/customers.xlsx
+      sheet: "Customers"          # Optional, defaults to active/first sheet
+      as: CUSTOMER_LIST          # Target variable storing array of row maps
+      header_row: 1              # Optional, 1-based header row index (default: 1)
+      data_start_row: 2          # Optional, 1-based data start row (default: 2)
+
+  - name: Create each customer via API
+    for_each:
+      from: $CUSTOMER_LIST
+      as: customer
+      steps:
+        - name: Send creation request
+          request:
+            method: POST
+            url: /v1/customers
+            body:
+              full_name: $customer.customer_name
+              email: $customer.email_address
+              initial_balance: $float(customer.balance)
+```
+
+### Configuration Properties
+
+| Property | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `file` | `string` | **Yes** | Target `.xlsx` file path (absolute or relative to project root / export path). |
+| `as` | `string` | **Yes** | Target variable name to store parsed rows (without leading `$`). |
+| `sheet` | `string` | No | Worksheet name (default: active/first sheet). |
+| `header_row` | `int` | No | 1-based row index containing column headers (default: `1`). |
+| `data_start_row` | `int` | No | 1-based row index where data rows start (default: `2`). |
+| `columns` | `list` | No | Optional list of explicit column alias mappings (`{ header, as }`). |
+
+### Key Behaviors
+- **Header Normalization**: When `columns` is omitted, headers containing spaces or punctuation are automatically converted to clean `snake_case` keys (e.g. `"Customer Name ($)"` becomes `customer_name`).
+- **Explicit Aliasing**: Specify `columns` mappings to rename specific headers to custom field keys.
+- **Mutual Exclusion**: `import` is a primary step operation and cannot be combined with `request`, `redis`, `use`, `set`, `repeat`, `for_each`, `export`, `with`, `expect`, `save`, `timing`, or `retry`.
+- **Seamless Expressions**: The loaded variable is a standard array of maps, fully accessible via `$list[0].field`, `${randomItem(list)}`, and `for_each: { from: $list }`.
+
+---
+
 ## 🔀 Conditional Execution (`if`)
 
 Steps can be conditionally executed using the `if` guard property. If the expression evaluates to false, the step is skipped entirely (its HTTP request is not sent, assertions are ignored, and any variable extraction is bypassed). Skipped steps are tracked as `skipped` in test metrics, CLI logs, and HTML reports.
@@ -140,6 +282,13 @@ Supported operators:
 *   `>=` (Greater than or equal to)
 *   `<` (Less than)
 *   `<=` (Less than or equal to)
+*   `&&` (Logical AND)
+*   `||` (Logical OR)
+*   `!` (Logical negation)
+
+`&&` has higher precedence than `||`. Use parentheses to group expressions.
+Both operators short-circuit: a false left side skips the right side of `&&`,
+and a true left side skips the right side of `||`.
 
 ### Examples
 
@@ -180,6 +329,26 @@ steps:
       body:
         transaction_id: $TX_ID
 ```
+
+#### Compound Conditions
+
+```yaml
+steps:
+  - name: Process complete customer record
+    if: $item.ticket_name && $item.customer_name && $item.ticket_code
+    request:
+      method: POST
+      url: /v1/webhooks/premature-tickets
+```
+
+```yaml
+# Parentheses and negation
+if: ($enabled && $count > 0) || !($status == blocked)
+```
+
+For backward compatibility, negating a comparison without parentheses (for
+example `!$status == blocked`) is rejected as ambiguous. Write
+`!($status == blocked)` instead.
 
 ---
 

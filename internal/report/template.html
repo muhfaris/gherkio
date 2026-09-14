@@ -113,8 +113,14 @@
         border: 0.5px solid currentColor;
         opacity: 0.9;
       }
-      .env-badge.prod { background: var(--fail-bg); color: var(--fail-text); }
-      .env-badge.local { background: var(--skip-bg); color: var(--skip-text); }
+      .env-badge.prod {
+        background: var(--fail-bg);
+        color: var(--fail-text);
+      }
+      .env-badge.local {
+        background: var(--skip-bg);
+        color: var(--skip-text);
+      }
       .header-meta {
         display: flex;
         gap: 20px;
@@ -617,9 +623,17 @@
         cursor: pointer;
         font-weight: 600;
       }
-      .failure-nav button:hover { background: var(--fail-border); color: #fff; }
-      .failure-nav .spacer { flex: 1; }
-      .failure-nav .counter { font-size: 12px; opacity: 0.7; }
+      .failure-nav button:hover {
+        background: var(--fail-border);
+        color: #fff;
+      }
+      .failure-nav .spacer {
+        flex: 1;
+      }
+      .failure-nav .counter {
+        font-size: 12px;
+        opacity: 0.7;
+      }
 
       /* ── Summary ratio ── */
       .summary-ratio {
@@ -629,7 +643,9 @@
         font-variant-numeric: tabular-nums;
         min-width: 52px;
       }
-      .summary-ratio.has-fail { color: var(--fail-text); }
+      .summary-ratio.has-fail {
+        color: var(--fail-text);
+      }
 
       /* ── Load run overview ── */
       .load-overview {
@@ -644,7 +660,9 @@
         font-weight: 600;
         margin-bottom: 12px;
       }
-      .load-equation span { color: var(--info-text); }
+      .load-equation span {
+        color: var(--info-text);
+      }
       .load-metrics {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -677,7 +695,9 @@
         cursor: pointer;
         user-select: none;
       }
-      details.scenario-block > summary::-webkit-details-marker { display: none; }
+      details.scenario-block > summary::-webkit-details-marker {
+        display: none;
+      }
       .workflow-title {
         display: flex;
         align-items: center;
@@ -688,22 +708,32 @@
         font-size: 11px;
         transition: transform 0.15s ease;
       }
-      details[open] .workflow-chevron { transform: rotate(90deg); }
+      details[open] .workflow-chevron {
+        transform: rotate(90deg);
+      }
       .workflow-status {
         font-size: 11px;
         font-weight: 700;
         padding: 2px 8px;
         border-radius: 999px;
       }
-      .workflow-status.pass { color: var(--pass-text); background: var(--pass-bg); }
-      .workflow-status.fail { color: var(--fail-text); background: var(--fail-bg); }
+      .workflow-status.pass {
+        color: var(--pass-text);
+        background: var(--pass-bg);
+      }
+      .workflow-status.fail {
+        color: var(--fail-text);
+        background: var(--fail-bg);
+      }
       .workflow-file {
         font-family: var(--mono);
         font-size: 11px;
         color: var(--text-tertiary);
         margin-top: 3px;
       }
-      details.scenario-block > .steps { margin: 0 0 24px; }
+      details.scenario-block > .steps {
+        margin: 0 0 24px;
+      }
 
       /* ── Token warning ── */
       .token-warning {
@@ -721,12 +751,27 @@
 
       /* ── Print ── */
       @media print {
-        .toolbar, .failure-nav, #toast, .copy-btn { display: none !important; }
-        .step { page-break-inside: avoid; }
-        .step-body { display: block !important; }
-        .section-content { display: block !important; }
-        details.scenario-block > .steps { display: flex !important; }
-        body { background: white; }
+        .toolbar,
+        .failure-nav,
+        #toast,
+        .copy-btn {
+          display: none !important;
+        }
+        .step {
+          page-break-inside: avoid;
+        }
+        .step-body {
+          display: block !important;
+        }
+        .section-content {
+          display: block !important;
+        }
+        details.scenario-block > .steps {
+          display: flex !important;
+        }
+        body {
+          background: white;
+        }
       }
     </style>
   </head>
@@ -750,9 +795,13 @@
           >
           <span class="meta-item"><strong>Steps:</strong> {{.TotalSteps}}</span>
           {{if .LoadMode}}
-          <span class="meta-item"><strong>Workflows:</strong> {{.WorkflowCount}}</span>
+          <span class="meta-item"
+            ><strong>Workflows:</strong> {{.WorkflowCount}}</span
+          >
           {{else if .Scenarios}}
-          <span class="meta-item"><strong>Scenarios:</strong> {{len .Scenarios}}</span>
+          <span class="meta-item"
+            ><strong>Scenarios:</strong> {{len .Scenarios}}</span
+          >
           {{end}}
         </div>
       </div>
@@ -766,19 +815,39 @@
           {{.WorkflowCount}} workflow executions
         </div>
         <div class="load-metrics">
-          <div class="load-metric"><span class="load-metric-value">{{.PassedWorkflows}}</span><span class="load-metric-label">workflows passed</span></div>
-          <div class="load-metric"><span class="load-metric-value">{{.FailedWorkflows}}</span><span class="load-metric-label">workflows failed</span></div>
-          <div class="load-metric"><span class="load-metric-value">{{.RequestCount}}</span><span class="load-metric-label">requests</span></div>
-          <div class="load-metric"><span class="load-metric-value">{{.AverageResponseTime}}</span><span class="load-metric-label">average latency</span></div>
-          <div class="load-metric"><span class="load-metric-value">{{.P95ResponseTime}}</span><span class="load-metric-label">p95 latency</span></div>
-          <div class="load-metric"><span class="load-metric-value">{{.RequestsPerSecond}}</span><span class="load-metric-label">requests / second</span></div>
+          <div class="load-metric">
+            <span class="load-metric-value">{{.PassedWorkflows}}</span
+            ><span class="load-metric-label">workflows passed</span>
+          </div>
+          <div class="load-metric">
+            <span class="load-metric-value">{{.FailedWorkflows}}</span
+            ><span class="load-metric-label">workflows failed</span>
+          </div>
+          <div class="load-metric">
+            <span class="load-metric-value">{{.RequestCount}}</span
+            ><span class="load-metric-label">requests</span>
+          </div>
+          <div class="load-metric">
+            <span class="load-metric-value">{{.AverageResponseTime}}</span
+            ><span class="load-metric-label">average latency</span>
+          </div>
+          <div class="load-metric">
+            <span class="load-metric-value">{{.P95ResponseTime}}</span
+            ><span class="load-metric-label">p95 latency</span>
+          </div>
+          <div class="load-metric">
+            <span class="load-metric-value">{{.RequestsPerSecond}}</span
+            ><span class="load-metric-label">requests / second</span>
+          </div>
         </div>
       </div>
       {{end}}
 
       <!-- ── Summary bar ── -->
       <div class="summary">
-        <span class="summary-ratio {{if gt .FailCount 0}}has-fail{{end}}">{{.PassCount}}/{{.TotalSteps}}</span>
+        <span class="summary-ratio {{if gt .FailCount 0}}has-fail{{end}}"
+          >{{.PassCount}}/{{.TotalSteps}}</span
+        >
         <div class="summary-bar">
           <div class="bar-pass" style="width: {{.PassPercent}}%"></div>
           <div class="bar-fail" style="width: {{.FailPercent}}%"></div>
@@ -813,361 +882,750 @@
 
       <!-- ── Toolbar ── -->
       <div class="toolbar">
-        <button class="toolbar-btn" id="toggle-all-btn" onclick="toggleAll()">Expand all</button>
-        <button class="toolbar-btn" onclick="window.print()">🖨 Print / PDF</button>
+        <button class="toolbar-btn" id="toggle-all-btn" onclick="toggleAll()">
+          Expand all
+        </button>
+        <button class="toolbar-btn" onclick="window.print()">
+          🖨 Print / PDF
+        </button>
       </div>
 
       <!-- ── Scenarios (multi-scenario) ── -->
-      {{if .Scenarios}}
-        {{range $sIdx, $scenario := .Scenarios}}
-        <!-- Scenario: {{$scenario.Name}} -->
-        <details class="scenario-block" {{if not $scenario.Passed}}open{{end}}>
-          <!-- Scenario header -->
-          <summary class="header" style="margin-bottom: 8px;">
-            <div class="header-top">
-              <span class="workflow-title">
-                <span class="workflow-chevron">▶</span>
-                <span class="scenario-name" style="font-size: 16px;">
-                  {{if $scenario.VirtualUser}}VU {{$scenario.VirtualUser}} · iteration {{$scenario.Iteration}}/{{$scenario.IterationsPerUser}}{{else}}{{$scenario.Name}}{{end}}
-                </span>
+      {{if .Scenarios}} {{range $sIdx, $scenario := .Scenarios}}
+      <!-- Scenario: {{$scenario.Name}} -->
+      <details class="scenario-block" {{if not $scenario.Passed}}open{{end}}>
+        <!-- Scenario header -->
+        <summary class="header" style="margin-bottom: 8px">
+          <div class="header-top">
+            <span class="workflow-title">
+              <span class="workflow-chevron">▶</span>
+              <span class="scenario-name" style="font-size: 16px">
+                {{if $scenario.VirtualUser}}VU {{$scenario.VirtualUser}} ·
+                iteration
+                {{$scenario.Iteration}}/{{$scenario.IterationsPerUser}}{{else}}{{$scenario.Name}}{{end}}
               </span>
-              <span class="workflow-status {{if $scenario.Passed}}pass{{else}}fail{{end}}">{{if $scenario.Passed}}PASS{{else}}FAIL{{end}}</span>
-            </div>
-            {{if $scenario.VirtualUser}}<div class="workflow-file">{{$scenario.Name}} · {{$scenario.TestFile}}</div>{{end}}
-            {{if $scenario.Description}}
-            <div class="header-description">{{$scenario.Description}}</div>
-            {{end}}
-            <div class="header-meta">
-              <span class="meta-item"><strong>Duration:</strong> {{$scenario.TotalDuration}}</span>
-              <span class="meta-item"><strong>Steps:</strong> {{$scenario.TotalSteps}}</span>
-              <span class="meta-item"><strong>Passed:</strong> {{$scenario.PassCount}}</span>
-              <span class="meta-item"><strong>Failed:</strong> {{$scenario.FailCount}}</span>
-              {{if gt $scenario.SkipCount 0}}
-              <span class="meta-item"><strong>Skipped:</strong> {{$scenario.SkipCount}}</span>
-              {{end}}
-              {{if $scenario.Account}}
-              <span class="meta-item"><strong>Account:</strong> {{$scenario.Account}}</span>
-              {{end}}
-            </div>
-          </summary>
-          <!-- Scenario steps -->
-          <div class="steps" id="steps-{{$sIdx}}">
-            {{if $scenario.InitialVars}}
-            <div class="section" id="initial-vars-s{{$sIdx}}">
-              <div class="section-title" onclick="toggleSection('initial-vars-s{{$sIdx}}')"><span class="section-chevron">▶</span> Initial Variables ({{len $scenario.InitialVars}})</div>
-              <div class="section-content"><div class="saved-vars">{{range $k, $v := $scenario.InitialVars}}<div class="saved-var-item"><span class="saved-var-key">{{$k}}</span><span class="saved-var-val">{{$v}}</span></div>{{end}}</div></div>
-            </div>
-            {{end}}
-            {{if $scenario.FinalVars}}
-            <div class="section open" id="final-vars-s{{$sIdx}}">
-              <div class="section-title" onclick="toggleSection('final-vars-s{{$sIdx}}')"><span class="section-chevron">▶</span> Final Variables ({{len $scenario.FinalVars}})</div>
-              <div class="section-content"><div class="saved-vars">{{range $k, $v := $scenario.FinalVars}}<div class="saved-var-item"><span class="saved-var-key">{{$k}}</span><span class="saved-var-val">{{$v}}</span></div>{{end}}</div></div>
-            </div>
-            {{end}}
-            {{range $i, $step := $scenario.Steps}}
-            {{if $step.Original.IsUseStart}}
-            <div class="step-compose-start" style="margin-left: calc({{$step.Original.Depth}} * 20px); padding: 12px 16px; background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); margin-top: 12px; margin-bottom: 8px;">
-              <div style="display: flex; align-items: center; justify-content: space-between;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <span style="font-size: 16px;">📦</span>
-                  <strong style="font-size: 14px; color: var(--text);">Composed Scenario: <span style="font-family: var(--mono); color: var(--info-text);">{{$step.Original.UseFile}}</span></strong>
-                  {{if $step.Name}}<span style="font-size: 12px; color: var(--text-secondary); font-style: italic;">({{$step.Name}})</span>{{end}}
-                </div>
-                {{if $step.Original.Original.With}}
-                <span class="badge" style="font-size: 11px; background: var(--info-bg); color: var(--info-text);">with {{len $step.Original.Original.With}} variables</span>
-                {{end}}
-              </div>
-              {{if $step.SavedVars}}
-              <!-- Composed Variables State Snapshot -->
-              <div class="section open" id="compose-vars-s{{$sIdx}}-{{$i}}" style="margin-top: 10px;">
-                <div class="section-title" onclick="toggleSection('compose-vars-s{{$sIdx}}-{{$i}}')" style="font-size: 11px; text-transform: uppercase; color: var(--text-tertiary);">
-                  <span class="section-chevron">▶</span> Scope Variables Snapshot
-                </div>
-                <div class="section-content" style="margin-top: 4px;">
-                  <div class="saved-vars" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px;">
-                    {{range $k, $v := $step.SavedVars}}
-                    <div class="saved-var-item" style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-tertiary); padding: 4px 8px; border-radius: var(--radius); font-size: 11px; border: 0.5px solid var(--border);">
-                      <span class="saved-var-key" style="font-family: var(--mono); font-weight: 600; color: var(--text-secondary);">{{$k}}</span>
-                      <span class="saved-var-val" style="font-family: var(--mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px;" title="{{$v}}">{{$v}}</span>
-                    </div>
-                    {{end}}
-                  </div>
-                </div>
-              </div>
-              {{end}}
-            </div>
-            {{else if $step.Original.IsUseEnd}}
-            <div class="step-compose-end" style="margin-left: calc({{$step.Original.Depth}} * 20px); border-bottom: 2px dashed var(--border); margin: 8px 0 16px 0; height: 1px;"></div>
-            {{else}}
-        <div
-          class="step {{if $step.Skipped}}step-skip{{else if not $step.Passed}}step-fail{{end}}"
-          id="step-s{{$sIdx}}-{{$i}}"
-          style="margin-left: calc({{$step.Original.Depth}} * 20px);"
-        >
-          <!-- Step header -->
-          <div class="step-header" onclick="toggleStep('step-s{{$sIdx}}-{{$i}}')">
-            <span class="step-status"
-              >{{if $step.Skipped}}⏭️{{else if $step.Passed}}✅{{else}}❌{{end}}</span
+            </span>
+            <span
+              class="workflow-status {{if $scenario.Passed}}pass{{else}}fail{{end}}"
+              >{{if $scenario.Passed}}PASS{{else}}FAIL{{end}}</span
             >
-            <span class="step-num">#{{add $i 1}}</span>
-            {{if $step.Name}}<span class="step-name">{{$step.Name}}</span>{{end}}
-            <span class="step-method method-{{$step.Method}}"
-              >{{$step.Method}}</span
-            >
-            <span class="step-url" title="{{$step.URL}}">{{$step.URL}}</span>
-
-            <div class="step-badges">
-              {{if gt $step.Original.RepeatAttempt 0}}
-              <span class="badge" title="Repeat block attempt">repeat {{$step.Original.RepeatAttempt}}/{{$step.Original.RepeatAttempts}}</span>
-              {{end}}
-              <!-- Status code -->
-              <span class="status-badge {{statusClass $step.StatusCode}}"
-                >{{$step.StatusCode}}</span
-              >
-
-              <!-- Response time -->
-              <span
-                class="badge {{if $step.TimingFailed}}timing-fail{{else}}timing-ok{{end}}"
-                title="Response time"
-              >
-                ⏱ {{$step.Duration}}
-              </span>
-
-              <!-- Retry Badge -->
-              {{if gt $step.RetryCount 0}}
-              <span class="badge" style="background: var(--warn-bg); color: var(--warn-text); border-color: var(--warn-text);" title="Retried {{$step.RetryCount}} times">
-                ↻ {{$step.RetryCount}} retries
-              </span>
-              {{end}}
-
-              <!-- Request ID (copyable) -->
-              {{if $step.RequestID}}
-              <span
-                class="badge req-id"
-                onclick="copyText('{{$step.RequestID}}', event)"
-                title="Click to copy request ID"
-              >
-                🔑 {{$step.RequestID}}
-              </span>
-              {{end}}
-            </div>
-
-            <span class="step-chevron">▼</span>
           </div>
-
-          <!-- Step body -->
-          <div class="step-body">
-            {{if $step.Skipped}}
-            <!-- Step Skipped Info -->
-            <div style="background: var(--skip-bg); border: 0.5px solid var(--skip-border); border-radius: var(--radius); padding: 12px; margin-bottom: 12px;">
-              <div style="font-weight: 600; font-size: 13px; color: var(--skip-text); margin-bottom: 4px;">⏭️ Skipped</div>
-              <div style="font-family: var(--mono); font-size: 13px; color: var(--skip-text);">Guard condition evaluated to false: <code>{{$step.Original.Original.If}}</code></div>
-            </div>
-            {{else}}
-            <!-- Response info -->
-            <div class="response-info">
-              <span style="font-size: 13px; color: var(--text-secondary)">
-                <strong style="color: var(--text)">{{$step.StatusCode}}</strong>
-                {{$step.StatusText}}
-              </span>
-            </div>
-
-            {{if $step.Error}}
-            <!-- Step Error -->
-            <div style="background: var(--fail-bg); border: 0.5px solid var(--fail-border); border-radius: var(--radius); padding: 12px; margin-bottom: 12px;">
-              <div style="font-weight: 600; font-size: 13px; color: var(--fail-text); margin-bottom: 4px;">⛔ Error</div>
-              <div style="font-family: var(--mono); font-size: 13px; color: var(--fail-text);">{{$step.Error}}</div>
-            </div>
+          {{if $scenario.VirtualUser}}
+          <div class="workflow-file">
+            {{$scenario.Name}} · {{$scenario.TestFile}}
+          </div>
+          {{end}} {{if $scenario.Description}}
+          <div class="header-description">{{$scenario.Description}}</div>
+          {{end}}
+          <div class="header-meta">
+            <span class="meta-item"
+              ><strong>Duration:</strong> {{$scenario.TotalDuration}}</span
+            >
+            <span class="meta-item"
+              ><strong>Steps:</strong> {{$scenario.TotalSteps}}</span
+            >
+            <span class="meta-item"
+              ><strong>Passed:</strong> {{$scenario.PassCount}}</span
+            >
+            <span class="meta-item"
+              ><strong>Failed:</strong> {{$scenario.FailCount}}</span
+            >
+            {{if gt $scenario.SkipCount 0}}
+            <span class="meta-item"
+              ><strong>Skipped:</strong> {{$scenario.SkipCount}}</span
+            >
+            {{end}} {{if $scenario.Account}}
+            <span class="meta-item"
+              ><strong>Account:</strong> {{$scenario.Account}}</span
+            >
             {{end}}
-
-            <!-- Retry History -->
-            {{if $step.RetryHistory}}
-            <div class="section" id="retry-s{{$sIdx}}-{{$i}}">
-              <div class="section-title" onclick="toggleSection('retry-s{{$sIdx}}-{{$i}}')">
-                <span class="section-chevron">▶</span> Retry History ({{len $step.RetryHistory}})
-              </div>
-              <div class="section-content">
-                <div class="assertions">
-                  {{range $step.RetryHistory}}
-                  <div class="assertion-item" style="flex-direction: column;">
-                    <div style="display: flex; gap: 8px; width: 100%;">
-                      <span class="status-badge {{statusClass .Status}}">{{.Status}}</span>
-                      <span style="font-weight: 500; font-size: 13px;">Attempt {{.Attempt}}</span>
-                      <span style="color: var(--text-tertiary); font-size: 12px; margin-left: auto;">⏱ {{.Duration}}</span>
-                    </div>
-                    {{if .Error}}
-                      <div class="assert-detail" style="margin-top: 4px;">{{.Error}}</div>
-                    {{end}}
-                    {{if .Body}}
-                      <div class="code-block" style="margin-top: 4px; max-height: 80px; overflow-y: hidden;">{{.Body}}</div>
-                    {{end}}
-                  </div>
-                  {{end}}
-                </div>
-              </div>
+          </div>
+        </summary>
+        <!-- Scenario steps -->
+        <div class="steps" id="steps-{{$sIdx}}">
+          {{if $scenario.InitialVars}}
+          <div class="section" id="initial-vars-s{{$sIdx}}">
+            <div
+              class="section-title"
+              onclick="toggleSection('initial-vars-s{{$sIdx}}')"
+            >
+              <span class="section-chevron">▶</span> Initial Variables ({{len
+              $scenario.InitialVars}})
             </div>
-            {{end}}
-
-            <!-- cURL command -->
-            <div class="section open" id="curl-s{{$sIdx}}-{{$i}}">
-              <div class="section-title" onclick="toggleSection('curl-s{{$sIdx}}-{{$i}}')">
-                <span class="section-chevron">▶</span> cURL command
-              </div>
-              <div class="section-content">
-                <div class="code-block-wrap">
-                  <pre class="code-block" id="curl-code-s{{$sIdx}}-{{$i}}">
-{{$step.CurlCommand}}</pre
-                  >
-                  <button class="copy-btn" onclick="copyEl('curl-code-s{{$sIdx}}-{{$i}}')">
-                    Copy
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Request details -->
-            <div class="section open" id="req-s{{$sIdx}}-{{$i}}">
-              <div class="section-title" onclick="toggleSection('req-s{{$sIdx}}-{{$i}}')">
-                <span class="section-chevron">▶</span> Request details
-              </div>
-              <div class="section-content">
-                <table class="req-details">
-                  <tr><td class="req-label">URL</td><td class="req-value"><code>{{$step.URL}}</code></td></tr>
-                  {{if $step.Query}}
-                  <tr><td class="req-label">Query</td><td class="req-value">
-                    {{range $k, $v := $step.Query}}<span class="req-param">{{$k}}={{$v}}</span>{{end}}
-                  </td></tr>
-                  {{end}}
-                  {{if $step.Headers}}
-                  <tr><td class="req-label">Headers</td><td class="req-value">
-                    {{range $k, $v := $step.Headers}}<span class="req-header"><span class="req-header-key">{{$k}}</span>: <span class="req-header-val">{{$v}}</span></span>{{end}}
-                  </td></tr>
-                  {{end}}
-                </table>
-                {{if $step.RequestBody}}
-                <div class="req-body-label">Body</div>
-                <div class="code-block-wrap">
-                  <pre class="code-block" id="req-body-code-s{{$sIdx}}-{{$i}}">{{$step.RequestBody}}</pre>
-                  <button class="copy-btn" onclick="copyEl('req-body-code-s{{$sIdx}}-{{$i}}')">Copy</button>
+            <div class="section-content">
+              <div class="saved-vars">
+                {{range $k, $v := $scenario.InitialVars}}
+                <div class="saved-var-item">
+                  <span class="saved-var-key">{{$k}}</span
+                  ><span class="saved-var-val">{{$v}}</span>
                 </div>
                 {{end}}
               </div>
             </div>
-
-            <!-- Response body -->
-            {{if $step.ResponseBody}}
-            <div class="section" id="res-s{{$sIdx}}-{{$i}}">
-              <div class="section-title" onclick="toggleSection('res-s{{$sIdx}}-{{$i}}')">
-                <span class="section-chevron">▶</span> Response body
-              </div>
-              <div class="section-content">
-                 <div class="code-block-wrap">
-                   <pre class="code-block" id="res-code-s{{$sIdx}}-{{$i}}">{{$step.ResponseBody}}</pre>
-                   <button class="copy-btn" onclick="copyEl('res-code-s{{$sIdx}}-{{$i}}')">Copy</button>
-                 </div>
+          </div>
+          {{end}} {{if $scenario.FinalVars}}
+          <div class="section" id="final-vars-s{{$sIdx}}">
+            <div
+              class="section-title"
+              onclick="toggleSection('final-vars-s{{$sIdx}}')"
+            >
+              <span class="section-chevron">▶</span> Final Variables ({{len
+              $scenario.FinalVars}})
+            </div>
+            <div class="section-content">
+              <div class="saved-vars">
+                {{range $k, $v := $scenario.FinalVars}}
+                <div class="saved-var-item">
+                  <span class="saved-var-key">{{$k}}</span
+                  ><span class="saved-var-val">{{$v}}</span>
+                </div>
+                {{end}}
               </div>
             </div>
-            {{end}}
-
-            <!-- Assertions -->
-            {{if $step.Assertions}}
-            <div class="section open" id="assert-s{{$sIdx}}-{{$i}}">
+          </div>
+          {{end}} {{range $i, $step := $scenario.Steps}} {{if
+          $step.Original.IsUseStart}}
+          <div
+            class="step-compose-start"
+            style="margin-left: calc({{$step.Original.Depth}} * 20px); padding: 12px 16px; background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); margin-top: 12px; margin-bottom: 8px;"
+          >
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+              "
+            >
+              <div style="display: flex; align-items: center; gap: 8px">
+                <span style="font-size: 16px">📦</span>
+                <strong style="font-size: 14px; color: var(--text)"
+                  >Composed Scenario:
+                  <span
+                    style="font-family: var(--mono); color: var(--info-text)"
+                    >{{$step.Original.UseFile}}</span
+                  ></strong
+                >
+                {{if $step.Name}}<span
+                  style="
+                    font-size: 12px;
+                    color: var(--text-secondary);
+                    font-style: italic;
+                  "
+                  >({{$step.Name}})</span
+                >{{end}}
+              </div>
+              {{if $step.Original.Original.With}}
+              <span
+                class="badge"
+                style="
+                  font-size: 11px;
+                  background: var(--info-bg);
+                  color: var(--info-text);
+                "
+                >with {{len $step.Original.Original.With}} variables</span
+              >
+              {{end}}
+            </div>
+            {{if $step.SavedVars}}
+            <!-- Composed Variables State Snapshot -->
+            <div
+              class="section"
+              id="compose-vars-s{{$sIdx}}-{{$i}}"
+              style="margin-top: 10px"
+            >
               <div
                 class="section-title"
-                onclick="toggleSection('assert-s{{$sIdx}}-{{$i}}')"
+                onclick="toggleSection('compose-vars-s{{$sIdx}}-{{$i}}')"
+                style="
+                  font-size: 11px;
+                  text-transform: uppercase;
+                  color: var(--text-tertiary);
+                "
               >
-                <span class="section-chevron">▶</span> Assertions ({{len
-                $step.Assertions}})
+                <span class="section-chevron">▶</span> Scope Variables Snapshot
               </div>
-              <div class="section-content">
-                <div class="assertions">
-                  {{range $step.Assertions}}
-                  <div class="assertion-item">
+              <div class="section-content" style="margin-top: 4px">
+                <div
+                  class="saved-vars"
+                  style="
+                    display: grid;
+                    grid-template-columns: repeat(
+                      auto-fill,
+                      minmax(200px, 1fr)
+                    );
+                    gap: 6px;
+                  "
+                >
+                  {{range $k, $v := $step.SavedVars}}
+                  <div
+                    class="saved-var-item"
+                    style="
+                      display: flex;
+                      align-items: center;
+                      justify-content: space-between;
+                      background: var(--bg-tertiary);
+                      padding: 4px 8px;
+                      border-radius: var(--radius);
+                      font-size: 11px;
+                      border: 0.5px solid var(--border);
+                    "
+                  >
                     <span
-                      class="assert-icon {{if .Passed}}assert-pass{{else}}assert-fail{{end}}"
+                      class="saved-var-key"
+                      style="
+                        font-family: var(--mono);
+                        font-weight: 600;
+                        color: var(--text-secondary);
+                      "
+                      >{{$k}}</span
                     >
-                      {{if .Passed}}✓{{else}}✗{{end}}
-                    </span>
-                    <div>
-                      <div class="assert-label">{{.Label}}</div>
-                      {{if not .Passed}}
-                      <div class="assert-detail">{{.Detail}}</div>
+                    <span
+                      class="saved-var-val"
+                      style="
+                        font-family: var(--mono);
+                        color: var(--text);
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                        max-width: 150px;
+                      "
+                      title="{{$v}}"
+                      >{{$v}}</span
+                    >
+                  </div>
+                  {{end}}
+                </div>
+              </div>
+            </div>
+            {{end}}
+          </div>
+          {{else if $step.Original.IsUseEnd}}
+          <div
+            class="step-compose-end"
+            style="margin-left: calc({{$step.Original.Depth}} * 20px); border-bottom: 2px dashed var(--border); margin: 8px 0 16px 0; height: 1px;"
+          ></div>
+          {{else}}
+          <div
+            class="step {{if $step.Skipped}}step-skip{{else if not $step.Passed}}step-fail{{end}}"
+            id="step-s{{$sIdx}}-{{$i}}"
+            style="margin-left: calc({{$step.Original.Depth}} * 20px);"
+          >
+            <!-- Step header -->
+            <div
+              class="step-header"
+              onclick="toggleStep('step-s{{$sIdx}}-{{$i}}')"
+            >
+              <span class="step-status"
+                >{{if $step.Skipped}}⏭️{{else if
+                $step.Passed}}✅{{else}}❌{{end}}</span
+              >
+              <span class="step-num">#{{add $i 1}}</span>
+              {{if $step.Name}}<span class="step-name">{{$step.Name}}</span
+              >{{end}}
+              <span class="step-method method-{{$step.Method}}"
+                >{{$step.Method}}</span
+              >
+              <span class="step-url" title="{{$step.URL}}">{{$step.URL}}</span>
+
+              <div class="step-badges">
+                {{if gt $step.Original.RepeatAttempt 0}}
+                <span class="badge" title="Repeat block attempt"
+                  >repeat
+                  {{$step.Original.RepeatAttempt}}/{{$step.Original.RepeatAttempts}}</span
+                >
+                {{end}} {{if gt $step.Original.ForEachIndex 0}}
+                <span class="badge" title="Collection loop item"
+                  >for_each
+                  {{$step.Original.ForEachIndex}}/{{$step.Original.ForEachCount}}</span
+                >
+                {{end}}
+                <!-- Status code -->
+                <span class="status-badge {{statusClass $step.StatusCode}}"
+                  >{{$step.StatusCode}}</span
+                >
+
+                <!-- Response time -->
+                <span
+                  class="badge {{if $step.TimingFailed}}timing-fail{{else}}timing-ok{{end}}"
+                  title="Response time"
+                >
+                  ⏱ {{$step.Duration}}
+                </span>
+
+                <!-- Retry Badge -->
+                {{if gt $step.RetryCount 0}}
+                <span
+                  class="badge"
+                  style="
+                    background: var(--warn-bg);
+                    color: var(--warn-text);
+                    border-color: var(--warn-text);
+                  "
+                  title="Retried {{$step.RetryCount}} times"
+                >
+                  ↻ {{$step.RetryCount}} retries
+                </span>
+                {{end}}
+
+                <!-- Request ID (copyable) -->
+                {{if $step.RequestID}}
+                <span
+                  class="badge req-id"
+                  onclick="copyText('{{$step.RequestID}}', event)"
+                  title="Click to copy request ID"
+                >
+                  🔑 {{$step.RequestID}}
+                </span>
+                {{end}}
+              </div>
+
+              <span class="step-chevron">▼</span>
+            </div>
+
+            <!-- Step body -->
+            <div class="step-body">
+              {{if $step.Skipped}}
+              <!-- Step Skipped Info -->
+              <div
+                style="
+                  background: var(--skip-bg);
+                  border: 0.5px solid var(--skip-border);
+                  border-radius: var(--radius);
+                  padding: 12px;
+                  margin-bottom: 12px;
+                "
+              >
+                <div
+                  style="
+                    font-weight: 600;
+                    font-size: 13px;
+                    color: var(--skip-text);
+                    margin-bottom: 4px;
+                  "
+                >
+                  ⏭️ Skipped
+                </div>
+                <div
+                  style="
+                    font-family: var(--mono);
+                    font-size: 13px;
+                    color: var(--skip-text);
+                  "
+                >
+                  Guard condition evaluated to false:
+                  <code>{{$step.Original.Original.If}}</code>
+                </div>
+              </div>
+              {{else}}
+              <!-- Response info -->
+              <div class="response-info">
+                <span style="font-size: 13px; color: var(--text-secondary)">
+                  <strong style="color: var(--text)"
+                    >{{$step.StatusCode}}</strong
+                  >
+                  {{$step.StatusText}}
+                </span>
+              </div>
+
+              {{if $step.Error}}
+              <!-- Step Error -->
+              <div
+                style="
+                  background: var(--fail-bg);
+                  border: 0.5px solid var(--fail-border);
+                  border-radius: var(--radius);
+                  padding: 12px;
+                  margin-bottom: 12px;
+                "
+              >
+                <div
+                  style="
+                    font-weight: 600;
+                    font-size: 13px;
+                    color: var(--fail-text);
+                    margin-bottom: 4px;
+                  "
+                >
+                  ⛔ Error
+                </div>
+                <div
+                  style="
+                    font-family: var(--mono);
+                    font-size: 13px;
+                    color: var(--fail-text);
+                  "
+                >
+                  {{$step.Error}}
+                </div>
+              </div>
+              {{end}}
+
+              <!-- Retry History -->
+              {{if $step.RetryHistory}}
+              <div class="section" id="retry-s{{$sIdx}}-{{$i}}">
+                <div
+                  class="section-title"
+                  onclick="toggleSection('retry-s{{$sIdx}}-{{$i}}')"
+                >
+                  <span class="section-chevron">▶</span> Retry History ({{len
+                  $step.RetryHistory}})
+                </div>
+                <div class="section-content">
+                  <div class="assertions">
+                    {{range $step.RetryHistory}}
+                    <div class="assertion-item" style="flex-direction: column">
+                      <div style="display: flex; gap: 8px; width: 100%">
+                        <span class="status-badge {{statusClass .Status}}"
+                          >{{.Status}}</span
+                        >
+                        <span style="font-weight: 500; font-size: 13px"
+                          >Attempt {{.Attempt}}</span
+                        >
+                        <span
+                          style="
+                            color: var(--text-tertiary);
+                            font-size: 12px;
+                            margin-left: auto;
+                          "
+                          >⏱ {{.Duration}}</span
+                        >
+                      </div>
+                      {{if .Error}}
+                      <div class="assert-detail" style="margin-top: 4px">
+                        {{.Error}}
+                      </div>
+                      {{end}} {{if .Body}}
+                      <div
+                        class="code-block"
+                        style="
+                          margin-top: 4px;
+                          max-height: 80px;
+                          overflow-y: hidden;
+                        "
+                      >
+                        {{.Body}}
+                      </div>
                       {{end}}
                     </div>
+                    {{end}}
                   </div>
-                  {{end}}
                 </div>
               </div>
-            </div>
-            {{end}}
+              {{end}}
 
-            {{if $step.SavedVars}}
-            <!-- Saved Variables -->
-            <div class="section open" id="saved-s{{$sIdx}}-{{$i}}">
-              <div class="section-title" onclick="toggleSection('saved-s{{$sIdx}}-{{$i}}')">
-                <span class="section-chevron">▶</span> Saved Variables ({{len $step.SavedVars}})
+              <!-- cURL command -->
+              <div class="section open" id="curl-s{{$sIdx}}-{{$i}}">
+                <div
+                  class="section-title"
+                  onclick="toggleSection('curl-s{{$sIdx}}-{{$i}}')"
+                >
+                  <span class="section-chevron">▶</span> cURL command
+                </div>
+                <div class="section-content">
+                  <div class="code-block-wrap">
+                    <pre class="code-block" id="curl-code-s{{$sIdx}}-{{$i}}">
+{{$step.CurlCommand}}</pre
+                    >
+                    <button
+                      class="copy-btn"
+                      onclick="copyEl('curl-code-s{{$sIdx}}-{{$i}}')"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div class="section-content">
-                <div class="saved-vars">
-                  {{range $k, $v := $step.SavedVars}}
-                  <div class="saved-var-item">
-                    <span class="saved-var-key">{{$k}}</span>
-                    <span class="saved-var-val">{{$v}}</span>
-                    <button class="copy-btn" style="position:static;flex-shrink:0;margin-left:auto;" onclick="copyText('{{$v}}', event)">Copy</button>
+
+              <!-- Request details -->
+              <div class="section open" id="req-s{{$sIdx}}-{{$i}}">
+                <div
+                  class="section-title"
+                  onclick="toggleSection('req-s{{$sIdx}}-{{$i}}')"
+                >
+                  <span class="section-chevron">▶</span> Request details
+                </div>
+                <div class="section-content">
+                  <table class="req-details">
+                    <tr>
+                      <td class="req-label">URL</td>
+                      <td class="req-value"><code>{{$step.URL}}</code></td>
+                    </tr>
+                    {{if $step.Query}}
+                    <tr>
+                      <td class="req-label">Query</td>
+                      <td class="req-value">
+                        {{range $k, $v := $step.Query}}<span class="req-param"
+                          >{{$k}}={{$v}}</span
+                        >{{end}}
+                      </td>
+                    </tr>
+                    {{end}} {{if $step.Headers}}
+                    <tr>
+                      <td class="req-label">Headers</td>
+                      <td class="req-value">
+                        {{range $k, $v := $step.Headers}}<span
+                          class="req-header"
+                          ><span class="req-header-key">{{$k}}</span>:
+                          <span class="req-header-val">{{$v}}</span></span
+                        >{{end}}
+                      </td>
+                    </tr>
+                    {{end}}
+                  </table>
+                  {{if $step.RequestBody}}
+                  <div class="req-body-label">Body</div>
+                  <div class="code-block-wrap">
+                    <pre
+                      class="code-block"
+                      id="req-body-code-s{{$sIdx}}-{{$i}}"
+                    >
+{{$step.RequestBody}}</pre
+                    >
+                    <button
+                      class="copy-btn"
+                      onclick="copyEl('req-body-code-s{{$sIdx}}-{{$i}}')"
+                    >
+                      Copy
+                    </button>
                   </div>
                   {{end}}
                 </div>
               </div>
+
+              <!-- Response body -->
+              {{if $step.ResponseBody}}
+              <div class="section" id="res-s{{$sIdx}}-{{$i}}">
+                <div
+                  class="section-title"
+                  onclick="toggleSection('res-s{{$sIdx}}-{{$i}}')"
+                >
+                  <span class="section-chevron">▶</span> Response body
+                </div>
+                <div class="section-content">
+                  <div class="code-block-wrap">
+                    <pre class="code-block" id="res-code-s{{$sIdx}}-{{$i}}">
+{{$step.ResponseBody}}</pre
+                    >
+                    <button
+                      class="copy-btn"
+                      onclick="copyEl('res-code-s{{$sIdx}}-{{$i}}')"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              </div>
+              {{end}}
+
+              <!-- Assertions -->
+              {{if $step.Assertions}}
+              <div class="section open" id="assert-s{{$sIdx}}-{{$i}}">
+                <div
+                  class="section-title"
+                  onclick="toggleSection('assert-s{{$sIdx}}-{{$i}}')"
+                >
+                  <span class="section-chevron">▶</span> Assertions ({{len
+                  $step.Assertions}})
+                </div>
+                <div class="section-content">
+                  <div class="assertions">
+                    {{range $step.Assertions}}
+                    <div class="assertion-item">
+                      <span
+                        class="assert-icon {{if .Passed}}assert-pass{{else}}assert-fail{{end}}"
+                      >
+                        {{if .Passed}}✓{{else}}✗{{end}}
+                      </span>
+                      <div>
+                        <div class="assert-label">{{.Label}}</div>
+                        {{if not .Passed}}
+                        <div class="assert-detail">{{.Detail}}</div>
+                        {{end}}
+                      </div>
+                    </div>
+                    {{end}}
+                  </div>
+                </div>
+              </div>
+              {{end}} {{if $step.SavedVars}}
+              <!-- Saved Variables -->
+              <div class="section open" id="saved-s{{$sIdx}}-{{$i}}">
+                <div
+                  class="section-title"
+                  onclick="toggleSection('saved-s{{$sIdx}}-{{$i}}')"
+                >
+                  <span class="section-chevron">▶</span> Saved Variables ({{len
+                  $step.SavedVars}})
+                </div>
+                <div class="section-content">
+                  <div class="saved-vars">
+                    {{range $k, $v := $step.SavedVars}}
+                    <div class="saved-var-item">
+                      <span class="saved-var-key">{{$k}}</span>
+                      <span class="saved-var-val">{{$v}}</span>
+                      <button
+                        class="copy-btn"
+                        style="
+                          position: static;
+                          flex-shrink: 0;
+                          margin-left: auto;
+                        "
+                        onclick="copyText('{{$v}}', event)"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                    {{end}}
+                  </div>
+                </div>
+              </div>
+              {{end}} {{end}}
             </div>
-            {{end}}
-            {{end}}
           </div>
+          {{end}} {{end}}
         </div>
-        {{end}}
-        {{end}}
-          </div>
-        </details>
-        {{end}}
-      {{else}}
+      </details>
+      {{end}} {{else}}
       <!-- ── Steps (single scenario) ── -->
       <div class="steps" id="steps">
         {{if .InitialVars}}
         <div class="section" id="initial-vars">
-          <div class="section-title" onclick="toggleSection('initial-vars')"><span class="section-chevron">▶</span> Initial Variables ({{len .InitialVars}})</div>
-          <div class="section-content"><div class="saved-vars">{{range $k, $v := .InitialVars}}<div class="saved-var-item"><span class="saved-var-key">{{$k}}</span><span class="saved-var-val">{{$v}}</span></div>{{end}}</div></div>
+          <div class="section-title" onclick="toggleSection('initial-vars')">
+            <span class="section-chevron">▶</span> Initial Variables ({{len
+            .InitialVars}})
+          </div>
+          <div class="section-content">
+            <div class="saved-vars">
+              {{range $k, $v := .InitialVars}}
+              <div class="saved-var-item">
+                <span class="saved-var-key">{{$k}}</span
+                ><span class="saved-var-val">{{$v}}</span>
+              </div>
+              {{end}}
+            </div>
+          </div>
         </div>
-        {{end}}
-        {{if .FinalVars}}
-        <div class="section open" id="final-vars">
-          <div class="section-title" onclick="toggleSection('final-vars')"><span class="section-chevron">▶</span> Final Variables ({{len .FinalVars}})</div>
-          <div class="section-content"><div class="saved-vars">{{range $k, $v := .FinalVars}}<div class="saved-var-item"><span class="saved-var-key">{{$k}}</span><span class="saved-var-val">{{$v}}</span></div>{{end}}</div></div>
+        {{end}} {{if .FinalVars}}
+        <div class="section" id="final-vars">
+          <div class="section-title" onclick="toggleSection('final-vars')">
+            <span class="section-chevron">▶</span> Final Variables ({{len
+            .FinalVars}})
+          </div>
+          <div class="section-content">
+            <div class="saved-vars">
+              {{range $k, $v := .FinalVars}}
+              <div class="saved-var-item">
+                <span class="saved-var-key">{{$k}}</span
+                ><span class="saved-var-val">{{$v}}</span>
+              </div>
+              {{end}}
+            </div>
+          </div>
         </div>
-        {{end}}
-        {{range $i, $step := .Steps}}
-        {{if $step.Original.IsUseStart}}
-        <div class="step-compose-start" style="margin-left: calc({{$step.Original.Depth}} * 20px); padding: 12px 16px; background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); margin-top: 12px; margin-bottom: 8px;">
-          <div style="display: flex; align-items: center; justify-content: space-between;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="font-size: 16px;">📦</span>
-              <strong style="font-size: 14px; color: var(--text);">Composed Scenario: <span style="font-family: var(--mono); color: var(--info-text);">{{$step.Original.UseFile}}</span></strong>
-              {{if $step.Name}}<span style="font-size: 12px; color: var(--text-secondary); font-style: italic;">({{$step.Name}})</span>{{end}}
+        {{end}} {{range $i, $step := .Steps}} {{if $step.Original.IsUseStart}}
+        <div
+          class="step-compose-start"
+          style="margin-left: calc({{$step.Original.Depth}} * 20px); padding: 12px 16px; background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); margin-top: 12px; margin-bottom: 8px;"
+        >
+          <div
+            style="
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+            "
+          >
+            <div style="display: flex; align-items: center; gap: 8px">
+              <span style="font-size: 16px">📦</span>
+              <strong style="font-size: 14px; color: var(--text)"
+                >Composed Scenario:
+                <span style="font-family: var(--mono); color: var(--info-text)"
+                  >{{$step.Original.UseFile}}</span
+                ></strong
+              >
+              {{if $step.Name}}<span
+                style="
+                  font-size: 12px;
+                  color: var(--text-secondary);
+                  font-style: italic;
+                "
+                >({{$step.Name}})</span
+              >{{end}}
             </div>
             {{if $step.Original.Original.With}}
-            <span class="badge" style="font-size: 11px; background: var(--info-bg); color: var(--info-text);">with {{len $step.Original.Original.With}} variables</span>
+            <span
+              class="badge"
+              style="
+                font-size: 11px;
+                background: var(--info-bg);
+                color: var(--info-text);
+              "
+              >with {{len $step.Original.Original.With}} variables</span
+            >
             {{end}}
           </div>
           {{if $step.SavedVars}}
           <!-- Composed Variables State Snapshot -->
-          <div class="section open" id="compose-vars-{{$i}}" style="margin-top: 10px;">
-            <div class="section-title" onclick="toggleSection('compose-vars-{{$i}}')" style="font-size: 11px; text-transform: uppercase; color: var(--text-tertiary);">
+          <div
+            class="section"
+            id="compose-vars-{{$i}}"
+            style="margin-top: 10px"
+          >
+            <div
+              class="section-title"
+              onclick="toggleSection('compose-vars-{{$i}}')"
+              style="
+                font-size: 11px;
+                text-transform: uppercase;
+                color: var(--text-tertiary);
+              "
+            >
               <span class="section-chevron">▶</span> Scope Variables Snapshot
             </div>
-            <div class="section-content" style="margin-top: 4px;">
-              <div class="saved-vars" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px;">
+            <div class="section-content" style="margin-top: 4px">
+              <div
+                class="saved-vars"
+                style="
+                  display: grid;
+                  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                  gap: 6px;
+                "
+              >
                 {{range $k, $v := $step.SavedVars}}
-                <div class="saved-var-item" style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-tertiary); padding: 4px 8px; border-radius: var(--radius); font-size: 11px; border: 0.5px solid var(--border);">
-                  <span class="saved-var-key" style="font-family: var(--mono); font-weight: 600; color: var(--text-secondary);">{{$k}}</span>
-                  <span class="saved-var-val" style="font-family: var(--mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px;" title="{{$v}}">{{$v}}</span>
+                <div
+                  class="saved-var-item"
+                  style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    background: var(--bg-tertiary);
+                    padding: 4px 8px;
+                    border-radius: var(--radius);
+                    font-size: 11px;
+                    border: 0.5px solid var(--border);
+                  "
+                >
+                  <span
+                    class="saved-var-key"
+                    style="
+                      font-family: var(--mono);
+                      font-weight: 600;
+                      color: var(--text-secondary);
+                    "
+                    >{{$k}}</span
+                  >
+                  <span
+                    class="saved-var-val"
+                    style="
+                      font-family: var(--mono);
+                      color: var(--text);
+                      overflow: hidden;
+                      text-overflow: ellipsis;
+                      white-space: nowrap;
+                      max-width: 150px;
+                    "
+                    title="{{$v}}"
+                    >{{$v}}</span
+                  >
                 </div>
                 {{end}}
               </div>
@@ -1176,7 +1634,10 @@
           {{end}}
         </div>
         {{else if $step.Original.IsUseEnd}}
-        <div class="step-compose-end" style="margin-left: calc({{$step.Original.Depth}} * 20px); border-bottom: 2px dashed var(--border); margin: 8px 0 16px 0; height: 1px;"></div>
+        <div
+          class="step-compose-end"
+          style="margin-left: calc({{$step.Original.Depth}} * 20px); border-bottom: 2px dashed var(--border); margin: 8px 0 16px 0; height: 1px;"
+        ></div>
         {{else}}
         <div
           class="step {{if $step.Skipped}}step-skip{{else if not $step.Passed}}step-fail{{end}}"
@@ -1186,10 +1647,12 @@
           <!-- Step header -->
           <div class="step-header" onclick="toggleStep('step-{{$i}}')">
             <span class="step-status"
-              >{{if $step.Skipped}}⏭️{{else if $step.Passed}}✅{{else}}❌{{end}}</span
+              >{{if $step.Skipped}}⏭️{{else if
+              $step.Passed}}✅{{else}}❌{{end}}</span
             >
             <span class="step-num">#{{add $i 1}}</span>
-            {{if $step.Name}}<span class="step-name">{{$step.Name}}</span>{{end}}
+            {{if $step.Name}}<span class="step-name">{{$step.Name}}</span
+            >{{end}}
             <span class="step-method method-{{$step.Method}}"
               >{{$step.Method}}</span
             >
@@ -1197,7 +1660,15 @@
 
             <div class="step-badges">
               {{if gt $step.Original.RepeatAttempt 0}}
-              <span class="badge" title="Repeat block attempt">repeat {{$step.Original.RepeatAttempt}}/{{$step.Original.RepeatAttempts}}</span>
+              <span class="badge" title="Repeat block attempt"
+                >repeat
+                {{$step.Original.RepeatAttempt}}/{{$step.Original.RepeatAttempts}}</span
+              >
+              {{end}} {{if gt $step.Original.ForEachIndex 0}}
+              <span class="badge" title="Collection loop item"
+                >for_each
+                {{$step.Original.ForEachIndex}}/{{$step.Original.ForEachCount}}</span
+              >
               {{end}}
               <!-- Status code -->
               <span class="status-badge {{statusClass $step.StatusCode}}"
@@ -1214,7 +1685,15 @@
 
               <!-- Retry Badge -->
               {{if gt $step.RetryCount 0}}
-              <span class="badge" style="background: var(--warn-bg); color: var(--warn-text); border-color: var(--warn-text);" title="Retried {{$step.RetryCount}} times">
+              <span
+                class="badge"
+                style="
+                  background: var(--warn-bg);
+                  color: var(--warn-text);
+                  border-color: var(--warn-text);
+                "
+                title="Retried {{$step.RetryCount}} times"
+              >
                 ↻ {{$step.RetryCount}} retries
               </span>
               {{end}}
@@ -1238,9 +1717,35 @@
           <div class="step-body">
             {{if $step.Skipped}}
             <!-- Step Skipped Info -->
-            <div style="background: var(--skip-bg); border: 0.5px solid var(--skip-border); border-radius: var(--radius); padding: 12px; margin-bottom: 12px;">
-              <div style="font-weight: 600; font-size: 13px; color: var(--skip-text); margin-bottom: 4px;">⏭️ Skipped</div>
-              <div style="font-family: var(--mono); font-size: 13px; color: var(--skip-text);">Guard condition evaluated to false: <code>{{$step.Original.Original.If}}</code></div>
+            <div
+              style="
+                background: var(--skip-bg);
+                border: 0.5px solid var(--skip-border);
+                border-radius: var(--radius);
+                padding: 12px;
+                margin-bottom: 12px;
+              "
+            >
+              <div
+                style="
+                  font-weight: 600;
+                  font-size: 13px;
+                  color: var(--skip-text);
+                  margin-bottom: 4px;
+                "
+              >
+                ⏭️ Skipped
+              </div>
+              <div
+                style="
+                  font-family: var(--mono);
+                  font-size: 13px;
+                  color: var(--skip-text);
+                "
+              >
+                Guard condition evaluated to false:
+                <code>{{$step.Original.Original.If}}</code>
+              </div>
             </div>
             {{else}}
             <!-- Response info -->
@@ -1253,18 +1758,67 @@
 
             {{if $step.Error}}
             <!-- Step Error -->
-            <div style="background: var(--fail-bg); border: 0.5px solid var(--fail-border); border-radius: var(--radius); padding: 12px; margin-bottom: 12px;">
-              <div style="font-weight: 600; font-size: 13px; color: var(--fail-text); margin-bottom: 4px;">⛔ Error</div>
-              <div style="font-family: var(--mono); font-size: 13px; color: var(--fail-text);">{{$step.Error}}</div>
+            <div
+              style="
+                background: var(--fail-bg);
+                border: 0.5px solid var(--fail-border);
+                border-radius: var(--radius);
+                padding: 12px;
+                margin-bottom: 12px;
+              "
+            >
+              <div
+                style="
+                  font-weight: 600;
+                  font-size: 13px;
+                  color: var(--fail-text);
+                  margin-bottom: 4px;
+                "
+              >
+                ⛔ Error
+              </div>
+              <div
+                style="
+                  font-family: var(--mono);
+                  font-size: 13px;
+                  color: var(--fail-text);
+                "
+              >
+                {{$step.Error}}
+              </div>
             </div>
-            {{end}}
-
-            {{if $step.Warnings}}
+            {{end}} {{if $step.Warnings}}
             <!-- Step Warnings -->
-            <div style="background: var(--warn-bg); border: 0.5px solid var(--warn-text); border-radius: var(--radius); padding: 12px; margin-bottom: 12px;">
-              <div style="font-weight: 600; font-size: 13px; color: var(--warn-text); margin-bottom: 4px;">⚠ Save Warnings</div>
+            <div
+              style="
+                background: var(--warn-bg);
+                border: 0.5px solid var(--warn-text);
+                border-radius: var(--radius);
+                padding: 12px;
+                margin-bottom: 12px;
+              "
+            >
+              <div
+                style="
+                  font-weight: 600;
+                  font-size: 13px;
+                  color: var(--warn-text);
+                  margin-bottom: 4px;
+                "
+              >
+                ⚠ Save Warnings
+              </div>
               {{range $step.Warnings}}
-              <div style="font-family: var(--mono); font-size: 12px; color: var(--warn-text); padding: 2px 0;">⚠ {{.}}</div>
+              <div
+                style="
+                  font-family: var(--mono);
+                  font-size: 12px;
+                  color: var(--warn-text);
+                  padding: 2px 0;
+                "
+              >
+                ⚠ {{.}}
+              </div>
               {{end}}
             </div>
             {{end}}
@@ -1272,23 +1826,48 @@
             <!-- Retry History -->
             {{if $step.RetryHistory}}
             <div class="section" id="retry-{{$i}}">
-              <div class="section-title" onclick="toggleSection('retry-{{$i}}')">
-                <span class="section-chevron">▶</span> Retry History ({{len $step.RetryHistory}})
+              <div
+                class="section-title"
+                onclick="toggleSection('retry-{{$i}}')"
+              >
+                <span class="section-chevron">▶</span> Retry History ({{len
+                $step.RetryHistory}})
               </div>
               <div class="section-content">
                 <div class="assertions">
                   {{range $step.RetryHistory}}
-                  <div class="assertion-item" style="flex-direction: column;">
-                    <div style="display: flex; gap: 8px; width: 100%;">
-                      <span class="status-badge {{statusClass .Status}}">{{.Status}}</span>
-                      <span style="font-weight: 500; font-size: 13px;">Attempt {{.Attempt}}</span>
-                      <span style="color: var(--text-tertiary); font-size: 12px; margin-left: auto;">⏱ {{.Duration}}</span>
+                  <div class="assertion-item" style="flex-direction: column">
+                    <div style="display: flex; gap: 8px; width: 100%">
+                      <span class="status-badge {{statusClass .Status}}"
+                        >{{.Status}}</span
+                      >
+                      <span style="font-weight: 500; font-size: 13px"
+                        >Attempt {{.Attempt}}</span
+                      >
+                      <span
+                        style="
+                          color: var(--text-tertiary);
+                          font-size: 12px;
+                          margin-left: auto;
+                        "
+                        >⏱ {{.Duration}}</span
+                      >
                     </div>
                     {{if .Error}}
-                      <div class="assert-detail" style="margin-top: 4px;">{{.Error}}</div>
-                    {{end}}
-                    {{if .Body}}
-                      <div class="code-block" style="margin-top: 4px; max-height: 80px; overflow-y: hidden;">{{.Body}}</div>
+                    <div class="assert-detail" style="margin-top: 4px">
+                      {{.Error}}
+                    </div>
+                    {{end}} {{if .Body}}
+                    <div
+                      class="code-block"
+                      style="
+                        margin-top: 4px;
+                        max-height: 80px;
+                        overflow-y: hidden;
+                      "
+                    >
+                      {{.Body}}
+                    </div>
                     {{end}}
                   </div>
                   {{end}}
@@ -1321,23 +1900,43 @@
               </div>
               <div class="section-content">
                 <table class="req-details">
-                  <tr><td class="req-label">URL</td><td class="req-value"><code>{{$step.URL}}</code></td></tr>
+                  <tr>
+                    <td class="req-label">URL</td>
+                    <td class="req-value"><code>{{$step.URL}}</code></td>
+                  </tr>
                   {{if $step.Query}}
-                  <tr><td class="req-label">Query</td><td class="req-value">
-                    {{range $k, $v := $step.Query}}<span class="req-param">{{$k}}={{$v}}</span>{{end}}
-                  </td></tr>
-                  {{end}}
-                  {{if $step.Headers}}
-                  <tr><td class="req-label">Headers</td><td class="req-value">
-                    {{range $k, $v := $step.Headers}}<span class="req-header"><span class="req-header-key">{{$k}}</span>: <span class="req-header-val">{{$v}}</span></span>{{end}}
-                  </td></tr>
+                  <tr>
+                    <td class="req-label">Query</td>
+                    <td class="req-value">
+                      {{range $k, $v := $step.Query}}<span class="req-param"
+                        >{{$k}}={{$v}}</span
+                      >{{end}}
+                    </td>
+                  </tr>
+                  {{end}} {{if $step.Headers}}
+                  <tr>
+                    <td class="req-label">Headers</td>
+                    <td class="req-value">
+                      {{range $k, $v := $step.Headers}}<span class="req-header"
+                        ><span class="req-header-key">{{$k}}</span>:
+                        <span class="req-header-val">{{$v}}</span></span
+                      >{{end}}
+                    </td>
+                  </tr>
                   {{end}}
                 </table>
                 {{if $step.RequestBody}}
                 <div class="req-body-label">Body</div>
                 <div class="code-block-wrap">
-                  <pre class="code-block" id="req-body-code-{{$i}}">{{$step.RequestBody}}</pre>
-                  <button class="copy-btn" onclick="copyEl('req-body-code-{{$i}}')">Copy</button>
+                  <pre class="code-block" id="req-body-code-{{$i}}">
+{{$step.RequestBody}}</pre
+                  >
+                  <button
+                    class="copy-btn"
+                    onclick="copyEl('req-body-code-{{$i}}')"
+                  >
+                    Copy
+                  </button>
                 </div>
                 {{end}}
               </div>
@@ -1351,8 +1950,12 @@
               </div>
               <div class="section-content">
                 <div class="code-block-wrap">
-                  <pre class="code-block" id="res-code-{{$i}}">{{$step.ResponseBody}}</pre>
-                  <button class="copy-btn" onclick="copyEl('res-code-{{$i}}')">Copy</button>
+                  <pre class="code-block" id="res-code-{{$i}}">
+{{$step.ResponseBody}}</pre
+                  >
+                  <button class="copy-btn" onclick="copyEl('res-code-{{$i}}')">
+                    Copy
+                  </button>
                 </div>
               </div>
             </div>
@@ -1388,13 +1991,15 @@
                 </div>
               </div>
             </div>
-            {{end}}
-
-            {{if $step.SavedVars}}
+            {{end}} {{if $step.SavedVars}}
             <!-- Saved Variables -->
             <div class="section open" id="saved-{{$i}}">
-              <div class="section-title" onclick="toggleSection('saved-{{$i}}')">
-                <span class="section-chevron">▶</span> Saved Variables ({{len $step.SavedVars}})
+              <div
+                class="section-title"
+                onclick="toggleSection('saved-{{$i}}')"
+              >
+                <span class="section-chevron">▶</span> Saved Variables ({{len
+                $step.SavedVars}})
               </div>
               <div class="section-content">
                 <div class="saved-vars">
@@ -1402,18 +2007,26 @@
                   <div class="saved-var-item">
                     <span class="saved-var-key">{{$k}}</span>
                     <span class="saved-var-val">{{$v}}</span>
-                    <button class="copy-btn" style="position:static;flex-shrink:0;margin-left:auto;" onclick="copyText('{{$v}}', event)">Copy</button>
+                    <button
+                      class="copy-btn"
+                      style="
+                        position: static;
+                        flex-shrink: 0;
+                        margin-left: auto;
+                      "
+                      onclick="copyText('{{$v}}', event)"
+                    >
+                      Copy
+                    </button>
                   </div>
                   {{end}}
                 </div>
               </div>
             </div>
-            {{end}}
-            {{end}}
+            {{end}} {{end}}
           </div>
         </div>
-        {{end}}
-        {{end}}
+        {{end}} {{end}}
       </div>
       {{end}}
     </div>
@@ -1490,15 +2103,23 @@
       var failIds = [];
       var failIdx = 0;
       function buildFailList() {
-        failIds = Array.from(document.querySelectorAll(".step.step-fail")).map(function(s){ return s.id; });
+        failIds = Array.from(document.querySelectorAll(".step.step-fail")).map(
+          function (s) {
+            return s.id;
+          },
+        );
         var nav = document.getElementById("failure-nav");
         var lbl = document.getElementById("fail-count-label");
         if (lbl) lbl.textContent = failIds.length;
-        if (failIds.length === 0) { nav.style.display = "none"; return; }
+        if (failIds.length === 0) {
+          nav.style.display = "none";
+          return;
+        }
         updateFailCounter();
       }
       function updateFailCounter() {
-        document.getElementById("fail-counter").textContent = (failIdx + 1) + " / " + failIds.length;
+        document.getElementById("fail-counter").textContent =
+          failIdx + 1 + " / " + failIds.length;
       }
       function nextFailure() {
         if (!failIds.length) return;

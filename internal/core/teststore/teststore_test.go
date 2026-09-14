@@ -89,6 +89,61 @@ func TestTestStoreCRUDAndValidate(t *testing.T) {
 	}
 }
 
+func TestValidate_ExportStep(t *testing.T) {
+	tmpDir := t.TempDir()
+	schemasDir := filepath.Join(tmpDir, ".gherkio", "schemas")
+
+	// Valid export step.
+	valid := &model.TestFile{
+		Scenario: "Export",
+		Steps: []model.Step{{
+			Export: &model.Export{
+				File: "fixtures/out.xlsx",
+				From: "$items",
+				Columns: []model.Column{
+					{Header: "id", Value: "$string(item.id)"},
+				},
+			},
+		}},
+	}
+	res, err := Validate(valid, schemasDir)
+	if err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if !res.Valid {
+		t.Fatalf("valid export step failed validation: %+v", res.Errors)
+	}
+
+	// Invalid: missing file, from not starting with $, empty columns.
+	invalid := &model.TestFile{
+		Scenario: "Export",
+		Steps: []model.Step{{
+			Export: &model.Export{
+				File:    "",
+				From:    "items",
+				Columns: nil,
+			},
+		}},
+	}
+	res, err = Validate(invalid, schemasDir)
+	if err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if res.Valid {
+		t.Fatal("invalid export step unexpectedly passed validation")
+	}
+
+	found := map[string]bool{}
+	for _, e := range res.Errors {
+		found[e.Field] = true
+	}
+	for _, field := range []string{"steps[0].export.file", "steps[0].export.from", "steps[0].export.columns"} {
+		if !found[field] {
+			t.Errorf("expected validation error for field %q", field)
+		}
+	}
+}
+
 func TestValidate_TransformConfig(t *testing.T) {
 	tmpDir := t.TempDir()
 	schemasDir := filepath.Join(tmpDir, ".gherkio", "schemas")
@@ -165,6 +220,27 @@ func TestValidate_RepeatAndNestedSteps(t *testing.T) {
 	}
 
 	test.Steps[0].Repeat.Steps[0].Request.Method = "INVALID"
+	result, err = Validate(test, "")
+	if err != nil {
+		t.Fatalf("Validate nested invalid request: %v", err)
+	}
+	if result.Valid {
+		t.Fatal("invalid nested request unexpectedly passed validation")
+	}
+}
+
+func TestValidate_ForEachAndNestedSteps(t *testing.T) {
+	test := &model.TestFile{Scenario: "Loop", Steps: []model.Step{{ForEach: &model.ForEachConfig{
+		From: "$items", As: "item", Steps: []model.Step{{Request: model.Request{Method: "POST", URL: "/items/$item.id"}}},
+	}}}}
+	result, err := Validate(test, "")
+	if err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if !result.Valid {
+		t.Fatalf("for_each validation failed: %+v", result.Errors)
+	}
+	test.Steps[0].ForEach.Steps[0].Request.Method = "INVALID"
 	result, err = Validate(test, "")
 	if err != nil {
 		t.Fatalf("Validate nested invalid request: %v", err)

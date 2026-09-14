@@ -39,6 +39,25 @@ func TestGenerateJSONSchemaIncludesRepeatStepOperation(t *testing.T) {
 	t.Fatal("Step oneOf does not include repeat")
 }
 
+func TestGenerateJSONSchemaIncludesForEachStepOperation(t *testing.T) {
+	b, err := GenerateJSONSchema()
+	if err != nil {
+		t.Fatalf("GenerateJSONSchema: %v", err)
+	}
+	var schema map[string]interface{}
+	if err := json.Unmarshal(b, &schema); err != nil {
+		t.Fatalf("decode schema: %v", err)
+	}
+	step := schema["$defs"].(map[string]interface{})["Step"].(map[string]interface{})
+	for _, raw := range step["oneOf"].([]interface{}) {
+		required, _ := raw.(map[string]interface{})["required"].([]interface{})
+		if len(required) == 1 && required[0] == "for_each" {
+			return
+		}
+	}
+	t.Fatal("Step oneOf does not include for_each")
+}
+
 func TestGenerateAllSchemas(t *testing.T) {
 	b, err := GenerateAllSchemas()
 	if err != nil {

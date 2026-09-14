@@ -1,0 +1,60 @@
+scenario: Complete Excel Export & Import Pipeline
+description: Demonstrates exporting API collections to an Excel spreadsheet and reading them back with column aliases to drive subsequent requests.
+tags: [showcase, excel, export, import]
+
+steps:
+  - name: Fetch order items
+    request:
+      method: GET
+      url: /orders
+    expect:
+      status: 200
+    save:
+      orderItems: body.items
+
+  - name: Export order items to Excel spreadsheet
+    export:
+      file: fixtures/orders_export.xlsx
+      from: $orderItems
+      sheet: "OrderSummary"
+      columns:
+        - header: "Item Full Name"
+          value: "$string(item.name)"
+        - header: "Unit Price ($)"
+          value: "$float(item.price)"
+        - header: "In Stock"
+          value: "$bool(item.enabled)"
+        - header: "Priority Tier"
+          value: "$if(item.price >= 100, 'High Priority', 'Standard')"
+
+  - name: Import exported spreadsheet into runtime variable
+    import:
+      file: fixtures/orders_export.xlsx
+      sheet: "OrderSummary"
+      as: importedOrders
+      columns:
+        - header: "Item Full Name"
+          as: name
+        - header: "Unit Price ($)"
+          as: price
+        - header: "In Stock"
+          as: available
+        - header: "Priority Tier"
+          as: tier
+
+  - name: Process each imported item
+    for_each:
+      from: $importedOrders
+      as: order
+      steps:
+        - name: Submit order for imported item
+          request:
+            method: POST
+            url: /orders
+            body:
+              item_name: $order.name
+              item_price: $float(order.price)
+              tier: $order.tier
+          expect:
+            status: 201
+            body.status: processing

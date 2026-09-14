@@ -188,6 +188,66 @@ func Validate(test *model.TestFile, schemasDir string) (*ValidationResult, error
 		if step.Repeat != nil {
 			operationCount++
 		}
+		if step.ForEach != nil {
+			operationCount++
+		}
+		if step.Export != nil {
+			operationCount++
+		}
+		if step.Import != nil {
+			operationCount++
+		}
+		if step.Import != nil {
+			if strings.TrimSpace(step.Import.File) == "" {
+				result.Valid = false
+				result.Errors = append(result.Errors, ValidationError{Field: prefix + ".import.file", Message: "import file path is required", Code: "missing_field"})
+			}
+			if strings.TrimSpace(step.Import.As) == "" {
+				result.Valid = false
+				result.Errors = append(result.Errors, ValidationError{Field: prefix + ".import.as", Message: "import target variable name 'as' is required", Code: "missing_field"})
+			} else if strings.HasPrefix(strings.TrimSpace(step.Import.As), "$") {
+				result.Valid = false
+				result.Errors = append(result.Errors, ValidationError{Field: prefix + ".import.as", Message: "import target variable 'as' must not start with $", Code: "invalid_variable_name"})
+			}
+			for ci, col := range step.Import.Columns {
+				if strings.TrimSpace(col.Header) == "" {
+					result.Valid = false
+					result.Errors = append(result.Errors, ValidationError{Field: fmt.Sprintf("%s.import.columns[%d].header", prefix, ci), Message: "column header is required", Code: "missing_field"})
+				}
+				if strings.TrimSpace(col.As) == "" {
+					result.Valid = false
+					result.Errors = append(result.Errors, ValidationError{Field: fmt.Sprintf("%s.import.columns[%d].as", prefix, ci), Message: "column as alias is required", Code: "missing_field"})
+				}
+			}
+		}
+		if step.Export != nil {
+			if strings.TrimSpace(step.Export.File) == "" {
+				result.Valid = false
+				result.Errors = append(result.Errors, ValidationError{Field: prefix + ".export.file", Message: "export file path is required", Code: "missing_field"})
+			}
+			if strings.TrimSpace(step.Export.From) == "" {
+				result.Valid = false
+				result.Errors = append(result.Errors, ValidationError{Field: prefix + ".export.from", Message: "export source collection is required", Code: "missing_field"})
+			} else if !strings.HasPrefix(strings.TrimSpace(step.Export.From), "$") {
+				result.Valid = false
+				result.Errors = append(result.Errors, ValidationError{Field: prefix + ".export.from", Message: "export source must start with $", Code: "invalid_reference"})
+			}
+			if len(step.Export.Columns) == 0 {
+				result.Valid = false
+				result.Errors = append(result.Errors, ValidationError{Field: prefix + ".export.columns", Message: "export requires at least one column", Code: "empty_columns"})
+			}
+			for ci, col := range step.Export.Columns {
+				if strings.TrimSpace(col.Header) == "" {
+					result.Valid = false
+					result.Errors = append(result.Errors, ValidationError{Field: fmt.Sprintf("%s.export.columns[%d].header", prefix, ci), Message: "column header is required", Code: "missing_field"})
+				}
+				if strings.TrimSpace(col.Value) == "" {
+					result.Valid = false
+					result.Errors = append(result.Errors, ValidationError{Field: fmt.Sprintf("%s.export.columns[%d].value", prefix, ci), Message: "column value expression is required", Code: "missing_field"})
+				}
+			}
+		}
+
 		if step.Request.Method != "" || step.Request.URL != "" {
 			operationCount++
 		}
@@ -195,7 +255,7 @@ func Validate(test *model.TestFile, schemasDir string) (*ValidationResult, error
 			result.Valid = false
 			result.Errors = append(result.Errors, ValidationError{
 				Field:   prefix,
-				Message: "Step must define one of 'request', 'redis', 'use', 'set', or 'repeat'",
+				Message: "Step must define one of 'request', 'redis', 'use', 'set', 'repeat', 'for_each', 'export', or 'import'",
 				Code:    "invalid_step",
 			})
 			continue
@@ -205,7 +265,7 @@ func Validate(test *model.TestFile, schemasDir string) (*ValidationResult, error
 			result.Valid = false
 			result.Errors = append(result.Errors, ValidationError{
 				Field:   prefix,
-				Message: "Step operations 'request', 'redis', 'use', 'set', and 'repeat' are mutually exclusive",
+				Message: "Step operations 'request', 'redis', 'use', 'set', 'repeat', 'for_each', 'export', and 'import' are mutually exclusive",
 				Code:    "mutually_exclusive",
 			})
 		}
@@ -220,6 +280,29 @@ func Validate(test *model.TestFile, schemasDir string) (*ValidationResult, error
 				for _, nestedError := range nested.Errors {
 					nestedError.Field = prefix + ".repeat." + nestedError.Field
 					result.Errors = append(result.Errors, nestedError)
+				}
+			}
+		}
+
+		if step.ForEach != nil {
+			if strings.TrimSpace(step.ForEach.From) == "" {
+				result.Valid = false
+				result.Errors = append(result.Errors, ValidationError{Field: prefix + ".for_each.from", Message: "for_each source is required", Code: "missing_field"})
+			}
+			if len(step.ForEach.Steps) == 0 {
+				result.Valid = false
+				result.Errors = append(result.Errors, ValidationError{Field: prefix + ".for_each.steps", Message: "for_each requires at least one nested step", Code: "empty_steps"})
+			} else {
+				nested, err := Validate(&model.TestFile{Scenario: "for_each block", Steps: step.ForEach.Steps}, schemasDir)
+				if err != nil {
+					return nil, err
+				}
+				if !nested.Valid {
+					result.Valid = false
+					for _, nestedError := range nested.Errors {
+						nestedError.Field = prefix + ".for_each." + nestedError.Field
+						result.Errors = append(result.Errors, nestedError)
+					}
 				}
 			}
 		}

@@ -44,6 +44,9 @@ A step performs one primary operation:
 - `set:` assigns variables without I/O.
 - `use:` composes another scenario; `with:` supplies local overrides.
 - `repeat:` runs nested `steps` up to `attempts` times and checks `until` after each successful block.
+- `for_each:` runs nested `steps` once per item in a source collection array.
+- `export:` materializes a saved collection into an Excel (`.xlsx`) file.
+- `import:` reads an Excel (`.xlsx`) file from disk into runtime variables.
 
 All operation types support `name` and `if`. Request and Redis steps also support `expect`, `save`, `timing`, and `retry` where applicable.
 
@@ -74,6 +77,73 @@ Negate a simple condition by quoting it:
 - name: Authenticate when token is absent
   if: "!$accessToken"
   use: shared/auth/auth.yaml
+```
+
+Combine conditions with `&&` and `||`; `&&` binds more tightly. Parentheses
+control grouping, and `!` negates a truthiness check or parenthesized expression:
+
+```yaml
+- name: Process complete ticket
+  if: $item.ticket_name && $item.customer_name && $item.ticket_code
+  request:
+    method: POST
+    url: /tickets
+```
+
+## Excel Export (`export`)
+
+The `export` step writes a saved collection directly into an Excel (`.xlsx`) file on disk without making HTTP requests:
+
+```yaml
+- name: Export products to Excel
+  export:
+    file: fixtures/products.xlsx    # Target file path (relative to export.path or project root)
+    from: $products                 # Source collection variable (must start with $)
+    sheet: "Products"               # Optional worksheet name (defaults to Sheet1)
+    columns:
+      - header: "ID"
+        value: "$string(item.id)"
+      - header: "Title"
+        value: "$string(item.title)"
+      - header: "Price"
+        value: "$float(item.price)"
+      - header: "Tier"
+        value: "$if(item.price > 100, 'Premium', 'Standard')"
+```
+
+Each column expression supports casting (`$string`, `$int`, `$float`, `$bool`), `$if(condition, then, else)`, and access to `item.<field>` or runtime variables.
+
+## Excel Import (`import`)
+
+The `import` step reads an Excel (`.xlsx`) file from disk into a runtime array variable without making HTTP requests:
+
+```yaml
+- name: Ingest customers from spreadsheet
+  import:
+    file: fixtures/customers.xlsx   # Path to .xlsx file
+    sheet: "Sheet1"                 # Optional worksheet name
+    as: customers                   # Variable name storing array of row objects
+    columns:                        # Optional explicit aliases; headers default to snake_case
+      - header: "Customer Name"
+        as: full_name
+```
+
+Headers with spaces are auto-normalized to `snake_case` (e.g. `$customer.customer_name`).
+
+## Loops (`for_each`)
+
+```yaml
+- name: Process each created item
+  for_each:
+    from: $createdItems
+    as: item
+    steps:
+      - name: Verify item status
+        request:
+          method: GET
+          url: /items/$item.id
+        expect:
+          status: 200
 ```
 
 ## HTTP Request
@@ -212,3 +282,4 @@ gherkio run workflow.yaml --report html,json
 - Do not select an object twice to obtain related fields; store one `${randomItem(array)}` object and access its fields.
 - Do not configure both `address` and `sentinel` for one Redis connection.
 - Do not use Redis mutation commands; Redis steps are intentionally read-only.
+- Do not combine `export` or `import` with `request`, `redis`, `use`, `set`, `repeat`, `for_each`, `expect`, `save`, `retry`, or `timing` in the same step.

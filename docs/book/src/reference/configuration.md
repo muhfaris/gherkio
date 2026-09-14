@@ -44,6 +44,12 @@ assets:
   path: assets                      # Default workspace directory for multipart file uploads
 
 # ----------------------------------------------------------------------
+# 5b. Excel Export Output Directory
+# ----------------------------------------------------------------------
+export:
+  path: fixtures                    # Default output directory for the export step's Excel files
+
+# ----------------------------------------------------------------------
 # 6. Security, Masking & Outbound Sandboxing
 # ----------------------------------------------------------------------
 security:
@@ -100,6 +106,9 @@ Defines the name and version of your API testing suite. Used when generating tes
 * `tests.path`: Directory where `.yaml` scenario suites are stored.
 * `schemas.path`: Directory where reusable JSON/YAML schema validation files are stored.
 * `assets.path`: Default folder for storing multipart file attachments (images, PDFs, documents).
+
+### 3b. `export`
+* `export.path`: Default output directory for the `export` step's generated Excel files. Relative paths resolve from the project root; absolute paths are used as-is. When set, an `export.file` relative path is written under this directory.
 
 ### 4. `security.mask` (Credential Redaction)
 Scans all stdout console logs, raw HTTP tracebacks, and generated report files. If any field matches `security.mask.fields`, Gherkio automatically replaces its value with `[MASKED]`.

@@ -12,13 +12,72 @@ func EvaluateCondition(cond string, vars map[string]interface{}) (bool, error) {
 	if cond == "" {
 		return true, nil
 	}
+	return evaluateBooleanExpression(cond, vars)
+}
 
-	// Check if it's negation shorthand e.g. "!$var"
-	negate := false
-	if strings.HasPrefix(cond, "!") {
-		negate = true
-		cond = strings.TrimSpace(cond[1:])
+func evaluateBooleanExpression(expr string, vars map[string]interface{}) (bool, error) {
+	expr = strings.TrimSpace(expr)
+	if expr == "" {
+		return false, fmt.Errorf("empty condition expression")
 	}
+
+	stripped, err := stripOuterParentheses(expr)
+	if err != nil {
+		return false, err
+	}
+	if stripped != expr {
+		return evaluateBooleanExpression(stripped, vars)
+	}
+
+	parts, err := splitBooleanExpression(expr, "||")
+	if err != nil {
+		return false, err
+	}
+	if len(parts) > 1 {
+		for _, part := range parts {
+			matched, evalErr := evaluateBooleanExpression(part, vars)
+			if evalErr != nil {
+				return false, evalErr
+			}
+			if matched {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+
+	parts, err = splitBooleanExpression(expr, "&&")
+	if err != nil {
+		return false, err
+	}
+	if len(parts) > 1 {
+		for _, part := range parts {
+			matched, evalErr := evaluateBooleanExpression(part, vars)
+			if evalErr != nil {
+				return false, evalErr
+			}
+			if !matched {
+				return false, nil
+			}
+		}
+		return true, nil
+	}
+
+	if strings.HasPrefix(expr, "!") && !strings.HasPrefix(expr, "!=") {
+		remainder := strings.TrimSpace(expr[1:])
+		// Preserve the existing rule for ambiguous unparenthesized negated
+		// comparisons. Use !($value == expected) to make intent explicit.
+		if !strings.HasPrefix(remainder, "(") && containsComparison(remainder) {
+			return false, fmt.Errorf("cannot use negation '!' with comparison operator in condition %q", remainder)
+		}
+		matched, evalErr := evaluateBooleanExpression(remainder, vars)
+		return !matched, evalErr
+	}
+
+	return evaluateAtomicCondition(expr, vars)
+}
+
+func evaluateAtomicCondition(cond string, vars map[string]interface{}) (bool, error) {
 
 	// Check for comparison operators in priority order
 	var op string
@@ -34,9 +93,6 @@ func EvaluateCondition(cond string, vars map[string]interface{}) (bool, error) {
 	}
 
 	if op != "" {
-		if negate {
-			return false, fmt.Errorf("cannot use negation '!' with comparison operator in condition %q", cond)
-		}
 		left, err := resolveOperand(leftStr, vars)
 		if err != nil {
 			return false, err
@@ -54,11 +110,110 @@ func EvaluateCondition(cond string, vars map[string]interface{}) (bool, error) {
 		return false, err
 	}
 
-	truthy := isTruthy(val)
-	if negate {
-		return !truthy, nil
+	return isTruthy(val), nil
+}
+
+func containsComparison(expr string) bool {
+	for _, operator := range []string{"!=", "==", ">=", "<=", ">", "<"} {
+		if strings.Contains(expr, operator) {
+			return true
+		}
 	}
-	return truthy, nil
+	return false
+}
+
+// splitBooleanExpression splits only at top-level operators, ignoring quoted
+// strings and parenthesized subexpressions.
+func splitBooleanExpression(expr, operator string) ([]string, error) {
+	var parts []string
+	start, depth := 0, 0
+	var quote rune
+	runes := []rune(expr)
+	for i := 0; i < len(runes); i++ {
+		current := runes[i]
+		if quote != 0 {
+			if current == quote && (i == 0 || runes[i-1] != '\\') {
+				quote = 0
+			}
+			continue
+		}
+		if current == '\'' || current == '"' {
+			quote = current
+			continue
+		}
+		switch current {
+		case '(':
+			depth++
+		case ')':
+			depth--
+			if depth < 0 {
+				return nil, fmt.Errorf("unmatched ')' in condition %q", expr)
+			}
+		}
+		if depth == 0 && i+1 < len(runes) && string(runes[i:i+2]) == operator {
+			part := strings.TrimSpace(string(runes[start:i]))
+			if part == "" {
+				return nil, fmt.Errorf("missing operand around %s in condition %q", operator, expr)
+			}
+			parts = append(parts, part)
+			start = i + 2
+			i++
+		}
+	}
+	if quote != 0 {
+		return nil, fmt.Errorf("unterminated quote in condition %q", expr)
+	}
+	if depth != 0 {
+		return nil, fmt.Errorf("unmatched '(' in condition %q", expr)
+	}
+	if len(parts) == 0 {
+		return []string{expr}, nil
+	}
+	last := strings.TrimSpace(string(runes[start:]))
+	if last == "" {
+		return nil, fmt.Errorf("missing operand around %s in condition %q", operator, expr)
+	}
+	return append(parts, last), nil
+}
+
+func stripOuterParentheses(expr string) (string, error) {
+	if !strings.HasPrefix(expr, "(") {
+		return expr, nil
+	}
+	depth := 0
+	var quote rune
+	runes := []rune(expr)
+	for i, current := range runes {
+		if quote != 0 {
+			if current == quote && (i == 0 || runes[i-1] != '\\') {
+				quote = 0
+			}
+			continue
+		}
+		if current == '\'' || current == '"' {
+			quote = current
+			continue
+		}
+		if current == '(' {
+			depth++
+		}
+		if current == ')' {
+			depth--
+			if depth < 0 {
+				return "", fmt.Errorf("unmatched ')' in condition %q", expr)
+			}
+			if depth == 0 && i != len(runes)-1 {
+				return expr, nil
+			}
+		}
+	}
+	if quote != 0 {
+		return "", fmt.Errorf("unterminated quote in condition %q", expr)
+	}
+	if depth != 0 {
+		return "", fmt.Errorf("unmatched '(' in condition %q", expr)
+	}
+	return strings.TrimSpace(string(runes[1 : len(runes)-1])), nil
 }
 
 // resolveOperand parses an operand from a condition string, resolving variables or generator calls if needed.
@@ -74,7 +229,7 @@ func resolveOperand(expr string, vars map[string]interface{}) (interface{}, erro
 		if strings.HasPrefix(varName, "{") && strings.HasSuffix(varName, "}") {
 			varName = varName[1 : len(varName)-1]
 		}
-		
+
 		// If variable exists (supports dotted paths, array-index bracket notation)
 		if val, ok := resolveNestedVar(varName, vars); ok {
 			return val, nil
@@ -87,6 +242,12 @@ func resolveOperand(expr string, vars map[string]interface{}) (interface{}, erro
 			return parseLiteral(interpolated), nil
 		}
 		return nil, nil // Treat undefined variables as nil
+	}
+
+	// Also resolve bare dotted paths (e.g. "item.price") when they exist in vars.
+	// This lets $if conditions reference scoped aliases without a $ prefix.
+	if val, ok := resolveNestedVar(expr, vars); ok {
+		return val, nil
 	}
 
 	return parseLiteral(expr), nil

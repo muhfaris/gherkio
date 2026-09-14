@@ -122,12 +122,15 @@ Use setup, steps, and teardown blocks strategically:
 
 ### Step Block
 - **name**: (String, Optional) Human-readable label for the step. Shown in test output instead of the default "METHOD /url".
-- **if**: (String, Optional) Conditional guard condition (e.g. '$VAR == true', '$PRICE > 100'). If evaluated to false, the step is skipped.
+- **if**: (String, Optional) Conditional guard supporting truthiness, comparisons, &&, ||, !, and parentheses (e.g. '$customer && ($PRICE > 100 || $force)'). If false, the step is skipped. && binds more tightly than || and both short-circuit.
 - **use**: (String, Conditional) Path to compose/execute another scenario. Mutually exclusive with request and set.
 - **with**: (Map of string:string, Optional) Variable overrides injected into a 'use:' step. Values are interpolated against current context before injection. The used scenario sees these as local variables; original values are restored after the 'use:' completes. Only valid with 'use:'. Example: 'with: { PARENT_CLAIM_ISSUE_ID: $STATUS_APPROVED_ID }'
 - **request**: (Request object, Conditional) HTTP Request config. Mutually exclusive with use and set.
 - **set**: (Map of string:string, Conditional) Inline variable assignment / override map. Mutually exclusive with request and use.
 - **repeat**: (Object, Conditional) Bounded multi-step loop. Requires attempts >= 1, an until condition evaluated after each block, and a non-empty steps list. Nested variables remain available after success; inner failure or exhausted attempts fails the block.
+- **for_each**: (Object, Conditional) Sequential collection loop. Requires a saved array in from, an optional scoped as alias (default item), and non-empty nested steps. Stops on the first nested failure.
+- **export**: (Object, Conditional) Materializes a saved collection into an Excel (.xlsx) file on disk. Requires file, from (starting with $), and columns. Mutually exclusive with other operations.
+- **import**: (Object, Conditional) Reads data from an Excel (.xlsx) file on disk into runtime variables. Requires file and as. Mutually exclusive with other operations.
 - **expect**: (Expect object, Optional) Response assertions.
 - **save**: (Map of name:path, Optional) Extract dynamic values to context variables. Paths support variable interpolation and bracket notation. Use 'count(body.<path>)' to save an array length; empty arrays and explicit null save 0, while missing/non-array paths warn and are not stored.
 - **timing**: (TimingConfig, Optional) Execution latency check.
@@ -148,6 +151,22 @@ Use setup, steps, and teardown blocks strategically:
   Simple syntax: 'avatar: fixtures/avatar.png' (path only).
   Advanced syntax: 'document: {path: doc.pdf, contentType: application/pdf, filename: report.pdf}'.
 - **transform**: (Map of path:ProjectionConfig, Optional) Declarative collections projected into the request payload.
+
+### Export Config
+- **file**: (String, Required) Target .xlsx file path (relative to export.path or project root).
+- **from**: (String, Required) Source collection array variable (must start with $).
+- **sheet**: (String, Optional) Name of the worksheet (defaults to Sheet1).
+- **columns**: (List of ColumnConfig, Required) Column mappings:
+  - **header**: (String, Required) Column title.
+  - **value**: (String, Required) Expression evaluated for each row. Supports $string(), $int(), $float(), $bool(), $if(cond, then, else), and item.<field> / variable access.
+
+### Import Config
+- **file**: (String, Required) Target .xlsx file path (relative to export.path, assets.path, or project root).
+- **sheet**: (String, Optional) Worksheet name to read (defaults to the first/active sheet).
+- **as**: (String, Required) Target variable name to store the array of parsed row objects.
+- **header_row**: (Integer, Optional) 1-based row index for column headers (default 1).
+- **data_start_row**: (Integer, Optional) 1-based row index where data begins (default 2).
+- **columns**: (List of ImportColumn, Optional) Explicit column mappings from sheet header titles to row object field aliases.
 
 
 ### Variable Interpolation

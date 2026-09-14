@@ -46,6 +46,8 @@ type StepResult struct {
 	Iteration      int                    `json:"iteration,omitempty"`
 	RepeatAttempt  int                    `json:"repeatAttempt,omitempty"`
 	RepeatAttempts int                    `json:"repeatAttempts,omitempty"`
+	ForEachIndex   int                    `json:"forEachIndex,omitempty"`
+	ForEachCount   int                    `json:"forEachCount,omitempty"`
 }
 
 // RedisInfo captures a Redis operation without exposing connection secrets.

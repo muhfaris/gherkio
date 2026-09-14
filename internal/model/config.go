@@ -8,6 +8,7 @@ type Config struct {
 	Tests          TestsConfig    `yaml:"tests,omitempty" jsonschema:"description=Test path configuration"`
 	Schemas        SchemasConfig  `yaml:"schemas,omitempty" jsonschema:"description=Schema directory path"`
 	Assets         AssetsConfig   `yaml:"assets,omitempty" jsonschema:"description=Multipart asset directory path"`
+	Export         ExportConfig   `yaml:"export,omitempty" jsonschema:"description=Excel export output directory path"`
 	Security       SecurityConfig `yaml:"security,omitempty" jsonschema:"description=Security and masking configuration"`
 	Reports        ReportsConfig  `yaml:"reports,omitempty" jsonschema:"description=Report generation configuration"`
 	JWTTokenPath   string         `yaml:"jwt_token_path,omitempty" jsonschema:"description=Custom JSON path to find JWT token in response body, e.g. 'data.access_token' or 'body.token'"`
@@ -33,6 +34,10 @@ type SchemasConfig struct {
 
 type AssetsConfig struct {
 	Path string `yaml:"path,omitempty" jsonschema:"description=Default directory for multipart file assets"`
+}
+
+type ExportConfig struct {
+	Path string `yaml:"path,omitempty" jsonschema:"description=Default output directory for export step Excel files"`
 }
 
 type SecurityConfig struct {

@@ -378,17 +378,26 @@ func resolveTypePreserving(val interface{}, localVars map[string]interface{}) (i
 		// Strip optional $ prefix from condition path
 		conditionPath = strings.TrimPrefix(conditionPath, "$")
 
-		conditionVal, found := resolveNestedVar(conditionPath, localVars)
-
 		var conditionTrue bool
-		if found {
-			conditionTrue = isTruthy(conditionVal)
+		// If the condition contains a comparison operator, evaluate it as a full
+		// boolean expression (supports ==, !=, >, >=, <, <=, &&, ||, !).
+		if containsComparison(conditionPath) {
+			matched, err := EvaluateCondition(conditionPath, localVars)
+			if err != nil {
+				return "", fmt.Errorf("$if condition %q failed: %w", conditionPath, err)
+			}
+			conditionTrue = matched
+		} else {
+			conditionVal, found := resolveNestedVar(conditionPath, localVars)
+			if found {
+				conditionTrue = isTruthy(conditionVal)
+			}
 		}
 
 		if conditionTrue {
-			return resolveTypePreserving(thenExpr, localVars)
+			return resolveTypePreserving(stripQuotedLiteral(thenExpr), localVars)
 		} else if elseExpr != "" {
-			return resolveTypePreserving(elseExpr, localVars)
+			return resolveTypePreserving(stripQuotedLiteral(elseExpr), localVars)
 		}
 		// No else clause -> return nil (JSON null)
 		return nil, nil
@@ -418,6 +427,17 @@ func resolveTypePreserving(val interface{}, localVars map[string]interface{}) (i
 	}
 
 	return interpolateString(strVal, localVars)
+}
+
+// stripQuotedLiteral removes surrounding single or double quotes from a plain
+// string literal (e.g. 'normal' -> normal). Non-quoted values are returned as-is.
+func stripQuotedLiteral(s string) string {
+	trimmed := strings.TrimSpace(s)
+	if len(trimmed) >= 2 && ((trimmed[0] == '\'' && trimmed[len(trimmed)-1] == '\'') ||
+		(trimmed[0] == '"' && trimmed[len(trimmed)-1] == '"')) {
+		return trimmed[1 : len(trimmed)-1]
+	}
+	return s
 }
 
 // normalizeJSONNumber converts json.Number to a native Go numeric type.
