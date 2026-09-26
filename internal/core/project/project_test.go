@@ -1,8 +1,10 @@
 package project
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -218,3 +220,43 @@ steps:
 		t.Fatalf("validation issues = %+v, want none", results)
 	}
 }
+
+func TestValidateProjectWarnsOnHighComplexity(t *testing.T) {
+	projectDir := t.TempDir()
+	testsDir := filepath.Join(projectDir, ".gherkio", "tests")
+	if err := os.MkdirAll(testsDir, 0755); err != nil {
+		t.Fatalf("create tests: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, ".gherkio", "config.yaml"), []byte("environments:\n  default: local\n"), 0644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	// Create scenario with 21 steps (> 20 threshold)
+	var stepsYaml strings.Builder
+	stepsYaml.WriteString("scenario: Big Monolithic Scenario\nsteps:\n")
+	for i := 1; i <= 21; i++ {
+		stepsYaml.WriteString(fmt.Sprintf("  - request: {method: GET, url: /items/%d}\n", i))
+	}
+	if err := os.WriteFile(filepath.Join(testsDir, "complex.yaml"), []byte(stepsYaml.String()), 0644); err != nil {
+		t.Fatalf("write complex test: %v", err)
+	}
+
+	results, err := ValidateProject(projectDir, projectDir, "complex.yaml", "")
+	if err != nil {
+		t.Fatalf("ValidateProject: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	foundComplexityWarning := false
+	for _, issue := range results[0].Issues {
+		if issue.Code == "high_complexity" && issue.Severity == "warning" {
+			foundComplexityWarning = true
+			break
+		}
+	}
+	if !foundComplexityWarning {
+		t.Fatalf("expected high_complexity warning, got issues: %+v", results[0].Issues)
+	}
+}
+

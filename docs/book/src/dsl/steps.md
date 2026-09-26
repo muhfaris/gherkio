@@ -35,11 +35,12 @@ Each step in a scenario sequence supports the following top-level keys:
 | `if` | `string` | No | Conditional guard clause. Step is skipped if the expression evaluates to false. | `if: $responseCode == 200` |
 | `request` | `object` | Conditional | HTTP request payload block. Mutually exclusive with other step operations. | (See Request Properties below) |
 | `redis` | `object` | Conditional | Controlled read-only Redis operation. Mutually exclusive with other step operations. | `redis: { connection: local-cache, command: get, key: "product:42" }` |
-| `use` | `string` | Conditional | Scenario composition. Imports and executes another scenario YAML file inline. | `use: shared/login.yaml` |
-| `set` | `map[string]string`| Conditional | Inline variable assignment. Explicitly assigns or overrides variables. | `set: { QUEUE_ID: "01KT4EBA37Y" }` |
+| `use` | `string` | Conditional | Scenario composition. Imports and executes another scenario YAML file inline. Mutually exclusive with other step operations. | `use: shared/login.yaml` |
+| `set` | `map[string]string`| Conditional | Inline variable assignment. Explicitly assigns or overrides variables without I/O. Mutually exclusive with other step operations. See [Variable Assignment (set)](set.md). | `set: { QUEUE_ID: "01KT4EBA37Y" }` |
 | `export` | `object` | Conditional | Materializes a saved collection into an Excel (`.xlsx`) file. Mutually exclusive with other step operations. | `export: { file: fixtures/bulk.xlsx, from: "$items", columns: [...] }` |
-| `repeat` | `object` | Conditional | Repeats a group of steps until a condition is true or the attempt limit is exhausted. | `repeat: { attempts: 20, until: "$count == 0", steps: [...] }` |
-| `for_each` | `object` | Conditional | Executes nested steps sequentially once per item in a saved array. | `for_each: { from: "$items", as: item, steps: [...] }` |
+| `import` | `object` | Conditional | Reads data from an Excel (`.xlsx`) file into runtime variables. Mutually exclusive with other step operations. | `import: { file: fixtures/users.xlsx, as: users }` |
+| `repeat` | `object` | Conditional | Repeats a group of steps until a condition is true or the attempt limit is exhausted. Mutually exclusive with other step operations. | `repeat: { attempts: 20, until: "$count == 0", steps: [...] }` |
+| `for_each` | `object` | Conditional | Executes nested steps sequentially once per item in a saved array. Mutually exclusive with other step operations. | `for_each: { from: "$items", as: item, steps: [...] }` |
 | `with` | `map[string]string`| No | Variable overrides injected into a `use:` step. Values interpolated before injection; original values restored after completion. | `with: { PARENT_CLAIM_ISSUE_ID: $STATUS_APPROVED_ID }` |
 | `expect` | `object` | No | Assertions mapping target dot-notation paths to expected formats or matchers. | `expect: { status: 200 }` |
 | `save` | `map[string]string`| No | Context extraction map. Binds response parameters to dynamic variables. | `save: { token: body.accessToken }` |
@@ -422,20 +423,14 @@ steps:
 
 ## ⚙️ Declarative Variable Assignment (`set`)
 
-Gherkio steps can explicitly assign, update, or override variables in the runtime context using the `set` tag. This is particularly useful for overriding defaults during local testing/debugging, managing sequential state, or addressing variable name collisions without executing a full HTTP request or nested scenario.
-
-### Syntax and Usage
-
-The `set` block accepts a map of variable keys to their string values. Values support variable interpolation.
+A `set` step explicitly assigns, updates, or overrides variables in the runtime context **without executing any request or composed scenario**. Use it to seed fixtures, override a saved value for one run, freeze a generated value so later steps agree on it, or hand state out of a loop/composed file.
 
 ```yaml
 steps:
-  # 1. Manually set/override a variable
-  - name: Define custom queue ID
+  - name: Seed the queue fixture
     set:
       QUEUE_ID: "01KT4EBA37Y"
 
-  # 2. Reference the variable in subsequent steps
   - name: Get Queue info
     request:
       method: GET
@@ -443,29 +438,20 @@ steps:
     expect:
       status: 200
 
-  # 3. Re-assign or interpolate variables
-  - name: Rotate queue ID
+  - name: Rotate the queue ID (separate step, see below)
     set:
       PREVIOUS_QUEUE_ID: "$QUEUE_ID"
+
+  - name: Move to the next queue ID
+    set:
       QUEUE_ID: "02HT5FCA38Z"
 ```
 
 ### Key Behaviors
-- **Mutual Exclusion**: A step containing `set` must not contain a `request` or `use` key.
-- **Interpolation**: Variables referenced in `set` values (e.g. `$QUEUE_ID`) are interpolated immediately at execution time using the active variable store.
-- **Typed random selection**: An exact `${randomItem(array)}` value preserves the selected object, so later steps can access fields such as `$PARTNER_STATUS.id`. `${randomItem(array,id)}` continues to store only the selected field.
+- **Mutual Exclusion**: A `set` step cannot be combined with `request`, `use`, `redis`, `repeat`, `for_each`, `export`, or `import` — only `name` and `if` may accompany it. `expect`, `save`, `timing`, `retry`, and `with` are *silently ignored* on a `set` step.
+- **Interpolation**: Values are interpolated immediately at execution time against the active variable store, so `$QUEUE_ID`, credentials, and `save` results are all readable.
+- **Keys are unordered within one block**: Derive a value from another variable in a *separate* `set` step.
+- **Typed random selection**: An exact `${randomItem(array)}` value preserves the selected object, so later steps can access fields such as `$PARTNER_STATUS.id`. `${randomItem(array,id)}` stores only the selected field.
 - **CLI Output**: In test logs, a `set` step is formatted to show which variables are being set (e.g., `set variables: QUEUE_ID`).
 
-```yaml
-- name: Select one partner status
-  set:
-    PARTNER_STATUS: ${randomItem(respPartnerStatuses)}
-
-- name: Use fields from the same selected object
-  request:
-    method: POST
-    url: /v1/partners
-    body:
-      partner_status_id: $PARTNER_STATUS.id
-      partner_status_value: $PARTNER_STATUS.value
-```
+> 📖 **Full chapter**: [Variable Assignment (`set`)](set.md) covers value typing, precedence, guards, loops, and eleven worked scenarios.

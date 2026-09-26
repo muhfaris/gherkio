@@ -66,9 +66,16 @@ func runValidate(testPath string, verbose bool, env string) error {
 		return err
 	}
 
-	totalIssues := 0
+	totalErrors := 0
+	totalWarnings := 0
 	for _, r := range results {
-		totalIssues += len(r.Issues)
+		for _, issue := range r.Issues {
+			if issue.Severity == "warning" {
+				totalWarnings++
+			} else {
+				totalErrors++
+			}
+		}
 	}
 
 	// Print results
@@ -86,7 +93,11 @@ func runValidate(testPath string, verbose bool, env string) error {
 			} else {
 				fmt.Printf("✗ %s — %d issue(s)\n", relPath, len(result.Issues))
 				for _, issue := range result.Issues {
-					fmt.Printf("  [%s] %s: %s\n", issue.Code, issue.Field, issue.Msg)
+					prefix := "ERROR"
+					if issue.Severity == "warning" {
+						prefix = "WARN "
+					}
+					fmt.Printf("  [%s] [%s] %s: %s\n", prefix, issue.Code, issue.Field, issue.Msg)
 				}
 			}
 		} else {
@@ -105,16 +116,18 @@ func runValidate(testPath string, verbose bool, env string) error {
 
 	// Summary
 	fmt.Println()
-	if totalIssues == 0 {
+	if totalErrors == 0 && totalWarnings == 0 {
 		fmt.Printf("✓ All %d test file(s) are valid\n", len(results))
 	} else {
-		fmt.Printf("✗ Found %d issue(s) in %d test file(s)\n", totalIssues, len(results))
-		for _, r := range results {
-			if len(r.Issues) > 0 {
-				fmt.Printf("  - %s: %d issue(s)\n", r.File, len(r.Issues))
+		if totalErrors == 0 {
+			fmt.Printf("✓ All %d test file(s) are valid with %d warning(s)\n", len(results), totalWarnings)
+		} else {
+			fmt.Printf("✗ Found %d error(s) and %d warning(s) in %d test file(s)\n", totalErrors, totalWarnings, len(results))
+			for _, r := range results {
+				if len(r.Issues) > 0 {
+					fmt.Printf("  - %s: %d issue(s)\n", r.File, len(r.Issues))
+				}
 			}
-		}
-		if totalIssues > 0 {
 			os.Exit(1)
 		}
 	}

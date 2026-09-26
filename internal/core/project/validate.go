@@ -135,6 +135,7 @@ func ValidateFile(filePath, projectDir string, creds *model.Credentials, schemas
 	result.Issues = append(result.Issues, validateBodyPaths(test)...)
 	result.Issues = append(result.Issues, validateMultipartFiles(test, projectDir, filePath)...)
 	result.Issues = append(result.Issues, validateStepCompleteness(test)...)
+	result.Issues = append(result.Issues, validateComplexity(test)...)
 
 	return result
 }
@@ -722,6 +723,27 @@ func collectAllSteps(test *model.TestFile) (setup, steps, teardown []model.Step)
 		return result
 	}
 	return flatten(test.Setup), flatten(test.Steps), flatten(test.Teardown)
+}
+
+// MaxRecommendedSteps defines the threshold where a single scenario is considered too complex
+// and recommended for decomposition into modular sub-scenarios.
+const MaxRecommendedSteps = 20
+
+// validateComplexity warns if a single scenario contains too many steps, which hurts reviewability and maintainability.
+func validateComplexity(test *model.TestFile) []ValidationIssue {
+	var issues []ValidationIssue
+	setupSteps, mainSteps, teardownSteps := collectAllSteps(test)
+	totalSteps := len(setupSteps) + len(mainSteps) + len(teardownSteps)
+
+	if totalSteps > MaxRecommendedSteps {
+		issues = append(issues, ValidationIssue{
+			Field:    "steps",
+			Code:     "high_complexity",
+			Msg:      fmt.Sprintf("scenario has %d steps (exceeds recommended limit of %d); consider decomposing into smaller scenarios using 'use:'", totalSteps, MaxRecommendedSteps),
+			Severity: "warning",
+		})
+	}
+	return issues
 }
 
 func discoverTestFilesForValidate(dir string) ([]string, error) {

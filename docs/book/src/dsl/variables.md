@@ -25,6 +25,8 @@ If a saved variable contains an array, you can access individual elements by ind
 
 This works in all variable interpolation contexts: request body, headers, URLs, save paths, and assertion values.
 
+> ✏️ To assign or override a variable without issuing a request, use a [`set`](set.md) step. Variables written by `set` are interpolated the same way as saved ones.
+
 When the response length is not fixed, prefer `randomItem`:
 
 ```yaml

@@ -53,6 +53,45 @@ Each step block in `setup`, `steps`, or `teardown` supports the following proper
 | `timeout` | `string` | No | Custom HTTP request timeout duration | `timeout: 15s` |
 | `with` | `object` | No | Variable overrides injected into a `use:` step | `with: { ROLE: "admin" }` |
 
+### ✏️ 2.1 Variable Assignment (`set`)
+
+`set` is a primary step operation that writes variables into the runtime context **without performing any I/O**. A step must contain exactly one primary operation (`request`, `redis`, `use`, `set`, `repeat`, `for_each`, `export`, `import`); declaring two fails validation with code `mutually_exclusive`. On a `set` step only `name` and `if` are honoured — `expect`, `save`, `retry`, `timing`, and `with` are silently ignored.
+
+| Rule | Detail |
+| :--- | :--- |
+| Keys | Bare variable names (no `$`); reference them later as `$NAME` |
+| Values | Scalars only (no nested maps/lists), interpolated at execution time |
+| Ordering | Unordered inside a single block — derive dependent values in a later `set` step |
+| Typing | Values are stored as text; an exact `${randomItem(array)}` preserves the selected object |
+| Precedence | Last write wins over earlier `set`, `save`, or `with` values |
+
+```yaml
+steps:
+  # 1. Seed fixtures once
+  - set:
+      PRODUCT_ID: "1001"
+      REGION: "ap-southeast-1"
+
+  # 2. Freeze a per-step built-in so every later step agrees on it
+  - set:
+      CORRELATION_ID: "$uuid"
+
+  # 3. Pick one object, then read several of its fields downstream
+  - set:
+      PICKED: ${randomItem(statuses)}
+
+  # 4. Guarded override: skipped entirely when the condition is false
+  - if: $role == "admin"
+    set:
+      PAGE_SIZE: "100"
+
+  # 5. Derive from an earlier value in a SEPARATE step
+  - set:
+      REGION_LABEL: "${toUpper($REGION)}-prod"
+```
+
+> Full chapter with worked scenarios (`for_each`, `repeat`, `use:` composition, `setup`/`teardown` bookkeeping) and troubleshooting: [Variable Assignment (`set`)](book/src/dsl/set.md).
+
 ---
 
 ## 🌐 3. HTTP Request Properties (`request`)

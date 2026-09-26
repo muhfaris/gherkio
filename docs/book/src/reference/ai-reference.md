@@ -41,7 +41,7 @@ A step performs one primary operation:
 
 - `request:` sends HTTP.
 - `redis:` runs one controlled read-only Redis command.
-- `set:` assigns variables without I/O.
+- `set:` assigns variables without I/O; only `name` and `if` may accompany it.
 - `use:` composes another scenario; `with:` supplies local overrides.
 - `repeat:` runs nested `steps` up to `attempts` times and checks `until` after each successful block.
 - `for_each:` runs nested `steps` once per item in a source collection array.
@@ -283,3 +283,4 @@ gherkio run workflow.yaml --report html,json
 - Do not configure both `address` and `sentinel` for one Redis connection.
 - Do not use Redis mutation commands; Redis steps are intentionally read-only.
 - Do not combine `export` or `import` with `request`, `redis`, `use`, `set`, `repeat`, `for_each`, `expect`, `save`, `retry`, or `timing` in the same step.
+- Do not combine `set` with `request`, `redis`, `use`, `repeat`, `for_each`, `export`, or `import` in the same step (validation error `mutually_exclusive`); `expect`, `save`, `retry`, `timing`, and `with` on a `set` step do not error but are ignored.

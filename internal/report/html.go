@@ -361,7 +361,7 @@ func MapResultToReportData(result *runner.RunResult, env string, maskFields []st
 
 // RenderHTMLSuite generates an HTML report for a suite of multiple scenarios.
 func RenderHTMLSuite(results []*runner.RunResult, cfg ReportConfig, env string) (string, error) {
-	data := MapResultsToSuiteReportData(results, env, cfg.MaskFields, true)
+	data := MapResultsToSuiteReportData(results, env, cfg.MaskFields, cfg.MaskSensitive)
 	return renderHTMLTemplate(data)
 }
 
@@ -400,7 +400,7 @@ func renderHTMLTemplate(data ReportData) (string, error) {
 
 // RenderHTML generates the HTML report string for a single scenario.
 func RenderHTML(result *runner.RunResult, cfg ReportConfig, env string) (string, error) {
-	data := MapResultToReportData(result, env, cfg.MaskFields, true)
+	data := MapResultToReportData(result, env, cfg.MaskFields, cfg.MaskSensitive)
 	return renderHTMLTemplate(data)
 }
 

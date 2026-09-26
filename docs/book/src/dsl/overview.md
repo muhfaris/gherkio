@@ -74,6 +74,7 @@ Explore specific features in the Advanced Practitioner path:
 | 🎯 **[Assertions & Matchers](assertions.md)** | Learn value matchers (`contains`, `greaterThan`, `oneOf`, `in`, `matchesRegex`), JWT validation, and timing budgets. |
 | 📋 **[Schema Validation](schemas.md)** | Enforce structural schema rules against response payloads using `.gherkio/schemas/`. |
 | ⚡ **[Redis Cache State Checks](redis.md)** | Assert key-value states in Redis directly inside scenario test steps. |
+| ✏️ **[Variable Assignment (`set`)](set.md)** | Assign, override, and freeze variables between requests — no extra HTTP call. |
 | 🎭 **[Service Mocking & Virtualization](mocking.md)** | Intercept outbound HTTP calls with zero-dependency virtual responses and parameter reflection. |
 | 🔁 **[Retries & Polling](retry.md)** | Handle asynchronous background jobs with exponential backoff and retry rules. |
 | 🔐 **[Variables & Credentials](variables.md)** | Dynamic variable generators (`$randomEmail`, `$uuid`) and environment credential injection. |

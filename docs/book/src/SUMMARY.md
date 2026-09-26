@@ -19,6 +19,7 @@
     - [HTTP Requests](dsl/requests.md)
     - [Redis Cache Checks](dsl/redis.md)
     - [Scenario Composition](dsl/composition.md)
+    - [Variable Assignment (set)](dsl/set.md)
     - [Service Mocking & Virtualization](dsl/mocking.md)
   - [Assertions & Validation](dsl/assertions.md)
     - [Value Matchers](dsl/matchers.md)

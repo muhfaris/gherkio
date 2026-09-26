@@ -124,9 +124,17 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 		reportFormat = appCfg.Reports.Format
 	}
 
-	maskFields := runner.GetDefaultSensitiveFields()
-	if appCfg != nil && appCfg.Security.Mask.Enabled && len(appCfg.Security.Mask.Fields) > 0 {
-		maskFields = appCfg.Security.Mask.Fields
+	var maskFields []string
+	// Secure by default: masking is ON unless security.mask.enabled is explicitly false.
+	maskEnabled := true
+	if appCfg != nil {
+		maskEnabled = appCfg.Security.Mask.Enabled
+	}
+	if maskEnabled {
+		maskFields = runner.GetDefaultSensitiveFields()
+		if appCfg != nil && len(appCfg.Security.Mask.Fields) > 0 {
+			maskFields = appCfg.Security.Mask.Fields
+		}
 	}
 
 	// Build snapshot configuration from config file
@@ -134,7 +142,7 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 	if appCfg != nil {
 		snapshotCfg = runner.SnapshotConfig{
 			Enabled:       appCfg.Reports.Failures.Enabled,
-			MaskSensitive: appCfg.Reports.Failures.MaskSensitive,
+			MaskSensitive: maskEnabled && appCfg.Reports.Failures.MaskSensitive,
 			MaskFields:    maskFields,
 			RetainCount:   appCfg.Reports.Failures.RetainCount,
 		}
@@ -159,6 +167,11 @@ func runTest(testPath, env string, verbose bool, reportFormat string, reportRaw 
 			reportCfg.Path = appCfg.Reports.Path
 			reportCfg.MaskSensitive = appCfg.Reports.MaskSensitive
 			reportCfg.Retention = appCfg.Reports.Retention
+		}
+		// security.mask.enabled=false disables all report masking, including cURL.
+		if !maskEnabled {
+			reportCfg.MaskSensitive = false
+			reportCfg.MaskFields = []string{}
 		}
 	}
 
