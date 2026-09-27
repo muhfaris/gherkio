@@ -44,7 +44,7 @@ steps:
     expect:
       status: 200
       body.role: super-admin
-```
+```text
 
 ---
 

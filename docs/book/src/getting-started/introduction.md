@@ -16,7 +16,7 @@ graph TD
     D --> E[5. Build Your First Test]
     E --> F[6. Test Execution Lifecycle]
     F --> G[7. Interactive Playground]
-```
+```text
 
 1. **[Installation](installation.md)**: Compile from source or fetch compiled binaries for Linux, macOS, or Windows.
 2. **[2-Minute Quickstart](quickstart.md)**: Scaffold a testing sandbox with `gherkio init` and execute your first local test scenario.

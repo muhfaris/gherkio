@@ -11,7 +11,7 @@ Run a directory of tests with custom concurrency levels using the `--parallel` (
 ```bash
 # Run tests with 4 parallel execution threads
 gherkio run .gherkio/tests/ -p 4
-```
+```text
 
 `--parallel 4` means up to four **different test files** run at once. It is intended to speed up
 a directory or suite run; it is not a virtual-user load model.
@@ -23,7 +23,7 @@ gherkio run .gherkio/tests/checkout.yaml \
   --virtual-users 2 \
   --iterations-per-user 3 \
   --report html
-```
+```text
 
 Here, two users run concurrently and each user performs three sequential iterations, for six
 workflow executions in total. Each user's variables are isolated from the other user. The HTML
@@ -46,7 +46,7 @@ sequenceDiagram
     Note over T2: Asserts price == 12.00 (expected original)
     DB-->>T2: returns price = 10.00
     Note over T2: ❌ Test Failed!
-```
+```text
 
 ---
 
@@ -63,7 +63,7 @@ steps:
       body:
         email: $randomEmail         # Unique email per thread!
         name: "Test User"
-```
+```text
 
 ### 2. Microservice Routing Isolation
 If your microservices support multi-tenant isolation, inject tenancy headers:
@@ -75,4 +75,4 @@ steps:
       url: /v1/products
       headers:
         X-Tenant-ID: "tenant-${uuid}"  # Dynamic tenant separation
-```
+```text

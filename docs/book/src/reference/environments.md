@@ -34,7 +34,7 @@ connections:
     address: localhost:6379
     database: 0
     timeout: 5s
-```
+```text
 
 Optional fields are `username`, `password`, `database`, `tls`, and `timeout`.
 Connection strings support normal Gherkio interpolation, so secrets can be supplied
@@ -60,7 +60,7 @@ connections:
     database: 0
     tls: false
     timeout: 5s
-```
+```text
 
 Sentinel endpoints are tried in order. Each Redis operation discovers the current
 primary using `SENTINEL get-master-addr-by-name`, so a retried step discovers the
@@ -85,7 +85,7 @@ services:
     baseUrl: https://auth-staging.my-company.net
   checkout:
     baseUrl: https://checkout-staging.my-company.net
-```
+```text
 
 When writing a step, reference the service key:
 ```yaml
@@ -95,7 +95,7 @@ steps:
       service: identity
       method: POST
       url: /v1/token
-```
+```text
  This allows you to migrate identical testing logic between `local` (where all services run on local ports) and `production` with zero script modifications.
 
 ---
@@ -119,7 +119,7 @@ mocks:
       body:
         status: "healthy"
         service: "virtualized-dependency"
-```
+```text
 
 When the test runner encounters a step requesting a URL matching the defined mock request (`method` and `url`), it intercepts the request and instantly returns the configured `response` status, headers, and body.
 
@@ -134,4 +134,4 @@ mocks:
       status: 201
       body:
         message: "Hello {{username}}"
-```
+```text

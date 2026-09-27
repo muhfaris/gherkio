@@ -21,7 +21,7 @@ A scenario step is defined as a YAML map containing structural blocks that confi
     orderId: body.id
   timing:                        # 4. Perform: Latency budget check
     max: 500ms
-```
+```text
 
 ---
 
@@ -84,7 +84,7 @@ Redis steps expose only the read-only commands `get`, `exists`, `ttl`, and
   retry:
     attempts: 5
     interval: 200
-```
+```text
 
 `get` automatically decodes JSON values. Redis assertions and saved values use
 the `redis.*` path: `redis.exists`, `redis.value`, `redis.value.<field>`, and
@@ -120,7 +120,7 @@ steps:
               name: $item.name
           expect:
             status: 201
-```
+```text
 
 The loop stops at the first failing nested step. Variables saved inside the
 loop remain available afterward, while the item alias is restored when the
@@ -156,7 +156,7 @@ false after every attempt, the repeat step fails.
           status: 200
         save:
           existingTicketCount: count(body.data)
-```
+```text
 
 This is a bounded loop, not unbounded recursion. Reports label every nested
 execution as `repeat N/M`. A dry run previews the block once because no live
@@ -194,7 +194,7 @@ steps:
           value: "$if(item.price > 500, 'priority', 'normal')"
         - header: "generated_at"
           value: "${dateNow(\"2006-01-02\")}"
-```
+```text
 
 ### Configuration Properties
 
@@ -248,7 +248,7 @@ steps:
               full_name: $customer.customer_name
               email: $customer.email_address
               initial_balance: $float(customer.balance)
-```
+```text
 
 ### Configuration Properties
 
@@ -305,7 +305,7 @@ steps:
         amount: 150.00
     expect:
       status: 201
-```
+```text
 
 #### Numeric Comparison
 ```yaml
@@ -317,7 +317,7 @@ steps:
       url: /v1/audit/large-invoice/$INVOICE_ID
     expect:
       status: 200
-```
+```text
 
 #### Truthiness Check (Check if variable exists and is not false/empty)
 ```yaml
@@ -329,7 +329,7 @@ steps:
       url: /v1/refunds
       body:
         transaction_id: $TX_ID
-```
+```text
 
 #### Compound Conditions
 
@@ -340,12 +340,12 @@ steps:
     request:
       method: POST
       url: /v1/webhooks/premature-tickets
-```
+```text
 
 ```yaml
 # Parentheses and negation
 if: ($enabled && $count > 0) || !($status == blocked)
-```
+```text
 
 For backward compatibility, negating a comparison without parentheses (for
 example `!$status == blocked`) is rejected as ambiguous. Write
@@ -361,7 +361,7 @@ The `save` block allows steps to bind HTTP response parameters (body fields, hea
 ```yaml
 save:
   variable_name: response_source_path
-```
+```text
 
 *   **`body.<path>`**: Extracts JSON fields. Supports dotted-paths, indexes, and collections.
     *   *Example*: `productId: body.items[0].id`
@@ -376,7 +376,7 @@ save:
 save:
   notes: body.data
   notesCount: count(body.data)
-```
+```text
 
 ---
 
@@ -388,15 +388,15 @@ In performance-critical applications, keeping endpoint response latency within a
 ```yaml
 timing:
   max: duration_string # e.g. "200ms", "1s", "1.5s"
-```
+```text
 
 If the combined execution time of the step exceeds the `max` threshold, Gherkio fails the step and reports a detailed latency budget violation error:
 
-```
+```text
 ❌ Step 2: GET /users/profile timing assertion failed
   - Expected latency: <= 200ms
   - Actual latency:   242ms
-```
+```text
 
 ---
 
@@ -414,7 +414,7 @@ steps:
       url: /profile
       headers:
         Authorization: "Bearer ${authToken}" # 2. Automatically inherits $authToken
-```
+```text
 
 1.  **Monotonic Variables**: Any variable saved (via `save`) inside the composed YAML file is automatically merged and bubbles up to the parent execution context.
 2.  **Context Inheritance**: Composed scenarios inherit all variables defined prior to their execution (e.g. host environments, active credential credentials).
@@ -445,7 +445,7 @@ steps:
   - name: Move to the next queue ID
     set:
       QUEUE_ID: "02HT5FCA38Z"
-```
+```text
 
 ### Key Behaviors
 - **Mutual Exclusion**: A `set` step cannot be combined with `request`, `use`, `redis`, `repeat`, `for_each`, `export`, or `import` — only `name` and `if` may accompany it. `expect`, `save`, `timing`, `retry`, and `with` are *silently ignored* on a `set` step.

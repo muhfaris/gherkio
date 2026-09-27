@@ -28,7 +28,7 @@ baseUrl: https://staging.host.com
 services:
   users: https://users-staging.host.com
   billing: https://billing-staging.host.com
-```
+```text
 
 Invoke service routing in your YAML request:
 ```yaml
@@ -37,7 +37,7 @@ steps:
       service: users            # Resolves to https://users-staging.host.com/v1/profile
       method: GET
       url: /v1/profile
-```
+```text
 
 ### JSON Request Payload
 
@@ -56,7 +56,7 @@ steps:
           firstName: "John"
           lastName: "Doe"
           age: ${randomInt(18,65)}
-```
+```text
 
 ### Query Parameters (`query`)
 
@@ -72,7 +72,7 @@ steps:
         limit: "10"
     expect:
       status: 200
-```
+```text
 
 Query parameter values support full variable interpolation:
 
@@ -86,7 +86,7 @@ steps:
         page: "${randomInt(1,5)}"
     expect:
       status: 200
-```
+```text
 
 ---
 
@@ -117,7 +117,7 @@ steps:
     expect:
       status: 200
       body.updated: true
-```
+```text
 
 #### 📁 Assets Directory Location & Project Tree
 
@@ -128,11 +128,11 @@ You can configure that default directory in `.gherkio/config.yaml`:
 ```yaml
 assets:
   path: assets
-```
+```text
 
 The path is relative to the project root, although an absolute directory is also accepted. With this configuration, a multipart value such as `avatar: "john-avatar.png"` resolves to `<projectRoot>/assets/john-avatar.png`. If `assets.path` is omitted, the existing project-root and fixtures lookup behavior remains unchanged.
 
-```
+```text
 my-api-tests/                      <-- Project Workspace Root
 ├── .gherkio/                      <-- Gherkio Test Engine Config & Suites
 │   ├── config.yaml
@@ -145,7 +145,7 @@ my-api-tests/                      <-- Project Workspace Root
     ├── john-avatar.png
     ├── sample-image.jpg
     └── resume.pdf
-```
+```text
 
 #### Custom Assets Directory
 
@@ -155,7 +155,7 @@ To keep upload fixtures inside `.gherkio`, set a custom path relative to the pro
 # .gherkio/config.yaml
 assets:
   path: .gherkio/test-assets
-```
+```text
 
 The corresponding project structure is:
 
@@ -170,7 +170,7 @@ my-api-tests/
     │       └── resume.pdf
     └── tests/
         └── upload.yaml
-```
+```text
 
 Files are then referenced relative to the configured directory:
 
@@ -181,7 +181,7 @@ multipart:
     resume:
       path: "documents/resume.pdf"
       contentType: "application/pdf"
-```
+```text
 
 The resolved paths are `.gherkio/test-assets/avatars/john.png` and `.gherkio/test-assets/documents/resume.pdf` under the project root.
 
@@ -190,7 +190,7 @@ An absolute assets directory is also supported when the files live outside the p
 ```yaml
 assets:
   path: /opt/gherkio/shared-assets
-```
+```text
 
 In that case, `avatar: "avatars/john.png"` resolves to `/opt/gherkio/shared-assets/avatars/john.png`. Absolute paths make a configuration machine-specific, so relative paths are preferable for repositories and CI environments.
 
@@ -253,7 +253,7 @@ select:
   
   # No else clause — returns null when condition is falsy
   optional_field: "$if(item.has_value, item.value)"
-```
+```text
 
 **Inside request `body` (use `$` prefix for variable references):**
 ```yaml
@@ -263,7 +263,7 @@ body:
   
   # Use type casting with conditionals
   count: "$if(has_items, $int(item_count), 0)"
-```
+```text
 
 #### Complete Example:
 ```yaml
@@ -299,7 +299,7 @@ steps:
             # Static values and clean variable mapping
             is_answered: true
             free_text_answer: q.user_response
-```
+```text
 
 
 ---

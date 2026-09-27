@@ -39,7 +39,7 @@ properties:
       email:
         type: string
         format: email
-```
+```text
 
 ---
 
@@ -55,6 +55,6 @@ steps:
     expect:
       status: 200
       schema: auth/token-payload     # References .gherkio/schemas/auth/token-payload.yaml
-```
+```text
 
 If the server response contains a different structure (e.g. `expiresAt` is a number, or `user.id` is not a valid UUID), the test run halts with high-precision validation tracebacks.

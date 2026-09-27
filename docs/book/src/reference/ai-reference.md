@@ -31,7 +31,7 @@ steps:
       url: /users/$SELECTED_USER.id
     expect:
       status: 200
-```
+```text
 
 Top-level fields are `scenario`, `description`, `tags`, `setup`, `steps`, `teardown`, and `examples`. `steps` is required. Setup runs before the main workflow; failed setup skips the main workflow; teardown always runs.
 
@@ -66,7 +66,7 @@ For a multi-step polling cycle, use a bounded repeat block:
           query: { candidate_id: $candidate.id }
         expect: { status: 200 }
         save: { existingCount: count(body.data) }
-```
+```text
 
 Variables written by nested steps remain available after success. Any nested
 failure stops the loop, and unmet `until` after the final attempt fails it.
@@ -77,7 +77,7 @@ Negate a simple condition by quoting it:
 - name: Authenticate when token is absent
   if: "!$accessToken"
   use: shared/auth/auth.yaml
-```
+```text
 
 Combine conditions with `&&` and `||`; `&&` binds more tightly. Parentheses
 control grouping, and `!` negates a truthiness check or parenthesized expression:
@@ -88,7 +88,7 @@ control grouping, and `!` negates a truthiness check or parenthesized expression
   request:
     method: POST
     url: /tickets
-```
+```text
 
 ## Excel Export (`export`)
 
@@ -109,7 +109,7 @@ The `export` step writes a saved collection directly into an Excel (`.xlsx`) fil
         value: "$float(item.price)"
       - header: "Tier"
         value: "$if(item.price > 100, 'Premium', 'Standard')"
-```
+```text
 
 Each column expression supports casting (`$string`, `$int`, `$float`, `$bool`), `$if(condition, then, else)`, and access to `item.<field>` or runtime variables.
 
@@ -126,7 +126,7 @@ The `import` step reads an Excel (`.xlsx`) file from disk into a runtime array v
     columns:                        # Optional explicit aliases; headers default to snake_case
       - header: "Customer Name"
         as: full_name
-```
+```text
 
 Headers with spaces are auto-normalized to `snake_case` (e.g. `$customer.customer_name`).
 
@@ -144,7 +144,7 @@ Headers with spaces are auto-normalized to `snake_case` (e.g. `$customer.custome
           url: /items/$item.id
         expect:
           status: 200
-```
+```text
 
 ## HTTP Request
 
@@ -160,7 +160,7 @@ request:
   body:
     user_id: $SELECTED_USER.id
   timeout: 30s
-```
+```text
 
 Use `multipart` instead of `body` for uploads:
 
@@ -176,7 +176,7 @@ request:
         path: documents/evidence.pdf
         contentType: application/pdf
         filename: evidence.pdf
-```
+```text
 
 Relative file names are checked against `assets.path` after the project-relative path. When `contentType` is omitted, the multipart writer uses `application/octet-stream`.
 
@@ -214,7 +214,7 @@ timing:
 save:
   userId: body.id
   itemCount: count(body.items)
-```
+```text
 
 Canonical paths include `body.<field>`, `headers.<name>`, `jwt.<claim>`, and `redis.<field>`. Supported matchers include `exists`, `not exists`, `uuid`, `email`, `datetime`, `uri`, `string`, `number`, `boolean`, `array`, `object`, `null`, `true`, `false`, `contains`, `startsWith`, `endsWith`, `regex`, `oneOf`, `in`, `gt`, `gte`, `lt`, `lte`, `empty`, `ipv4`, `ipv6`, `base64`, and `mac`.
 
@@ -229,7 +229,7 @@ retry:
   backoff: exponential          # constant, linear, exponential
   maxDuration: 15s
   onStatus: [404, 409]
-```
+```text
 
 ## Redis
 
@@ -245,7 +245,7 @@ connections:
     username: $REDIS_USERNAME
     password: $REDIS_PASSWORD
     database: 0
-```
+```text
 
 Step:
 
@@ -258,7 +258,7 @@ Step:
   expect:
     redis.exists: true
     redis.value.id: $userId
-```
+```text
 
 ## Execution Models
 
@@ -271,7 +271,7 @@ gherkio run workflow.yaml --virtual-users 2 --iterations-per-user 3
 
 # Reports
 gherkio run workflow.yaml --report html,json
-```
+```text
 
 `examples:` is data-driven scenario iteration. Virtual-user mode cannot be combined with `examples`, directory runs, `--parallel`, `--all-accounts`, or partial-step selection.
 

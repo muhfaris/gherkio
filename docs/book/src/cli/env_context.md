@@ -14,16 +14,16 @@ Auto-selection hints are computed as follows:
 
 This command is designed for programmatic consumption (nvim plugin, MCP).
 
-```
+```text
 gherkio env context [flags]
-```
+```text
 
 ### Options
 
-```
+```text
   -h, --help   help for context
       --json   Output as JSON
-```
+```text
 
 ### SEE ALSO
 

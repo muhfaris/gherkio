@@ -26,7 +26,7 @@ Each strategy applies ±25% random jitter to prevent thundering herd problems on
 
 #### 📊 Backoff Strategy Timelines (`interval: 1000ms`)
 
-```
+```text
 1. CONSTANT BACKOFF (Fixed interval between retries)
 Attempt 1      Attempt 2      Attempt 3      Attempt 4      Attempt 5
    |--------------|--------------|--------------|--------------|--------------|
@@ -44,7 +44,7 @@ Attempt 1      Attempt 2           Attempt 3                Attempt 4
    |--------------|-------------------|------------------------|-----------------------------------|
    [0s]          [1s]                [3s]                     [7s]                               [15s]
                 (1.0s)              (2.0s)                   (4.0s)
-```
+```text
 
 #### 🔄 Retry Loop Execution Sequence
 
@@ -65,7 +65,7 @@ sequenceDiagram
     Runner->>API: GET /jobs/job-123 (Attempt 3)
     API-->>Runner: 200 OK { status: "completed" }
     Note over Runner: Assertions Passed! Step Succeeded.
-```
+```text
 
 ---
 
@@ -94,7 +94,7 @@ steps:
     expect:
       status: 200
       body.status: completed      # Retries until this assertion succeeds!
-```
+```text
 
 ### Retrying on Specific Status Codes
 
@@ -113,7 +113,7 @@ Use `onStatus` to only retry when the server returns a particular status. This a
       onStatus: [409]             # Only retry on conflict — other errors fail immediately
     expect:
       status: 201
-```
+```text
 
 ---
 

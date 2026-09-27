@@ -27,7 +27,7 @@ Yes. Gherkio includes native JSON schema validation. Define your expected schema
 ```yaml
 expect:
   schema: user-response
-```
+```text
 
 ### Does Gherkio support retries and polling?
 Yes. Gherkio includes a configurable retry engine with exponential backoff, fixed intervals, and status-based exit conditions for eventual consistency testing.

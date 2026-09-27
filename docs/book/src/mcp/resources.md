@@ -56,5 +56,5 @@ AI clients can read any resource by calling the `resources/read` protocol method
     "uri": "gherkio://dsl/spec"
   }
 }
-```
+```text
  Gherkio returns the raw Markdown or JSON content directly, ensuring perfect, real-time sync with the codebase.

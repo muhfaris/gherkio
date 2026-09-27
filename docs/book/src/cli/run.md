@@ -27,14 +27,14 @@ Example:
   gherkio run login.yaml --section setup        # Run all setup steps only
   gherkio run login.yaml --section teardown     # Run all teardown steps only
 
-```
-```
+```text
+```text
 gherkio run [test-file] [flags]
-```
+```text
 
 ### Options
 
-```
+```text
       --account string            Account name from credentials file (e.g. alpha, beta)
       --all-accounts              Run tests against all accounts in the credentials file
       --dry-run                   Preview test execution without making HTTP requests
@@ -52,7 +52,7 @@ gherkio run [test-file] [flags]
   -u, --until string              Execute steps until a specific target, e.g. 'steps:1' or '2'
   -v, --verbose                   Show full request/response payloads
       --virtual-users int         Number of isolated users executing the same test concurrently (default 1)
-```
+```text
 
 ### SEE ALSO
 

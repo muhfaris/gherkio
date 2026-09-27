@@ -25,11 +25,11 @@ Since the playground is a static, modern vanilla web application, you can run it
 
 ## 🛠️ Main Features
 
-```
+```text
 +-------------------------------------------------------------------+
 |  [ Read Chapters ]      [ Visual DSL Stepper ]    [ cURL Convert ] |
 +-------------------------------------------------------------------+
-```
+```text
 
 ### 1. Visual DSL Stepper
 - **What it does**: Type or edit Gherkio declarative YAML test steps on the left pane, and see a live graphical flowchart built on the right pane!

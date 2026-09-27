@@ -8,7 +8,7 @@ Learn how Gherkio structures its folders, configures environments, and maps serv
 
 All Gherkio configuration, variables, tests, schemas, and reports reside inside a single, hidden `.gherkio/` folder at the root of your project workspace. Test media files (images, avatars, PDFs for `multipart` uploads) reside in an `assets/` directory at the project root:
 
-```
+```text
 my-project/
 ├── .gherkio/                           # Gherkio engine configuration & test files
 │   ├── config.yaml                     # Global test execution config
@@ -38,7 +38,7 @@ my-project/
     ├── john-avatar.png
     ├── sample-image.jpg
     └── resume.pdf
-```
+```text
 
 
 ---
@@ -121,14 +121,14 @@ security:
 # 8. Authentication Defaults (Optional)
 # ----------------------------------------------------------------------
 jwt_token_path: "body.token"        # JSON path for auto-extracting JWT tokens
-```
+```text
 
 The default `assets.path: assets` points to the `assets/` directory beside `.gherkio/`. You can place the directory elsewhere by changing the path relative to the project root:
 
 ```yaml
 assets:
   path: .gherkio/test-assets
-```
+```text
 
 This produces a layout such as:
 
@@ -140,7 +140,7 @@ my-project/
     │   └── attachments/
     │       └── sample.pdf
     └── tests/
-```
+```text
 
 A multipart file value of `attachments/sample.pdf` will then resolve inside `.gherkio/test-assets/`. See [Multipart Form Data](../dsl/requests.md#multipart-form-data-multipart) for complete examples and lookup rules.
 
@@ -177,7 +177,7 @@ Managing tests across local, staging, and production environments can easily lea
 All target environment host files reside as separate YAML configurations inside `.gherkio/environments/` (e.g. `local.yaml`, `staging.yaml`, `production.yaml`). You switch environments instantly via the CLI flag:
 ```bash
 gherkio run example/auth/login.yaml --env staging
-```
+```text
 
 ---
 
@@ -212,7 +212,7 @@ services:
     baseUrl: https://payments.staging.company.internal
   notifications:
     baseUrl: http://localhost:8080   # Port-forwarded or local mock service
-```
+```text
 
 #### Test Scenario Routing: `.gherkio/tests/orders/checkout.yaml`
 ```yaml
@@ -250,7 +250,7 @@ steps:
         Authorization: "Bearer ${authToken}"
     expect:
       status: 200
-```
+```text
 
 ---
 
@@ -258,13 +258,13 @@ steps:
 
 When Gherkio executes a test step, it parses the target endpoint according to the following strict order of precedence (highest to lowest):
 
-```
+```text
 [1. Absolute Step URL]    -->  - request: { url: "https://google.com" } (Overrides everything)
             ↓
 [2. Named Service Route]  -->  - request: { service: "auth", url: "/login" } (Resolves via services map)
             ↓
 [3. Default Base URL]     -->  - request: { url: "/login" } (Resolves via root baseUrl)
-```
+```text
 
 > 💡 **Best Practice:** Keep scenario steps generic by using relative paths (e.g., `/users`). Never hardcode staging or production domain names inside your YAML test scenarios. This ensures that the same scenario runs flawlessly across all pipelines simply by swapping the `--env` flag.
 
@@ -280,7 +280,7 @@ Generate the schema file in your project's workspace root:
 
 ```bash
 gherkio schema > .gherkio-schema.json
-```
+```text
 
 > 💡 **Zero-Install Alternative:** If you do not have the binary installed on your local system path, you can run the generator dynamically using remote `go run`:
 > ```bash
@@ -300,7 +300,7 @@ gherkio schema > .gherkio-schema.json
     "./.gherkio-schema.json": [".gherkio/tests/**/*.yaml", ".gherkio/tests/**/*.yml"]
   }
 }
-```
+```text
 
 ---
 
@@ -310,4 +310,4 @@ If you don't use VS Code or prefer localized configuration, add this directive c
 
 ```yaml
 # yaml-language-server: $schema=../../.gherkio-schema.json
-```
+```text

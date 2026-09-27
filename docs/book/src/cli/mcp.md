@@ -10,15 +10,15 @@ to be programmatically consumed by LLMs and agentic AI clients (e.g. Claude Desk
 
 Stdout is strictly reserved for compliant JSON-RPC 2.0 frames. Diagnostic logs are output to Stderr.
 
-```
+```text
 gherkio mcp [flags]
-```
+```text
 
 ### Options
 
-```
+```text
   -h, --help   help for mcp
-```
+```text
 
 ### SEE ALSO
 

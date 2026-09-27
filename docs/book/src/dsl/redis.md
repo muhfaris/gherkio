@@ -26,7 +26,7 @@ connections:
     database: 0
     password: $GHERKIO_REDIS_PASSWORD   # Optional: Supports GHERKIO_ env vars
     timeout: 5s
-```
+```text
 
 ### 2. Redis Sentinel Connection (High Availability)
 
@@ -48,7 +48,7 @@ connections:
     password: $GHERKIO_REDIS_PASSWORD
     database: 0
     timeout: 5s
-```
+```text
 
 ---
 
@@ -90,7 +90,7 @@ steps:
       interval: 200
       backoff: constant
       maxDuration: 5s
-```
+```text
 
 The HTTP step saves values from its response. The Redis key and assertions can
 use those values normally. If a `GET` value contains valid JSON, Gherkio decodes
@@ -130,7 +130,7 @@ All normal Gherkio value matchers work on these paths.
     key: "session:$sessionId"
   expect:
     redis.exists: true
-```
+```text
 
 ### Check TTL
 
@@ -142,7 +142,7 @@ All normal Gherkio value matchers work on these paths.
     key: "session:$sessionId"
   expect:
     redis.ttl: gte 60
-```
+```text
 
 Redis returns `-1` when a key exists without an expiry and `-2` when the key
 does not exist. Gherkio preserves those values in `redis.ttl`.
@@ -161,7 +161,7 @@ does not exist. Gherkio preserves those values in `redis.ttl`.
     redis.value.status: active
   save:
     cachedStatus: redis.value.status
-```
+```text
 
 Redis hash field values are returned as strings.
 
@@ -184,7 +184,7 @@ operation until every assertion passes or the retry limit is reached:
     interval: 250
     backoff: exponential
     maxDuration: 10s
-```
+```text
 
 Redis retries support `attempts`, `interval`, `backoff`, and `maxDuration`.
 `onStatus` is HTTP-specific and does not apply to Redis operations.
@@ -201,7 +201,7 @@ Scenario syntax does not change when the environment uses Redis Sentinel:
     key: "ticket:$ticketId"
   expect:
     redis.exists: true
-```
+```text
 
 For every attempt, Gherkio asks Sentinel for the current primary before opening
 the Redis connection. A retry can therefore discover a new primary after a

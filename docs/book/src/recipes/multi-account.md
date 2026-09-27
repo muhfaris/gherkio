@@ -45,7 +45,7 @@ steps:
     expect:
       status: 403
       body.error: "PermissionDenied"
-```
+```text
 
 ---
 

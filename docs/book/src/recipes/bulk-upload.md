@@ -40,7 +40,7 @@ steps:
       # Assert specific items in the list using indices
       body[0].sku: "LAP-CORE-I5"
       body[1].price: 1800.00
-```
+```text
 
 ---
 

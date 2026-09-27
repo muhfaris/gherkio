@@ -20,7 +20,7 @@ If you have Go installed on your system, run:
 
 ```bash
 go install github.com/muhfaris/gherkio@latest
-```
+```text
 
 This compiles the binary and places it under your `$GOPATH/bin` or `$GOBIN` directory. Make sure this directory is in your system's `PATH`.
 
@@ -48,7 +48,7 @@ go run github.com/muhfaris/gherkio@v0.1.0-alpha.9 init
 
 # Execute tests
 go run github.com/muhfaris/gherkio@v0.1.0-alpha.9 run .gherkio/tests/example/login.yaml
-```
+```text
 
 This is the perfect approach for quick trial runs or executing Gherkio inside ephemeral, single-use CI/CD runner pipelines.
 
@@ -61,9 +61,9 @@ Verify that Gherkio is installed correctly by checking its version:
 
 ```bash
 gherkio --version
-```
+```text
 
 You should see an output similar to:
-```
+```text
 gherkio version v0.1.0-alpha.9 (commit: abc1234, built: 2026-08-30, go1.25.5)
-```
+```text

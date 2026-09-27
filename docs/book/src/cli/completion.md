@@ -23,7 +23,7 @@ gherkio completion fish
 
 # PowerShell
 gherkio completion powershell
-```
+```text
 
 ---
 
@@ -34,17 +34,17 @@ gherkio completion powershell
 If shell completions are not already enabled in your environment, add this to your `~/.zshrc`:
 ```zsh
 autoload -U compinit; compinit
-```
+```text
 
 Generate the Gherkio completion script and place it inside a directory listed in your `$fpath`:
 ```bash
 gherkio completion zsh > "${fpath[1]}/_gherkio"
-```
+```text
 
 Alternatively, source it directly in your `~/.zshrc`:
 ```zsh
 source <(gherkio completion zsh)
-```
+```text
 
 ---
 
@@ -55,7 +55,7 @@ Ensure `bash-completion` is installed using your package manager (e.g. `apt-get 
 Write the completion script to the system global configuration:
 ```bash
 gherkio completion bash | sudo tee /etc/bash_completion.d/gherkio > /dev/null
-```
+```text
 
 ---
 
@@ -64,7 +64,7 @@ gherkio completion bash | sudo tee /etc/bash_completion.d/gherkio > /dev/null
 Write the completion script directly to your local user config folder:
 ```bash
 gherkio completion fish > ~/.config/fish/completions/gherkio.fish
-```
+```text
 
 ---
 
@@ -74,4 +74,4 @@ gherkio completion fish > ~/.config/fish/completions/gherkio.fish
 By default, Gherkio completions include flag and subcommand descriptions. If you prefer a faster, minimalistic autocomplete output, you can disable descriptions using the `--no-descriptions` flag:
 ```bash
 gherkio completion zsh --no-descriptions > "${fpath[1]}/_gherkio"
-```
+```text

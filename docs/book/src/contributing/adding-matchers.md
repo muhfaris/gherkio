@@ -19,7 +19,7 @@ func GetAvailableMatchers() []string {
 		"between", // <-- Register your matcher keyword here
 	}
 }
-```
+```text
 
 ### Step 2: Implement the Evaluation Logic
 
@@ -36,7 +36,7 @@ if strings.HasPrefix(expectedStr, "between ") {
 	// Parse min and max as float64, compare against actual numeric value, and return:
 	// return AssertionResult{Passed: true}
 }
-```
+```text
 
 ### Step 3: Add Unit Tests
 
@@ -48,5 +48,5 @@ func TestMatchers(t *testing.T) {
 	// AssertPass(t, "between 1 10", 5)
 	// AssertFail(t, "between 1 10", 12)
 }
-```
+```text
  Ensure your tests pass perfectly by running `go test -v ./internal/runner/`.

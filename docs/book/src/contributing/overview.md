@@ -21,7 +21,7 @@ go build -o gherkio .
 
 # Run a test scenario
 ./gherkio run example/login.yaml -v
-```
+```text
 
 ---
 
@@ -33,12 +33,12 @@ Gherkio takes testing seriously. Please ensure all tests pass before submitting 
 Run the entire Go test suite:
 ```bash
 go test ./...
-```
+```text
 
 Run tests on a specific package (e.g., the runner engine):
 ```bash
 go test -v ./internal/runner/
-```
+```text
 
 ### Golden File Snapshot Tests
 Printer rendering tests inside `/internal/runner/` use **golden snapshot files** (stored under `internal/runner/testdata/`) to compare exact terminal printer bytes.
@@ -46,7 +46,7 @@ Printer rendering tests inside `/internal/runner/` use **golden snapshot files**
 If you intentionally alter terminal output formatting, regenerate these snapshot files using the `-update` flag:
 ```bash
 go test ./internal/runner/ -update
-```
+```text
 
 ---
 

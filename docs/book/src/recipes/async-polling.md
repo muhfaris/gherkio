@@ -37,7 +37,7 @@ steps:
       body.status: "success"
       body.processedCount: gt 0
       body.errors: empty
-```
+```text
 
 ---
 
@@ -45,9 +45,9 @@ steps:
 
 When Gherkio executes Step 2 with `interval: 1500` and `backoff: exponential`, the runner dynamically adjusts the wait duration between consecutive requests:
 
-```
+```text
 Attempt 1 (0s) ──[ Wait 1.5s ]──> Attempt 2 (1.5s) ──[ Wait 3.0s ]──> Attempt 3 (4.5s) ──[ Wait 6.0s ]──> (Passes or hits maxDuration 10s)
-```
+```text
 
 ```mermaid
 sequenceDiagram
@@ -72,7 +72,7 @@ sequenceDiagram
         API-->>Runner: 200 OK { status: "success", processedCount: 150, errors: [] }
         Note over Runner: All Assertions Passed! Step Succeeded.
     end
-```
+```text
 
 ---
 

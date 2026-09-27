@@ -40,7 +40,7 @@ steps:
   - request:
       method: GET
       url: /users/${randomItem(users,id)}
-```
+```text
 
 **Example** — randomly pick an issue tag from a saved array:
 
@@ -57,7 +57,7 @@ steps:
       url: /v1/tickets
       body:
         issue_tag_id: $issueTags[${randomInt(0,4)}].id   # random tag each time
-```
+```text
 
 Combined with `retry`, each attempt picks a different random index — useful for avoiding resource conflicts:
 
@@ -75,7 +75,7 @@ Combined with `retry`, each attempt picks a different random index — useful fo
       onStatus: [409]
     expect:
       status: 200
-```
+```text
 
 ---
 
@@ -221,7 +221,7 @@ For more specialized payloads, Gherkio provides a collection of **parameterized 
 
 When variable names overlap under the same test execution context, Gherkio resolves the values in the following order of precedence (highest overrides lowest):
 
-```
+```text
 [1. Host Environment Variables]  <-- Sourced from host environment (GHERKIO_ prefix only)
                ↓
 [2. Selected Account Credentials] <-- Loaded from active credential file
@@ -229,6 +229,6 @@ When variable names overlap under the same test execution context, Gherkio resol
 [3. Step Saves]                  <-- Extracted dynamically from prior steps
                ↓
 [4. Built-in Generators]         <-- Generated fresh per step
-```
+```text
 
 > ⚠️ **Security Warning:** Only host environment variables prefixed with `GHERKIO_` are loaded. Normal environment variables like `PATH`, `USER`, or `SECRET_KEY` are ignored to prevent accidental leaks.

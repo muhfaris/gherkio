@@ -74,19 +74,19 @@ expect:
   body.deletedAt: not exists    # soft-delete field should not appear
   body.error: not exists        # no error on success path
   body.archived: not exists     # field completely absent from payload
-```
+```text
 
 #### 💡 Intelligent Spelling Suggestion Engine
 If you write an assertion for a path that does not exist in the response payload, Gherkio's smart diff engine doesn't just fail; it analyzes the keys that *were* actually present in the response and prints helpful spelling suggestions in your terminal:
 
-```
+```text
 ✗ timing.duration = lte 500ms (actual: 312ms)
 ✗ body.accessToken = exists
   Reason: field 'accessToken' not found in response body
   Suggestions:
     - message
     - statusCode
-```
+```text
 
 ---
 
@@ -108,7 +108,7 @@ expect:
 
   # Extract values matching filter conditions and assert
   $.store.book[?(@.price < 10)].title: contains "Sayings"
-```
+```text
 
 ---
 
@@ -142,14 +142,14 @@ If the server returns:
 {
   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMiLCJyb2xlIjoiYWRtaW4iLCJleHAiOjE3MTY4ODQwMDB9.sig"
 }
-```
+```text
 You can immediately assert:
 ```yaml
 expect:
   jwt.sub: "123"
   jwt.role: "admin"
   jwt.exp: datetime  # Asserts that the expiration claim is present
-```
+```text
 
 ---
 
@@ -161,7 +161,7 @@ For absolute validation of deep objects and API payloads, individual key asserti
 ```yaml
 expect:
   schema: path/to/schema
-```
+```text
 
 #### How It Works:
 *   **Path Resolution**: Gherkio looks for the schema file under your project's configured schemas directory (usually `.gherkio/schemas/`). It automatically appends `.yaml`, `.yml`, or `.json` to locate the file (e.g., `schema: users/profile` resolves to `.gherkio/schemas/users/profile.yaml`).
@@ -186,7 +186,7 @@ steps:
       max: 500ms   # Step fails if request takes longer than 500ms
     expect:
       status: 200
-```
+```text
 
 ---
 
@@ -218,7 +218,7 @@ steps:
       body.id: $newUserId
       # Validates against a global test account email from your environment config
       body.invitedBy: $accounts.admin.email
-```
+```text
 
 ### 2. Current Request References (`request.body.<field>`)
 When verifying creation or update steps, you often want to assert that the response body contains the exact same data sent in the request. You can refer to the *current request's body* fields dynamically using the `request.body.` prefix.
@@ -236,7 +236,7 @@ steps:
       # Asserts that the response payload echoes back the sent request fields dynamically
       body.data.title: request.body.title
       body.data.price: request.body.price
-```
+```text
 
 ---
 
@@ -314,4 +314,4 @@ steps:
 
       # 6. Full API schema validation (located at .gherkio/schemas/auth/session-response.yaml)
       schema: auth/session-response
-```
+```text

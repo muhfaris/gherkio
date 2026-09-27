@@ -23,7 +23,7 @@ steps:
       
       # Validates the response body against the target schema
       schema: users/list-response
-```
+```text
 
 ---
 
@@ -64,7 +64,7 @@ properties:
         type: integer
       totalPages:
         type: integer
-```
+```text
 
 ---
 

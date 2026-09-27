@@ -29,7 +29,7 @@ steps:
     expect:
       status: 200
       body.role: admin
-```
+```text
 
 ---
 

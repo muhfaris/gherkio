@@ -23,18 +23,18 @@ Example:
   gherkio validate --verbose                 # Show detailed results
   gherkio validate --env staging             # Validate with staging credentials
 
-```
-```
+```text
+```text
 gherkio validate [test-file] [flags]
-```
+```text
 
 ### Options
 
-```
+```text
   -e, --env string   Environment for credentials validation (default "local")
   -h, --help         help for validate
   -v, --verbose      Show detailed validation results
-```
+```text
 
 ### SEE ALSO
 

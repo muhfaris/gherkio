@@ -44,7 +44,7 @@ steps:
     expect:
       status: 401
       body.error: "Unauthorized"
-```
+```text
 
 ---
 

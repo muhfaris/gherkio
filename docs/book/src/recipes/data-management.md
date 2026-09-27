@@ -32,7 +32,7 @@ teardown:
       url: /items/$bookId
     expect:
       status: 200
-```
+```text
 - **Pros**: Zero DB pollution, highly predictable, immune to concurrent execution conflicts.
 - **Cons**: Adds additional HTTP calls per test scenario.
 
@@ -55,7 +55,7 @@ steps:
         X-Seed-Key: $accounts.admin.password
     expect:
       status: 200
-```
+```text
 
 Configure your test orchestrator to execute this scenario sequentially first, before running the remaining tests in parallel:
 
@@ -65,6 +65,6 @@ gherkio run .gherkio/tests/00-seed.yaml
 
 # Run tests in parallel
 gherkio run .gherkio/tests/ -p 4
-```
+```text
 - **Pros**: Keeps individual scenario scripts small and extremely fast.
 - **Cons**: Shared state must be read-only during parallel steps to prevent test interference.

@@ -67,7 +67,7 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-```
+```text
 
 ### 2. Configure GitHub Repository Settings
 1. Go to your repository on GitHub.
@@ -85,7 +85,7 @@ If you prefer to compile the book locally and push the static bundle directly to
 Run the local compilation tool to generate output files under `docs/book/book/`:
 ```bash
 make docs-build
-```
+```text
 
 ### 2. Push to `gh-pages`
 You can use standard Git commands or a deployment utility (such as the `gh-pages` npm package or simple scripting) to push the contents of `docs/book/book/` to your `gh-pages` branch:
@@ -99,7 +99,7 @@ git add .
 git commit -m "docs: deploy static developer book manually"
 git remote add origin https://github.com/muhfaris/gherkio.git
 git push -f origin gh-pages
-```
+```text
 
 ---
 

@@ -20,17 +20,17 @@ Output:
   By default, outputs all schemas in a single JSON file keyed by type.
   Use --type to output a specific schema only.
 
-```
+```text
 gherkio schema [flags]
-```
+```text
 
 ### Options
 
-```
+```text
   -h, --help          help for schema
       --list          List available schema types
       --type string   Schema type: test, config, environment, credentials, schema-definition
-```
+```text
 
 ### SEE ALSO
 

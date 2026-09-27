@@ -59,7 +59,7 @@ teardown:
   - request:
       method: POST
       url: /teardown-db
-```
+```text
 
 ---
 

@@ -89,7 +89,7 @@ reports:
 # 8. Authentication Defaults (Optional)
 # ----------------------------------------------------------------------
 jwt_token_path: "body.token"        # JSON path for auto-extracting JWT tokens
-```
+```text
 
 ---
 

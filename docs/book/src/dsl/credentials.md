@@ -19,7 +19,7 @@ accounts:
     username: viewer@host.com
     password: viewer-secret-key
     role: reader
-```
+```text
 
 ---
 
@@ -37,7 +37,7 @@ steps:
         password: $accounts.admin.password
     expect:
       status: 200
-```
+```text
 
 ---
 
@@ -48,11 +48,11 @@ If you specify an active account flag via the CLI, Gherkio automatically injects
 ```bash
 # Injects $username and $password automatically from the 'admin' map
 gherkio run tests/my-test.yaml --env staging --account admin
-```
+```text
 
 You can also run a test suite against all configured accounts sequentially using `--all-accounts`:
 
 ```bash
 gherkio run tests/my-test.yaml --env staging --all-accounts
-```
+```text
  Gherkio executes the scenario once for every account defined in the credentials file, ensuring consistent role boundaries.

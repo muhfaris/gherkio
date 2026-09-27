@@ -31,7 +31,7 @@ tags:
   - e2e
   - checkout
   - high-priority
-```
+```text
 
 ### Filtering test runs from CLI:
 
@@ -41,7 +41,7 @@ gherkio run tests/ --tag smoke
 
 # Run tests containing BOTH 'core' AND 'user' tags (Logical AND)
 gherkio run tests/ --tag core --tag user
-```
+```text
 
 ---
 
@@ -67,4 +67,4 @@ steps:
         password: "{{password}}"
     expect:
       status: 400
-```
+```text

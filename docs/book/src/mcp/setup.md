@@ -36,7 +36,7 @@ To enable Claude Desktop to invoke Gherkio's testing suite, add the server comma
     }
   }
 }
-```
+```text
 
 #### Option B: Zero-Install (Go Run)
 ```json
@@ -51,7 +51,7 @@ To enable Claude Desktop to invoke Gherkio's testing suite, add the server comma
     }
   }
 }
-```
+```text
 
 ---
 
@@ -89,7 +89,7 @@ If you use **Roo Code (Roo Cline)** or **Continue** extensions in VS Code, add G
     }
   }
 }
-```
+```text
 
 #### Option B: Zero-Install (Go Run)
 ```json
@@ -101,7 +101,7 @@ If you use **Roo Code (Roo Cline)** or **Continue** extensions in VS Code, add G
     }
   }
 }
-```
+```text
 
 ---
 
@@ -118,7 +118,7 @@ To activate Gherkio's MCP capabilities within the Zed editor's built-in assistan
     }
   }
 }
-```
+```text
 
 #### Option B: Zero-Install (Go Run)
 ```json
@@ -130,7 +130,7 @@ To activate Gherkio's MCP capabilities within the Zed editor's built-in assistan
     }
   }
 }
-```
+```text
 
 
 ---

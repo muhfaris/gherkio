@@ -26,15 +26,15 @@ steps:
     expect:
       status: 200
       schema: users/profile         # Matches users/profile.yaml or users/profile.json
-```
+```text
 
 If the API response structure changes or omits a required field, Gherkio will output a clear error path highlighting precisely what failed the contract validation:
 
-```
+```text
 ❌ Step 1: GET /profile failed schema validation
   - body.id: Does not match pattern
   - body.email: Required field is missing
-```
+```text
 
 ---
 
@@ -120,7 +120,7 @@ items:
       items:
         type: string
         pattern: "^[a-z0-9-]+$" # Tags must be lowercase alphanumeric-kebab
-```
+```text
 
 ### Example B: Nested Object Schema (`.gherkio/schemas/users/auth.yaml`)
 Validates a standard login response structure.
@@ -153,4 +153,4 @@ properties:
           - admin
           - user
           - editor
-```
+```text

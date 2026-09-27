@@ -8,9 +8,9 @@ Commands for managing Gherkio test environments and credentials.
 
 ### Options
 
-```
+```text
   -h, --help   help for env
-```
+```text
 
 ### SEE ALSO
 

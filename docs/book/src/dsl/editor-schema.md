@@ -38,7 +38,7 @@ The `gherkio schema` command generates schemas for all first-class Gherkio file 
 
 ```bash
 gherkio schema > .gherkio-schema.json
-```
+```text
 
 This produces a single JSON file keyed by type:
 
@@ -50,20 +50,20 @@ This produces a single JSON file keyed by type:
   "credentials": { ... },
   "schema-definition": { ... }
 }
-```
+```text
 
 ### Generate a specific schema type
 
 ```bash
 gherkio schema --type test > gherkio-test-schema.json
 gherkio schema --type environment > gherkio-env-schema.json
-```
+```text
 
 ### List available schema types
 
 ```bash
 gherkio schema --list
-```
+```text
 
 ---
 
@@ -83,7 +83,7 @@ Open or create `.vscode/settings.json` in your workspace root:
     "./.gherkio-schema.json": [".gherkio/tests/**/*.yaml", ".gherkio/tests/**/*.yml"]
   }
 }
-```
+```text
 
 ### 3. Per-file schema directive (alternative)
 
@@ -94,7 +94,7 @@ Add this comment as the **very first line** of any Gherkio YAML file to use a lo
 scenario: Login flow
 steps:
   ...
-```
+```text
 
 ---
 
@@ -111,7 +111,7 @@ For manual schema configuration in Neovim, point your YAML LSP or `vim.schema` s
 vim.schema('.gherkio-schema.json', {
   filepattern = '.gherkio/tests/**/*.yaml',
 })
-```
+```text
 
 Or configure via `yaml.schemas` in `vim.lsp.config` if using `yaml-language-server` manually.
 
@@ -121,7 +121,7 @@ Or configure via `yaml.schemas` in `vim.lsp.config` if using `yaml-language-serv
 
 Place the generated `.gherkio-schema.json` in your **workspace root** (same level as `.gherkio/`):
 
-```
+```text
 .
 ├── .gherkio/
 │   ├── tests/
@@ -131,7 +131,7 @@ Place the generated `.gherkio-schema.json` in your **workspace root** (same leve
 │   └── schemas/
 │       └── auth/token.yaml
 └── .gherkio-schema.json    ← generated here
-```
+```text
 
 Commit `.gherkio-schema.json` to version control so every teammate gets autocomplete without running any commands.
 
@@ -143,7 +143,7 @@ The schema is derived from the Go model structs in the `gherkio` binary. After u
 
 ```bash
 gherkio schema > .gherkio-schema.json
-```
+```text
 
 The MCP server always exposes the schema for the **currently running** binary version via the `gherkio://dsl/schema.json` resource URI.
 
@@ -187,10 +187,10 @@ Expect:
   jwt.<claim>:     MatcherValue  # JWT claim assertions
   schema:          string        # Schema contract name (from .gherkio/schemas/)
   timing.duration: MatcherValue  # Latency assertion
-```
+```text
 
 For the full schema with all enum values, type constraints, and descriptions, run:
 
 ```bash
 gherkio schema --type test | python3 -m json.tool | less
-```
+```text

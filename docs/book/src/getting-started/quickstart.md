@@ -11,7 +11,7 @@ Create a new directory for your test suite and run `gherkio init`:
 ```bash
 mkdir my-api-tests && cd my-api-tests
 gherkio init
-```
+```text
 
 > 💡 **Zero-Install Alternative:** If you do not have the binary installed on your local system path, you can run all Gherkio commands using standard remote Go execution:
 > ```bash
@@ -19,7 +19,7 @@ gherkio init
 > ```
 
 This scaffolds the canonical Gherkio folder structure:
-```
+```text
 .gherkio/
 ├── config.yaml
 ├── credentials/
@@ -40,7 +40,7 @@ This scaffolds the canonical Gherkio folder structure:
         │   └── refresh.yaml
         └── builtins/
             └── login-with-generators.yaml
-```
+```text
 
 ---
 
@@ -71,7 +71,7 @@ steps:
     save:
       accessToken: body.accessToken
       refreshToken: body.refreshToken
-```
+```text
 
 ---
 
@@ -81,7 +81,7 @@ Run the scaffolded test using `gherkio run`:
 
 ```bash
 gherkio run example/auth/login.yaml --verbose
-```
+```text
 
 > 💡 **Zero-Install Alternative:** You can run Gherkio dynamically without installing using `go run`:
 > ```bash
@@ -91,7 +91,7 @@ gherkio run example/auth/login.yaml --verbose
 The `--verbose` flag shows full request and response payloads with automatically masked credentials.
 
 You will see the step-by-step console printer output and a final test summary:
-```
+```text
 ✔ Step 1: POST https://dummyjson.com/auth/login [200 OK] (182ms)
   ✔ Assertion: status == 200
   ✔ Assertion: body.accessToken exists
@@ -105,7 +105,7 @@ You will see the step-by-step console printer output and a final test summary:
 SCENARIO RESULT: PASSED
 Total Steps: 1 | Passed: 1 | Failed: 0 | Duration: 182ms
 =======================================================
-```
+```text
 
 ---
 

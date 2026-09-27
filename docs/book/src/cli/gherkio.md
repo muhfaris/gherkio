@@ -9,9 +9,9 @@ validation schemas, and generating reports.
 
 ### Options
 
-```
+```text
   -h, --help   help for gherkio
-```
+```text
 
 ### SEE ALSO
 

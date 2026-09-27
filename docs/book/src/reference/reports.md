@@ -8,7 +8,7 @@ Gherkio produces structured output in two forms: **console output** (immediate, 
 
 When you run `gherkio run`, each step is printed to stdout with its result:
 
-```
+```text
 ✓ POST https://dummyjson.com/auth/login
   ✓ status = 200
   ✓ body.exists = true
@@ -23,7 +23,7 @@ When you run `gherkio run`, each step is printed to stdout with its result:
 ✓ PASS
 2 passed, 0 failed, 2 total
 Duration: 401ms
-```
+```text
 
 ### Pass/Fail Indicators
 
@@ -37,7 +37,7 @@ Duration: 401ms
 
 When a step fails, Gherkio prints the failed assertion details plus the full response:
 
-```
+```text
 ✗ POST https://petstore.swagger.io/v2/pet/1
   ✗ status = 200 (expected), got 404
   ✗ body.id exists (path not found)
@@ -53,7 +53,7 @@ Body:
 {
   "message": "Pet not found"
 }
-```
+```text
 
 Gherkio also extracts available JSON fields when a path is not found, so you can quickly correct your assertion path.
 
@@ -63,7 +63,7 @@ Use `--verbose` to show full request and response bodies:
 
 ```bash
 gherkio run tests/login.yaml --verbose
-```
+```text
 
 Sensitive fields (password, token, secret, creditCard, etc.) are always masked in console output.
 
@@ -77,13 +77,13 @@ Reports are generated only when you add the `--report` flag:
 gherkio run tests/login.yaml --report html          # HTML report
 gherkio run tests/login.yaml --report json          # JSON report
 gherkio run tests/login.yaml --report html,json     # Both formats
-```
+```text
 
 ### Report Directory Structure
 
 Reports are saved under `.gherkio/reports/`:
 
-```
+```text
 .gherkio/reports/
 ├── latest/                           # most recent run (overwritten each time)
 │   ├── report.html
@@ -93,7 +93,7 @@ Reports are saved under `.gherkio/reports/`:
 │   └── report.json
 └── failures/                         # individual failed step snapshots
     └── failure-<Scenario>-<StepName>-step<N>-<timestamp>.json
-```
+```text
 
 The `latest/` directory is always overwritten with the most recent run. Timestamp directories preserve historical runs indefinitely (no automatic cleanup by default).
 
@@ -165,7 +165,7 @@ The JSON report is machine-readable and ideal for CI/CD pipelines, historical an
   ],
   "errors": []
 }
-```
+```text
 
 **Key fields per step:**
 
@@ -182,7 +182,7 @@ By default, sensitive values are masked in JSON reports. To generate an unmasked
 
 ```bash
 gherkio run tests/login.yaml --report json --report-raw
-```
+```text
 
 The `--report-raw` flag only affects JSON reports. HTML reports and cURL commands always mask sensitive values regardless of this flag.
 
@@ -205,7 +205,7 @@ When a step fails, Gherkio also saves an individual JSON snapshot in `.gherkio/r
     "variableStoreAtFailure": { "randomEmail": "user_552580@example.com", ... }
   }
 }
-```
+```text
 
 These snapshots capture the full request/response context at failure time, including the variable store state, making it easy to debug flaky or environment-specific failures.
 
@@ -219,7 +219,7 @@ Reports can be configured in `.gherkio/config.yaml`:
 reports:
   format: html        # default format when --report is omitted
   directory: reports  # directory under .gherkio/ (default: reports)
-```
+```text
 
 The `--report` CLI flag always overrides the config setting for a given run.
 
@@ -233,11 +233,11 @@ Use the JSON report for CI/CD ingestion:
 gherkio run --report json --env ci
 
 # Exit code 0 = all passed, exit code 1 = one or more failed
-```
+```text
 
 Parse the summary object for pass/fail counts:
 
 ```bash
 cat .gherkio/reports/latest/report.json | jq .summary
 # { "total": 4, "passed": 4, "failed": 0, "passedPercent": 100 }
-```
+```text

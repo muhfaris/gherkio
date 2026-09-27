@@ -58,7 +58,7 @@ These matchers verify whether a key is present or absent in the response payload
 expect:
   body.id: exists
   body.deletedAt: not exists
-```
+```text
 
 ---
 
@@ -82,7 +82,7 @@ expect:
   body.preferences: object
   body.finished: true
   body.error: null
-```
+```text
 
 ---
 
@@ -104,7 +104,7 @@ expect:
   body.productCode: regex ^[A-Z]{3}-\d{4}$
   body.role: oneOf admin, editor, moderator
   body.status: in active, pending
-```
+```text
 
 ---
 
@@ -122,7 +122,7 @@ expect:
   body.stock: gte 0
   body.discount: lt 1.0
   body.itemsCount: lte 100
-```
+```text
 
 ---
 
@@ -146,7 +146,7 @@ expect:
   body.serverIp: ipv4
   body.payloadHash: base64
   body.deviceMac: mac
-```
+```text
 
 ---
 
@@ -163,7 +163,7 @@ expect:
   body.items: empty
   # Validates that custom message string is blank
   body.alertMessage: empty
-```
+```text
 
 ---
 
@@ -181,4 +181,4 @@ expect:
 
   # Enforces that every tags list is a valid array
   all(body.products.tags): array
-```
+```text

@@ -33,7 +33,7 @@ graph TD
     G --> H
     H --> I[Report Subsystem: Render Logs & Files]
     I --> J[Exit Code: 0 = PASS, 1 = FAIL]
-```
+```text
 
 ---
 

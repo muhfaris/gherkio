@@ -22,7 +22,7 @@ flowchart TD
     H -- Yes --> C
     H -- No --> I["8. Teardown Block Execution"]
     I --> J["9. Report Generation & Exit Code"]
-```
+```text
 
 ---
 
@@ -49,7 +49,7 @@ setup:
       url: /admin/reset-db
     expect:
       status: 200
-```
+```text
 
 ---
 
@@ -94,7 +94,7 @@ expect:
   body.user.role: oneOf admin,manager
   body.token: exists
   schema: user-profile
-```
+```text
 
 ---
 
@@ -107,7 +107,7 @@ When assertions succeed, Gherkio extracts specified response values and stores t
 save:
   authToken: body.access_token
   createdUserId: body.user.id
-```
+```text
 
 ---
 
@@ -123,7 +123,7 @@ teardown:
       url: /users/$createdUserId
       headers:
         Authorization: Bearer $adminToken
-```
+```text
 
 ---
 
@@ -138,7 +138,7 @@ Finally, Gherkio aggregates all step timing, assertions, and payloads into outpu
 
 Here is what happens step-by-step when executing a simple 2-step authentication scenario:
 
-```
+```text
 [00:00.000] 🟢 INIT     Loading environment 'staging' from .gherkio/environments/staging.yaml
 [00:00.005] 🟢 RESOLVE  Interpolated $accounts.user1.email -> "testuser@example.com"
 [00:00.010] 🚀 STEP 1   POST https://api.staging.example.com/v1/login
@@ -151,7 +151,7 @@ Here is what happens step-by-step when executing a simple 2-step authentication 
 [00:00.240] 📥 RES 200  Received response in 85ms
 [00:00.242] 🎯 ASSERT   body.email == "testuser@example.com" (PASS)
 [00:00.245] ✅ SUMMARY  Scenario 'User Login Flow' PASSED (2 steps, 230ms total)
-```
+```text
 
 ---
 

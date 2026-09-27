@@ -16,7 +16,7 @@ First, navigate to your Gherkio test directory (created during `gherkio init`) a
 
 ```bash
 touch .gherkio/tests/example/auth/my-first-test.yaml
-```
+```text
 
 Open this file in your favorite text editor.
 
@@ -31,7 +31,7 @@ scenario: Fetch Post and Verify Author Profile
 tags:
   - regression
   - tutorial
-```
+```text
 
 ---
 
@@ -49,7 +49,7 @@ steps:
       body.id: 1
       body.title: string
       body.userId: integer
-```
+```text
 
 ### 💡 What's Happening Here?
 - **`request.method` & `request.url`**: Define the HTTP command and fully-qualified target path.
@@ -67,7 +67,7 @@ Before fetching the user's profile, we need to know who wrote Post #1. We can ex
 ```yaml
     save:
       authorId: body.userId
-```
+```text
 
 ### 💡 What's Happening Here?
 - **`save`**: The context extractor block.
@@ -87,7 +87,7 @@ Now, let's add a second step to retrieve the profile of the author we just saved
       status: 200
       body.id: integer
       body.username: string
-```
+```text
 
 ### 💡 What's Happening Here?
 - **`url: .../users/$authorId`**: Gherkio automatically replaces `$authorId` with the value extracted in the previous step (e.g. `https://jsonplaceholder.typicode.com/users/1`).
@@ -124,7 +124,7 @@ steps:
       status: 200
       body.id: integer
       body.username: string
-```
+```text
 
 ---
 
@@ -134,12 +134,12 @@ Now run your new declarative scenario using the Gherkio CLI:
 
 ```bash
 gherkio run example/auth/my-first-test.yaml --verbose
-```
+```text
 
 ### 🎉 The Output
 Gherkio will execute both steps sequentially, resolving variables on the fly, and outputting beautiful execution metrics:
 
-```
+```text
 ✔ Step 1: GET https://jsonplaceholder.typicode.com/posts/1 [200 OK] (95ms)
   ✔ Assertion: status == 200
   ✔ Assertion: body.id == 1
@@ -156,6 +156,6 @@ Gherkio will execute both steps sequentially, resolving variables on the fly, an
 SCENARIO RESULT: PASSED
 Total Steps: 2 | Passed: 2 | Failed: 0 | Duration: 182ms
 =======================================================
-```
+```text
 
 You've successfully built, written, and verified your first multi-step integration test flow! Next, check out how to structure your custom local environment files to avoid hardcoding domain URLs under **[Folder & Project Setup](project-setup.md)**.

@@ -26,14 +26,14 @@ Examples:
   gherkio convert --reverse tests/login.yaml --step 0 --env staging
 
 
-```
-```
+```text
+```text
 gherkio convert [command/test-file] [flags]
-```
+```text
 
 ### Options
 
-```
+```text
       --account string    Account name from credentials file to interpolate variables
   -e, --env string        Environment to resolve base URLs (e.g. local, staging) (default "local")
   -f, --file string       Read cURL command from a file
@@ -43,7 +43,7 @@ gherkio convert [command/test-file] [flags]
   -s, --scenario string   Custom scenario name for the generated YAML (default "untitled")
       --step int          Index of the step to convert in reverse mode (0-indexed) (default -1)
       --step-only         Output just the step block without scenario wrapper
-```
+```text
 
 ### SEE ALSO
 

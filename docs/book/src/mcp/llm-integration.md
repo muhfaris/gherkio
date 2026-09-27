@@ -10,7 +10,7 @@ This chapter outlines best practices for prompting AI models to build tests, and
 
 When asking an AI model to write or modify Gherkio tests, feed the model Gherkio's core grammar rules. Below is a highly optimized prompt template you can use:
 
-```
+```text
 You are an expert QA engineer specializing in Gherkio's declarative API testing framework.
 Write a Gherkio YAML test scenario based on the following requirements:
 - Target endpoint: POST /v1/checkout
@@ -23,7 +23,7 @@ Rules:
 2. Use Gherkio's dynamic generator ${randomInt(1,5)} for the quantity.
 3. Validate response status code and response type structures.
 4. Always prefix any saved dynamic variables in the 'save' block with the step number (e.g. '1-createdOrderId' for step 1) to ensure strict cross-step traceability.
-```
+```text
 
 The AI model will output a flawless declarative schema matching Gherkio requirements:
 
@@ -41,7 +41,7 @@ steps:
       body.orderId: uuid
     save:
       1-createdOrderId: body.orderId
-```
+```text
 
 ---
 
@@ -57,7 +57,7 @@ graph TD
     D -- No --> E[Agent calls: update_test to fix code/assertions]
     E --> C
     D -- Yes --> F[Agent reports success to human]
-```
+```text
 
 ### ⚡ Recommended Agent Operations
 

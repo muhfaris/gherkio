@@ -14,9 +14,9 @@ products:
         - https://cdn.dummyjson.com/product-images/beauty/essence-mascara-lash-princess/1.webp
       meta:
         barcode: "5784719087687"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2025-10-09T14:47:01.588Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2026-05-23T11:27:41.868Z"
       minimumOrderQuantity: "48"
       price: "9.99"
       rating: "2.56"
@@ -61,9 +61,9 @@ products:
         - https://cdn.dummyjson.com/product-images/beauty/eyeshadow-palette-with-mirror/1.webp
       meta:
         barcode: "9170275171413"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2024-12-03T11:29:45.706Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2025-08-24T16:52:47.806Z"
       minimumOrderQuantity: "20"
       price: "19.99"
       rating: "2.86"
@@ -108,9 +108,9 @@ products:
         - https://cdn.dummyjson.com/product-images/beauty/powder-canister/1.webp
       meta:
         barcode: "8418883906837"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2025-01-08T18:30:12.844Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2025-11-26T14:49:26.980Z"
       minimumOrderQuantity: "22"
       price: "14.99"
       rating: "4.64"
@@ -155,9 +155,9 @@ products:
         - https://cdn.dummyjson.com/product-images/beauty/red-lipstick/1.webp
       meta:
         barcode: "9467746727219"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2025-11-22T23:28:00.911Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2026-01-26T01:31:40.721Z"
       minimumOrderQuantity: "40"
       price: "12.99"
       rating: "4.36"
@@ -202,9 +202,9 @@ products:
         - https://cdn.dummyjson.com/product-images/beauty/red-nail-polish/1.webp
       meta:
         barcode: "4063010628104"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2025-10-03T07:39:53.470Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2026-04-24T00:21:44.635Z"
       minimumOrderQuantity: "22"
       price: "8.99"
       rating: "4.32"
@@ -251,9 +251,9 @@ products:
         - https://cdn.dummyjson.com/product-images/fragrances/calvin-klein-ck-one/3.webp
       meta:
         barcode: "2451534060749"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2025-02-27T22:08:36.617Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2025-10-23T02:22:36.410Z"
       minimumOrderQuantity: "9"
       price: "49.99"
       rating: "4.37"
@@ -300,9 +300,9 @@ products:
         - https://cdn.dummyjson.com/product-images/fragrances/chanel-coco-noir-eau-de/3.webp
       meta:
         barcode: "4091737746820"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2025-04-13T12:15:53.051Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2025-12-23T23:46:02.892Z"
       minimumOrderQuantity: "1"
       price: "129.99"
       rating: "4.26"
@@ -349,9 +349,9 @@ products:
         - https://cdn.dummyjson.com/product-images/fragrances/dior-j'adore/3.webp
       meta:
         barcode: "1445086097250"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2025-11-22T12:24:29.033Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2026-05-11T22:03:20.337Z"
       minimumOrderQuantity: "10"
       price: "89.99"
       rating: "3.8"
@@ -398,9 +398,9 @@ products:
         - https://cdn.dummyjson.com/product-images/fragrances/dolce-shine-eau-de/3.webp
       meta:
         barcode: "3023868210708"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2024-11-19T07:56:01.798Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2025-02-01T07:08:45.512Z"
       minimumOrderQuantity: "2"
       price: "69.99"
       rating: "3.96"
@@ -447,9 +447,9 @@ products:
         - https://cdn.dummyjson.com/product-images/fragrances/gucci-bloom-eau-de/3.webp
       meta:
         barcode: "3170832177880"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2026-07-19T20:10:42.419Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2026-07-27T15:21:17.071Z"
       minimumOrderQuantity: "2"
       price: "79.99"
       rating: "2.74"
@@ -496,9 +496,9 @@ products:
         - https://cdn.dummyjson.com/product-images/furniture/annibale-colombo-bed/3.webp
       meta:
         barcode: "3610757456581"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2026-05-31T06:08:47.181Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2026-06-02T19:49:21.474Z"
       minimumOrderQuantity: "1"
       price: "1899.99"
       rating: "4.77"
@@ -545,9 +545,9 @@ products:
         - https://cdn.dummyjson.com/product-images/furniture/annibale-colombo-sofa/3.webp
       meta:
         barcode: "1777662847736"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2024-10-15T17:11:42.387Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2025-05-26T20:53:48.329Z"
       minimumOrderQuantity: "1"
       price: "2499.99"
       rating: "3.92"
@@ -594,9 +594,9 @@ products:
         - https://cdn.dummyjson.com/product-images/furniture/bedside-table-african-cherry/3.webp
       meta:
         barcode: "6441287925979"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2025-01-02T18:14:51.517Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2025-11-03T04:42:17.912Z"
       minimumOrderQuantity: "3"
       price: "299.99"
       rating: "2.87"
@@ -643,9 +643,9 @@ products:
         - https://cdn.dummyjson.com/product-images/furniture/knoll-saarinen-executive-conference-chair/3.webp
       meta:
         barcode: "8919386859966"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2025-07-05T18:32:17.642Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2025-09-13T11:11:13.923Z"
       minimumOrderQuantity: "5"
       price: "499.99"
       rating: "4.88"
@@ -692,9 +692,9 @@ products:
         - https://cdn.dummyjson.com/product-images/furniture/wooden-bathroom-sink-with-mirror/3.webp
       meta:
         barcode: "1958104402873"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2024-10-08T09:12:20.659Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2026-08-22T08:09:35.091Z"
       minimumOrderQuantity: "2"
       price: "799.99"
       rating: "3.59"
@@ -738,9 +738,9 @@ products:
         - https://cdn.dummyjson.com/product-images/groceries/apple/1.webp
       meta:
         barcode: "7962803553314"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2026-03-03T03:28:19.029Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2026-04-21T05:42:48.171Z"
       minimumOrderQuantity: "7"
       price: "1.99"
       rating: "4.19"
@@ -783,9 +783,9 @@ products:
         - https://cdn.dummyjson.com/product-images/groceries/beef-steak/1.webp
       meta:
         barcode: "5640063409695"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2024-10-02T14:03:32.118Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2025-10-24T16:51:22.869Z"
       minimumOrderQuantity: "43"
       price: "12.99"
       rating: "4.47"
@@ -828,9 +828,9 @@ products:
         - https://cdn.dummyjson.com/product-images/groceries/cat-food/1.webp
       meta:
         barcode: "1483991328610"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2025-02-18T18:35:51.211Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2026-08-16T13:50:03.194Z"
       minimumOrderQuantity: "18"
       price: "8.99"
       rating: "3.13"
@@ -875,9 +875,9 @@ products:
         - https://cdn.dummyjson.com/product-images/groceries/chicken-meat/2.webp
       meta:
         barcode: "8829514594521"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2026-02-15T02:18:37.851Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2026-03-15T17:47:08.150Z"
       minimumOrderQuantity: "22"
       price: "9.99"
       rating: "3.19"
@@ -920,9 +920,9 @@ products:
         - https://cdn.dummyjson.com/product-images/groceries/cooking-oil/1.webp
       meta:
         barcode: "4874727824518"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2025-09-25T15:34:34.194Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2025-12-10T00:52:49.501Z"
       minimumOrderQuantity: "46"
       price: "4.99"
       rating: "4.8"
@@ -965,9 +965,9 @@ products:
         - https://cdn.dummyjson.com/product-images/groceries/cucumber/1.webp
       meta:
         barcode: "5300066378225"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2025-01-12T11:53:56.805Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2025-03-07T00:03:35.835Z"
       minimumOrderQuantity: "2"
       price: "1.49"
       rating: "4.07"
@@ -1010,9 +1010,9 @@ products:
         - https://cdn.dummyjson.com/product-images/groceries/dog-food/1.webp
       meta:
         barcode: "5906686116469"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2025-07-10T03:33:14.471Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2026-05-15T13:09:53.695Z"
       minimumOrderQuantity: "43"
       price: "10.99"
       rating: "4.55"
@@ -1056,9 +1056,9 @@ products:
         - https://cdn.dummyjson.com/product-images/groceries/eggs/1.webp
       meta:
         barcode: "3478638588469"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2026-02-06T14:03:24.867Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2026-08-20T05:44:35.354Z"
       minimumOrderQuantity: "32"
       price: "2.99"
       rating: "2.53"
@@ -1101,9 +1101,9 @@ products:
         - https://cdn.dummyjson.com/product-images/groceries/fish-steak/1.webp
       meta:
         barcode: "9595036192098"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2025-05-24T22:00:13.090Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2025-12-05T01:25:43.902Z"
       minimumOrderQuantity: "50"
       price: "14.99"
       rating: "3.78"
@@ -1146,9 +1146,9 @@ products:
         - https://cdn.dummyjson.com/product-images/groceries/green-bell-pepper/1.webp
       meta:
         barcode: "2365227493323"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2024-12-16T06:21:20.741Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2025-03-26T10:22:41.216Z"
       minimumOrderQuantity: "12"
       price: "1.29"
       rating: "3.25"
@@ -1191,9 +1191,9 @@ products:
         - https://cdn.dummyjson.com/product-images/groceries/green-chili-pepper/1.webp
       meta:
         barcode: "9335000538563"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2025-08-13T07:35:11.030Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2026-07-07T04:30:44.059Z"
       minimumOrderQuantity: "39"
       price: "0.99"
       rating: "3.66"
@@ -1236,9 +1236,9 @@ products:
         - https://cdn.dummyjson.com/product-images/groceries/honey-jar/1.webp
       meta:
         barcode: "6354306346329"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2024-09-24T17:38:48.991Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2025-01-10T02:20:32.078Z"
       minimumOrderQuantity: "47"
       price: "6.99"
       rating: "3.97"
@@ -1284,9 +1284,9 @@ products:
         - https://cdn.dummyjson.com/product-images/groceries/ice-cream/4.webp
       meta:
         barcode: "0788954559076"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2025-10-23T18:27:08.836Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2025-11-04T01:48:01.853Z"
       minimumOrderQuantity: "42"
       price: "5.49"
       rating: "3.39"
@@ -1329,9 +1329,9 @@ products:
         - https://cdn.dummyjson.com/product-images/groceries/juice/1.webp
       meta:
         barcode: "6936112580956"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2026-04-01T05:44:29.516Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2026-07-04T11:56:17.202Z"
       minimumOrderQuantity: "25"
       price: "3.99"
       rating: "3.94"
@@ -1374,9 +1374,9 @@ products:
         - https://cdn.dummyjson.com/product-images/groceries/kiwi/1.webp
       meta:
         barcode: "2530169917252"
-        createdAt: "2025-04-30T09:41:02.053Z"
+        createdAt: "2025-08-27T05:46:53.584Z"
         qrCode: https://cdn.dummyjson.com/public/qr-code.png
-        updatedAt: "2025-04-30T09:41:02.053Z"
+        updatedAt: "2026-07-21T17:09:19.864Z"
       minimumOrderQuantity: "30"
       price: "2.49"
       rating: "4.93"

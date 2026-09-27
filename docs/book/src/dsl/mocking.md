@@ -27,7 +27,7 @@ sequenceDiagram
         Engine->>Server: Dispatch Real HTTP Request over Network
         Server-->>Step: Return Real Server Response
     end
-```
+```text
 
 ---
 
@@ -73,7 +73,7 @@ mocks:
         messageId: "SM-884192"
         to: "$request.body.phoneNumber"
         status: "queued"
-```
+```text
 
 ---
 
@@ -115,7 +115,7 @@ mocks:
         itemCount: "$request.body.items.length"
         totalAmount: "$request.body.total"
         processedAt: "2026-08-29T10:00:00Z"
-```
+```text
 
 When a test step sends:
 
@@ -129,7 +129,7 @@ When a test step sends:
       customer:
         email: "alice@example.com"
       total: 149.99
-```
+```text
 
 The mock engine intercepts the request and instantly responds with:
 
@@ -140,7 +140,7 @@ The mock engine intercepts the request and instantly responds with:
   "totalAmount": 149.99,
   "processedAt": "2026-08-29T10:00:00Z"
 }
-```
+```text
 
 ---
 
@@ -150,6 +150,6 @@ When Gherkio intercepts a request, it logs an explicit indicator to stdout so de
 
 ```bash
 ✔ [Attempt 1] [MOCK] Intercepted POST https://api.stripe.com/v1/charges
-```
+```text
 
 In compiled HTML execution reports, intercepted requests are tagged with a **[MOCK]** badge alongside full request and virtual response inspection tabs.

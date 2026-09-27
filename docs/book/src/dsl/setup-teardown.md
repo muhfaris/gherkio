@@ -39,7 +39,7 @@ Gherkio follows a strict execution guarantee for test scenarios:
                   ┌────────────────────┐
                   │    End Scenario    │
                   └────────────────────┘
-```
+```text
 
 - **Setup Failures**: If any step in the `setup` block fails, Gherkio halts execution immediately, skips the primary `steps` block entirely (marking the scenario as failed), and jumps directly to the `teardown` block.
 - **Teardown Guarantees**: The `teardown` block is **guaranteed to run** regardless of whether the `setup` block or the primary `steps` block succeeded or failed. This ensures database cleanups, session invalidations, or resource releases are always performed.
@@ -82,4 +82,4 @@ teardown:
         Authorization: "Bearer ${token}"
     expect:
       status: 200
-```
+```text

@@ -27,7 +27,7 @@ steps:
       status: 200
     save:
       authToken: body.token
-```
+```text
 
 > 💡 **Dynamic Account Resolution with `--account`**:
 > If you write `$accounts.username` or `$accounts.password` without an account name, Gherkio automatically maps those variables to the active account specified by the `--account` CLI parameter:
@@ -49,7 +49,7 @@ steps:
         Authorization: "Bearer ${authToken}"   # Uses variable saved in the used scenario
     expect:
       status: 200
-```
+```text
 
 
 ---
@@ -85,7 +85,7 @@ steps:
 
 teardown:
   - use: shared/clear-inventory.yaml     # Resets DB inventory back to baseline
-```
+```text
 
 ---
 
@@ -156,7 +156,7 @@ Sometimes you need to pass dynamic input parameters *into* a composed scenario (
   with:
     CLAIM_ID: $CREATED_CLAIM_ID
     EXPECTED_STATUS: "APPROVED"
-```
+```text
 
 ### ⚙️ How `with:` Works
 
@@ -188,7 +188,7 @@ steps:
       body.data.status: "$EXPECTED_STATUS" # Asserts against injected $EXPECTED_STATUS
     save:
       claimAssignee: body.data.assignedTo  # Bubbles up saved variable back to parent
-```
+```text
 
 #### 2. Main Parent Scenario: `.gherkio/tests/claims/verify-approval.yaml`
 
@@ -227,7 +227,7 @@ steps:
       url: /v1/users/$claimAssignee       # Uses $claimAssignee saved by the shared lookup step
     expect:
       status: 200
-```
+```text
 
 ---
 

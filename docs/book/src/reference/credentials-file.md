@@ -31,7 +31,7 @@ accounts:
     username: manager@company.com
     password: manager-secret-key
     clientId: cid_45678
-```
+```text
 
 ---
 
@@ -50,14 +50,14 @@ steps:
       body:
         email: $accounts.admin.username
         pass: $accounts.admin.password
-```
+```text
 
 ### 2. Contextual Active Role Auto-Injection
 If you execute the test run specifying a selected account, Gherkio dynamically flattens the account keys directly into the root context:
 
 ```bash
 gherkio run my-test.yaml --env staging --account manager
-```
+```text
 
 Now, inside the test, you can directly reference `$username` and `$password` without specifying the account role prefix:
 
@@ -69,5 +69,5 @@ steps:
       body:
         email: $username            # Dynamically binds to manager@company.com
         pass: $password            # Dynamically binds to manager-secret-key
-```
+```text
 This is the ultimate pattern for verifying role isolation boundaries with identical test scripts.
