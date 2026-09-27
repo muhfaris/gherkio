@@ -9,6 +9,12 @@ import (
 	"github.com/muhfaris/gherkio/internal/runner"
 )
 
+// collapseWS folds all whitespace runs into single spaces so template-fragment
+// assertions stay insensitive to HTML/template line reformatting.
+func collapseWS(s string) string {
+	return strings.Join(strings.Fields(s), " ")
+}
+
 func TestMapResultToReportData(t *testing.T) {
 	result := &runner.RunResult{
 		Scenario:  "Test Scenario",
@@ -156,7 +162,7 @@ func TestRenderHTMLShowsRepeatAttempt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RenderHTML: %v", err)
 	}
-	if !strings.Contains(html, "repeat 2/20") {
+	if !strings.Contains(collapseWS(html), "repeat 2/20") {
 		t.Fatal("rendered report does not show repeat attempt")
 	}
 }
@@ -346,12 +352,13 @@ func TestRenderHTMLSuite_LoadRunSummaryAndCollapsibleWorkflows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RenderHTMLSuite: %v", err)
 	}
+	collapsed := collapseWS(html)
 	for _, fragment := range []string{
 		"2 virtual users", "2 iterations each", "4 workflow executions",
 		"VU 1 · iteration 1/2", "details class=\"scenario-block\"",
 		"class=\"scenario-block\" open", "p95 latency",
 	} {
-		if !strings.Contains(html, fragment) {
+		if !strings.Contains(collapsed, fragment) {
 			t.Errorf("expected rendered report to contain %q", fragment)
 		}
 	}
